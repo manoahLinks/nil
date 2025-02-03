@@ -16,7 +16,6 @@ stdenv.mkDerivation rec {
     "package-lock.json"
     "^niljs(/.*)?$"
     "^smart-contracts(/.*)?$"
-    "^create-nil-hardhat-project(/.*)?$"
     "biome.json"
     "^uniswap(/.*)?$"
   ];
@@ -54,7 +53,8 @@ stdenv.mkDerivation rec {
 
   checkPhase = ''
     echo "Installing soljson"
-    (cd create-nil-hardhat-project; bash install_soljson.sh ${soljson26})
+    cd uniswap
+    bash install_soljson.sh ${soljson26}
 
     export BIOME_BINARY=${biome}/bin/biome
     export NIL_RPC_ENDPOINT="http://127.0.0.1:8529"
@@ -70,8 +70,8 @@ stdenv.mkDerivation rec {
     export SMART_ACCOUNT_ADDR=`nil smart-account new -q`
 
     echo "Checking uniswap"
-    (cd uniswap; npm run lint)
-    (cd uniswap; npm run compile)
+    npm run lint
+    npm run compile
 
     echo "tests finished successfully"
   '';

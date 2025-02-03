@@ -152,7 +152,6 @@ To interact with the cluster, =nil; supplies several developer tools.
 
 * The =nil; CLI (`./nil/cmd/nil`)
 * The `Nil.js` client library (`./niljs`)
-* A generator for pre-configured Hardhat projects (`./create-nil-hardhat-project`)
 * The block explorer and the Playground (`./explorer_backend` and `./explorer_frontend`)
 * The `smart-contracts` NPM package containing Solidity libraries for interacting with =nil;
 

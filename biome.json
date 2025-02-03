@@ -27,7 +27,6 @@
     "ignore": ["node_modules", "dist", "test/coverage"],
     "include": [
       "niljs",
-      "create-nil-hardhat-project",
       "docs",
       "explorer_frontend",
       "explorer_backend",

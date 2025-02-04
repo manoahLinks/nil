@@ -1,0 +1,236 @@
+{
+  "networks": {
+    "geth": [
+      {
+        "nilRollupImplementation": "",
+        "nilRollupProxy": "",
+        "nilVerifier": "0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00",
+        "proxyAdminAddress": "",
+        "nilRollupOwnerAddress": "",
+        "defaultAdminAddress": "",
+        "proposerAddress": "",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-21T04:42:20.471Z"
+      },
+      {
+        "nilRollupImplementation": "",
+        "nilRollupProxy": "",
+        "nilVerifier": "0x36C02dA8a0983159322a80FFE9F24b1acfF8B570",
+        "proxyAdminAddress": "",
+        "nilRollupOwnerAddress": "",
+        "defaultAdminAddress": "",
+        "proposerAddress": "",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-21T04:43:11.407Z"
+      },
+      {
+        "nilRollupImplementation": "0x4c5859f0F772848b2D91F1D83E2Fe57935348029",
+        "nilRollupProxy": "0x1291Be112d480055DaFd8a610b7d1e203891C274",
+        "nilVerifier": "0x809d550fca64d94Bd9F66E60752A544199cfAC3D",
+        "proxyAdminAddress": "0x94B9874aC5605713CcAc00ca8E832B37e15c1399",
+        "nilRollupOwnerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "defaultAdminAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "proposerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-21T06:34:35.659Z"
+      },
+      {
+        "nilRollupImplementation": "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+        "nilRollupProxy": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        "nilVerifier": "0x809d550fca64d94Bd9F66E60752A544199cfAC3D",
+        "proxyAdminAddress": "0x9FA5072032B7a7DCc49533401cec1C47bfcf350d",
+        "nilRollupOwnerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "defaultAdminAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "proposerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-21T06:44:56.423Z"
+      },
+      {
+        "nilRollupImplementation": "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+        "nilRollupProxy": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        "nilVerifier": "0x809d550fca64d94Bd9F66E60752A544199cfAC3D",
+        "proxyAdminAddress": "0x9FA5072032B7a7DCc49533401cec1C47bfcf350d",
+        "nilRollupOwnerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "defaultAdminAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "proposerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-21T06:45:46.536Z"
+      },
+      {
+        "nilRollupImplementation": "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+        "nilRollupProxy": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        "nilVerifier": "0x809d550fca64d94Bd9F66E60752A544199cfAC3D",
+        "proxyAdminAddress": "0x9FA5072032B7a7DCc49533401cec1C47bfcf350d",
+        "nilRollupOwnerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "defaultAdminAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "proposerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-21T06:46:06.424Z"
+      },
+      {
+        "nilRollupImplementation": "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+        "nilRollupProxy": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        "nilVerifier": "0x809d550fca64d94Bd9F66E60752A544199cfAC3D",
+        "proxyAdminAddress": "0x9FA5072032B7a7DCc49533401cec1C47bfcf350d",
+        "nilRollupOwnerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "defaultAdminAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "proposerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-21T06:47:10.945Z"
+      },
+      {
+        "nilRollupImplementation": "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+        "nilRollupProxy": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        "nilVerifier": "0x809d550fca64d94Bd9F66E60752A544199cfAC3D",
+        "proxyAdminAddress": "0x9FA5072032B7a7DCc49533401cec1C47bfcf350d",
+        "nilRollupOwnerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "defaultAdminAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "proposerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-28T16:39:22.227Z"
+      },
+      {
+        "nilRollupImplementation": "0xFD471836031dc5108809D173A067e8486B9047A3",
+        "nilRollupProxy": "0xcbEAF3BDe82155F56486Fb5a1072cb8baAf547cc",
+        "nilVerifier": "0xc351628EB244ec633d5f21fBD6621e1a683B1181",
+        "proxyAdminAddress": "0x9230C445Ba467b69C09918E35c233B065F289A39",
+        "nilRollupOwnerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "defaultAdminAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "proposerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-28T17:34:21.454Z"
+      },
+      {
+        "nilRollupImplementation": "0xB0D4afd8879eD9F52b28595d31B441D079B2Ca07",
+        "nilRollupProxy": "0x162A433068F51e18b7d13932F27e66a3f99E6890",
+        "nilVerifier": "0x1429859428C0aBc9C2C47C8Ee9FBaf82cFA0F20f",
+        "proxyAdminAddress": "0x281Fb8B2252B16dF27d29d00B41d274AF89990f8",
+        "nilRollupOwnerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "defaultAdminAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "proposerAddress": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-28T17:38:00.376Z"
+      }
+    ],
+    "sepolia": [
+      {
+        "nilRollupImplementation": "0x5279f2a473a6E7055fABA6846D05DD76801E63b5",
+        "nilRollupProxy": "0x48c8E77C838d5B3f06207eB12e6C15f70dBbF2bF",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xaca8937D40CC284ff7F2758d16a2fe7683155431",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-31T11:57:19.973Z"
+      },
+      {
+        "nilRollupImplementation": "0x5279f2a473a6E7055fABA6846D05DD76801E63b5",
+        "nilRollupProxy": "0x48c8E77C838d5B3f06207eB12e6C15f70dBbF2bF",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xaca8937D40CC284ff7F2758d16a2fe7683155431",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-01-31T12:02:12.918Z"
+      },
+      {
+        "nilRollupImplementation": "0x3a00F3Eb7a9e15eAc87D8951A43D7B6d44C3cB91",
+        "nilRollupProxy": "0x796baf7E572948CD0cbC374f345963bA433b47a2",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xa0D45160fC0844D845F58A3CC37712a2506e8a25",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-02-01T19:26:09.811Z"
+      },
+      {
+        "nilRollupImplementation": "0x3a00F3Eb7a9e15eAc87D8951A43D7B6d44C3cB91",
+        "nilRollupProxy": "0x796baf7E572948CD0cbC374f345963bA433b47a2",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xa0D45160fC0844D845F58A3CC37712a2506e8a25",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-02-01T20:14:03.079Z"
+      },
+      {
+        "nilRollupImplementation": "0x3a00F3Eb7a9e15eAc87D8951A43D7B6d44C3cB91",
+        "nilRollupProxy": "0x796baf7E572948CD0cbC374f345963bA433b47a2",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xa0D45160fC0844D845F58A3CC37712a2506e8a25",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-02-01T20:22:28.468Z"
+      },
+      {
+        "nilRollupImplementation": "0x3a00F3Eb7a9e15eAc87D8951A43D7B6d44C3cB91",
+        "nilRollupProxy": "0x796baf7E572948CD0cbC374f345963bA433b47a2",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xa0D45160fC0844D845F58A3CC37712a2506e8a25",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-02-01T20:26:06.641Z"
+      },
+      {
+        "nilRollupImplementation": "0x3a00F3Eb7a9e15eAc87D8951A43D7B6d44C3cB91",
+        "nilRollupProxy": "0x796baf7E572948CD0cbC374f345963bA433b47a2",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xa0D45160fC0844D845F58A3CC37712a2506e8a25",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-02-01T20:27:53.725Z"
+      },
+      {
+        "nilRollupImplementation": "0x3a00F3Eb7a9e15eAc87D8951A43D7B6d44C3cB91",
+        "nilRollupProxy": "0x796baf7E572948CD0cbC374f345963bA433b47a2",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xa0D45160fC0844D845F58A3CC37712a2506e8a25",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-02-01T20:33:11.115Z"
+      },
+      {
+        "nilRollupImplementation": "0x3a00F3Eb7a9e15eAc87D8951A43D7B6d44C3cB91",
+        "nilRollupProxy": "0x796baf7E572948CD0cbC374f345963bA433b47a2",
+        "nilVerifier": "0x9aCDd7e4e349A9c21F4E576BD0205284eA8122A3",
+        "proxyAdminAddress": "0xa0D45160fC0844D845F58A3CC37712a2506e8a25",
+        "nilRollupOwnerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "defaultAdminAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "proposerAddress": "0x658805a93Af995ccf5C2ab3B9B06302653289E68",
+        "l2ChainId": 0,
+        "genesisStateRoot": "0x64756d6d795374617465526f6f74000000000000000000000000000000000000",
+        "timestamp": "2025-02-01T20:34:01.808Z"
+      }
+    ]
+  }
+}

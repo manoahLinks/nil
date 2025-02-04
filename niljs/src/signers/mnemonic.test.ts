@@ -1,4 +1,4 @@
-import { assertIsValidPrivateKey } from "../index.js";
+import { assertIsValidPrivateKey } from "../utils/assert.js";
 import { privateKeyFromPhrase } from "./mnemonic.js";
 
 test("privateKeyFromPhrase", async ({ expect }) => {

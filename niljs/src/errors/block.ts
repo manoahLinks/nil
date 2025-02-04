@@ -1,4 +1,5 @@
-import type { BlockTag, Hex } from "../index.js";
+import type { BlockTag } from "../types/Block.js";
+import type { Hex } from "../types/Hex.js";
 import { BaseError, type IBaseErrorParameters } from "./BaseError.js";
 
 /**

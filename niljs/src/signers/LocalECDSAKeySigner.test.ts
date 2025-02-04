@@ -1,5 +1,5 @@
 import { accounts } from "../../test/mocks/accounts.js";
-import { bytesToHex } from "../index.js";
+import { bytesToHex } from "../encoding/toHex.js";
 import { LocalECDSAKeySigner } from "./LocalECDSAKeySigner.js";
 
 test("getPublicKey", () => {

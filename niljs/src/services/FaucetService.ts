@@ -1,8 +1,13 @@
+import { BaseClient } from "../clients/BaseClient.js";
+import type { PublicClient } from "../clients/PublicClient.js";
+import type { IClientBaseConfig } from "../clients/types/Configs.js";
 import type { Hex } from "../types/Hex.js";
 import { waitTillCompleted } from "../utils/receipt.js";
-import { BaseClient } from "./BaseClient.js";
-import type { PublicClient } from "./PublicClient.js";
-import type { FaucetClientConfig } from "./index.js";
+
+/**
+ * The type representing the config for the faucet client.
+ */
+type FaucetServiceConfig = IClientBaseConfig;
 
 /**
  * The parameters for the top up request.
@@ -14,22 +19,22 @@ export type TopUpParams = {
 };
 
 /**
- * FaucetClient is a client that interacts with the faucet api.
+ * FaucetService is a client that interacts with the faucet api.
  * It is used to get information about the faucet and to top up the account with custom tokens.
- * @class FaucetClient
+ * @class FaucetService
  * @extends BaseClient
  * @example
- * import { FaucetClient } from '@nilfoundation/niljs';
+ * import { FaucetService } from '@nilfoundation/niljs';
  *
- * const faucetClient = new FaucetClient({
+ * const faucetService = new FaucetService({
  *   transport: new HttpTransport({
  *     endpoint: FAUCET_ENDPOINT,
  *   }),
  * });
  */
-class FaucetClient extends BaseClient {
+class FaucetService extends BaseClient {
   // biome-ignore lint/complexity/noUselessConstructor: may be useful in the future
-  constructor(config: FaucetClientConfig) {
+  constructor(config: FaucetServiceConfig) {
     super(config);
   }
 
@@ -111,4 +116,4 @@ class FaucetClient extends BaseClient {
   }
 }
 
-export { FaucetClient };
+export { FaucetService };

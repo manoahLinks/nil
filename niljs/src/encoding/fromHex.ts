@@ -1,5 +1,5 @@
 import { BaseError } from "../errors/BaseError.js";
-import type { Hex } from "../index.js";
+import type { Hex } from "../types/Hex.js";
 import { addHexPrefix, removeHexPrefix } from "../utils/hex.js";
 
 /**

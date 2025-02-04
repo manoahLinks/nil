@@ -1,8 +1,9 @@
 import type { Abi } from "abitype";
 import invariant from "tiny-invariant";
 import { encodeFunctionData } from "viem";
-import { bytesToHex, hexToBytes } from "../encoding/index.js";
-import type { Hex } from "../types/index.js";
+import { hexToBytes } from "../encoding/fromHex.js";
+import { bytesToHex } from "../encoding/toHex.js";
+import type { Hex } from "../types/Hex.js";
 import { addHexPrefix } from "./hex.js";
 
 const refineSalt = (salt: Uint8Array | bigint): Uint8Array => {

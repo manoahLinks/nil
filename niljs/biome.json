@@ -20,6 +20,21 @@
             ]
           }
         }
+      },
+      "nursery": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "./index.js": "Don't use import from barrel files. Import specific modules directly from their source files.",
+              "../index.js": "Don't use import from barrel files. Import specific modules directly from their source files.",
+              "../../index.js": "Don't use import from barrel files. Import specific modules directly from their source files.",
+              "../../../index.js": "Don't use import from barrel files. Import specific modules directly from their source files.",
+              "../../../../index.js": "Don't use import from barrel files. Import specific modules directly from their source files.",
+              "../../../../../../index.js": "Don't use import from barrel files. Import specific modules directly from their source files."
+            }
+          }
+        }
       }
     }
   }

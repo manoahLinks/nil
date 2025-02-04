@@ -1,6 +1,7 @@
-import { FaucetClient, PublicClient } from "../clients/index.js";
-import { HttpTransport } from "../transport/index.js";
-import type { Hex } from "../types/index.js";
+import { PublicClient } from "../clients/PublicClient.js";
+import { FaucetService } from "../services/FaucetService.js";
+import { HttpTransport } from "../transport/HttpTransport.js";
+import type { Hex } from "../types/Hex.js";
 import { getShardIdFromAddress } from "./address.js";
 
 export async function topUp({
@@ -25,16 +26,16 @@ export async function topUp({
     shardId: shardId,
   });
 
-  const faucetClient = new FaucetClient({
+  const faucetService = new FaucetService({
     transport: new HttpTransport({
       endpoint: faucetEndpoint,
     }),
   });
 
-  const faucets = await faucetClient.getAllFaucets();
+  const faucets = await faucetService.getAllFaucets();
   const faucet = faucets[token];
 
-  await faucetClient.topUpAndWaitUntilCompletion(
+  await faucetService.topUpAndWaitUntilCompletion(
     {
       faucetAddress: faucet,
       smartAccountAddress: address,

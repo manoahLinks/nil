@@ -4,8 +4,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 import {
   CometaService,
-  FaucetClient,
-  type Hex,
   HttpTransport,
   LocalECDSAKeySigner,
   PublicClient,
@@ -57,7 +55,7 @@ abstract class BaseCommand extends Command {
   protected configManager?: ConfigManager;
   protected cfg?: Record<string, string>;
   protected rpcClient?: PublicClient;
-  protected faucetClient?: FaucetClient;
+  protected faucetService?: FaucetService;
   protected cometaClient?: CometaService;
   protected quiet = false;
 
@@ -104,7 +102,7 @@ abstract class BaseCommand extends Command {
     }
 
     if (this.cfg[ConfigKeys.FaucetEndpoint]) {
-      this.faucetClient = new FaucetClient({
+      this.faucetService = new FaucetServicee({
         transport: new HttpTransport({
           endpoint: this.cfg[ConfigKeys.FaucetEndpoint],
         }),

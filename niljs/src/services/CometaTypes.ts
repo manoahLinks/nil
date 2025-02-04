@@ -1,27 +1,23 @@
-/**
- * @fileoverview Types for the Cometa client.
- */
+import type { Hex } from "../types/Hex.js";
 
 /**
  * Contract data.
- * @typedef {Object} ContractData
  */
 type ContractData = {
   name: string;
-  description: string;
+  description?: string;
   abi: string;
   sourceCode: Record<string, string>;
   sourceMap: string;
   metadata: string;
-  initCode: Uint8Array;
-  code: Uint8Array;
+  initCode: string;
+  code: string;
   sourceFilesList: string[];
   methodIdentifiers: Record<string, string>;
 };
 
 /**
  * Location.
- * @typedef {Object} Location
  */
 type Location = {
   fileName: string;
@@ -29,4 +25,12 @@ type Location = {
   length: number;
 };
 
-export type { ContractData, Location };
+/**
+ * Transaction data.
+ */
+type TransactionData = {
+  address: Hex;
+  funcId: Hex;
+};
+
+export type { ContractData, Location, TransactionData };

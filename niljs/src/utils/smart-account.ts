@@ -1,7 +1,8 @@
-import { PublicClient } from "../clients/index.js";
-import { SmartAccountV1 } from "../contracts/index.js";
-import { LocalECDSAKeySigner, generateRandomPrivateKey } from "../signers/index.js";
-import { HttpTransport } from "../transport/index.js";
+import { PublicClient } from "../clients/PublicClient.js";
+import { LocalECDSAKeySigner } from "../signers/LocalECDSAKeySigner.js";
+import { generateRandomPrivateKey } from "../signers/privateKey.js";
+import { SmartAccountV1 } from "../smart-accounts/SmartAccountV1/SmartAccountV1.js";
+import { HttpTransport } from "../transport/HttpTransport.js";
 import { topUp } from "./faucet.js";
 
 export async function generateSmartAccount(options: {

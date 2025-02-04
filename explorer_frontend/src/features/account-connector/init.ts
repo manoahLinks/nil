@@ -1,5 +1,4 @@
 import {
-  FaucetClient,
   type Hex,
   HttpTransport,
   LocalECDSAKeySigner,
@@ -66,10 +65,10 @@ createSmartAccountFx.use(async ({ privateKey, endpoint }) => {
   const client = new PublicClient({
     transport: new HttpTransport({ endpoint }),
   });
-  const faucetClient = new FaucetClient({
+  const faucetService = new FaucetService({
     transport: new HttpTransport({ endpoint }),
   });
-  const faucets = await faucetClient.getAllFaucets();
+  const faucets = await faucetService.getAllFaucets();
 
   const pubkey = signer.getPublicKey();
   const smartAccount = new SmartAccountV1({
@@ -89,7 +88,7 @@ createSmartAccountFx.use(async ({ privateKey, endpoint }) => {
       throw new Error("No faucets available");
     }
 
-    await faucetClient.topUpAndWaitUntilCompletion(
+    await faucetService.topUpAndWaitUntilCompletion(
       {
         smartAccountAddress: smartAccount.address,
         faucetAddress: faucets.NIL,
@@ -129,7 +128,7 @@ createSmartAccountFx.use(async ({ privateKey, endpoint }) => {
         return Promise.resolve();
       }
 
-      return faucetClient.topUpAndWaitUntilCompletion(
+      return faucetService.topUpAndWaitUntilCompletion(
         {
           smartAccountAddress: smartAccount.address,
           faucetAddress: tokenFaucetAddress,
@@ -146,12 +145,12 @@ createSmartAccountFx.use(async ({ privateKey, endpoint }) => {
 });
 
 topUpSmartAccountBalanceFx.use(async (smartAccount) => {
-  const faucetClient = new FaucetClient({
+  const faucetService = new FaucetService({
     transport: smartAccount.client.transport,
   });
-  const faucets = await faucetClient.getAllFaucets();
+  const faucets = await faucetService.getAllFaucets();
 
-  await faucetClient.topUpAndWaitUntilCompletion(
+  await faucetService.topUpAndWaitUntilCompletion(
     {
       smartAccount: smartAccount.address,
       faucetAddress: faucets.NIL,
@@ -257,7 +256,7 @@ $topupInput.on(setTopupInput, (_, payload) => payload);
 
 topupSmartAccountTokenFx.use(async ({ smartAccount, topupInput, faucets, endpoint }) => {
   const { token, amount } = topupInput;
-  const faucetClient = new FaucetClient({
+  const faucetService = new FaucetService({
     transport: new HttpTransport({ endpoint }),
   });
 
@@ -269,7 +268,7 @@ topupSmartAccountTokenFx.use(async ({ smartAccount, topupInput, faucets, endpoin
 
   const tokenFaucetAddress = faucets[token];
 
-  await faucetClient.topUpAndWaitUntilCompletion(
+  await faucetService.topUpAndWaitUntilCompletion(
     {
       smartAccountAddress: smartAccount.address,
       faucetAddress: tokenFaucetAddress,

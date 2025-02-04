@@ -1,14 +1,13 @@
 import { numberToBytesBE } from "@noble/curves/abstract/utils";
 import type { PublicClient } from "../clients/PublicClient.js";
-import type { ISigner } from "../signers/index.js";
+import type { ISigner } from "../signers/types/ISigner.js";
 import type { ExternalTransaction } from "../types/ExternalTransaction.js";
 import type { IDeployData } from "../types/IDeployData.js";
 import { getShardIdFromAddress } from "../utils/address.js";
 import { prepareDeployPart } from "./deployPart.js";
-import { bytesToHex } from "./fromBytes.js";
 import { poseidonHash } from "./poseidon.js";
 import { SszSignedTransactionSchema, SszTransactionSchema } from "./ssz.js";
-
+import { bytesToHex } from "./toHex.js";
 /**
  * The envelope for an external transaction (a transaction sent by a user, a dApp, etc.)
  *

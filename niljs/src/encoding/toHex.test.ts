@@ -1,4 +1,4 @@
-import { toHex } from "./toHex.js";
+import { base64ToHex, toHex } from "./toHex.js";
 
 test("should convert a string to hex", () => {
   expect(toHex("hello")).toBe("0x68656c6c6f");
@@ -22,4 +22,8 @@ test("should convert a boolean to hex", () => {
 
 test("should convert a Uint8Array to hex", () => {
   expect(toHex(new Uint8Array([1, 2, 3]))).toBe("0x010203");
+});
+
+test("should convert a base64 string to hex", () => {
+  expect(base64ToHex("c29tZSBzdHJpbmc=")).toBe("0x736f6d6520737472696e67");
 });

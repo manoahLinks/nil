@@ -1,11 +1,11 @@
-import { generateTestSmartAccount, newClient, newFaucetClient, topUpTest } from "./helpers.js";
+import { generateTestSmartAccount, newClient, newFaucetService, topUpTest } from "./helpers.js";
 
 const client = newClient();
 
-const faucetClient = newFaucetClient();
+const faucetService = newFaucetService();
 
 test("getAllFaucets", async () => {
-  const faucets = await faucetClient.getAllFaucets();
+  const faucets = await faucetService.getAllFaucets();
 
   expect(Object.keys(faucets).length).toBeGreaterThan(0);
   expect(faucets.NIL).toBeDefined();
@@ -22,6 +22,6 @@ test("mint tokens", async () => {
   expect(tokens).toBeDefined();
   expect(Object.keys(tokens).length).toBeGreaterThan(0);
 
-  const faucets = await faucetClient.getAllFaucets();
+  const faucets = await faucetService.getAllFaucets();
   expect(tokens[faucets.BTC]).toBeDefined();
 });

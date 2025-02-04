@@ -1,8 +1,9 @@
 import type { Abi, Address } from "abitype";
 import type { XOR } from "ts-essentials";
-import type { ISigner, PublicClient } from "../../../index.js";
-import type { Token } from "../../../types/Token.js";
-import type { Hex } from "../../../types/index.js";
+import type { PublicClient } from "../../clients/PublicClient.js";
+import type { ISigner } from "../../signers/types/ISigner.js";
+import type { Hex } from "../../types/Hex.js";
+import type { Token } from "../../types/Token.js";
 
 type WaletV1BaseConfig = {
   pubkey: Uint8Array | Hex;
@@ -46,7 +47,9 @@ export type SendBaseTransactionParams = {
   bounceTo?: Address | Uint8Array;
   data?: Uint8Array | Hex;
   value?: bigint;
-  feeCredit: bigint;
+  feeCredit?: bigint;
+  maxPriorityFeePerGas?: bigint;
+  maxFeePerGas?: bigint;
   tokens?: Token[];
   deploy?: boolean;
   seqno?: number;

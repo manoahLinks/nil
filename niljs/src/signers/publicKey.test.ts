@@ -1,5 +1,5 @@
 import { accounts } from "../../test/mocks/accounts.js";
-import { addHexPrefix } from "../index.js";
+import { addHexPrefix } from "../utils/hex.js";
 import { getAddressFromPublicKey, getPublicKey } from "./publicKey.js";
 
 test("getPublicKey", async ({ expect }) => {

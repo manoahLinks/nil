@@ -1,5 +1,5 @@
 import {
-  FaucetClient,
+  FaucetService,
   HttpTransport,
   PublicClient,
   bytesToHex,
@@ -53,8 +53,8 @@ export function newClient(shardId = 1) {
   });
 }
 
-export function newFaucetClient() {
-  return new FaucetClient({
+export function newFaucetService() {
+  return new FaucetService({
     transport: new HttpTransport({
       endpoint: testEnv.faucetServiceEndpoint,
     }),

@@ -1,13 +1,13 @@
 import type { Abi, Address } from "abitype";
 import { type EncodeFunctionDataParameters, decodeFunctionResult, encodeFunctionData } from "viem";
-import type { PublicClient } from "../clients/index.js";
-import { ExternalTransactionEnvelope, bytesToHex, hexToBytes } from "../encoding/index.js";
-import type { ISigner } from "../signers/index.js";
-import type {
-  SendTransactionParams,
-  SmartAccountInterface,
-} from "../smart-accounts/SmartAccountInterface.js";
-import type { Hex } from "../types/index.js";
+import type { PublicClient } from "../clients/PublicClient.js";
+import { ExternalTransactionEnvelope } from "../encoding/externalTransaction.js";
+import { hexToBytes } from "../encoding/fromHex.js";
+import { bytesToHex } from "../encoding/toHex.js";
+import type { ISigner } from "../signers/types/ISigner.js";
+import type { SmartAccountInterface } from "../smart-accounts/SmartAccountInterface.js";
+import type { SendTransactionParams } from "../smart-accounts/SmartAccountV1/types.js";
+import type { Hex } from "../types/Hex.js";
 import type { ReadContractReturnType } from "../types/utils.js";
 import type {
   ContractFunctionArgs,

@@ -1,6 +1,6 @@
 import { defaultAddress } from "../../test/mocks/address.js";
-import { addHexPrefix } from "../index.js";
 import { MockTransport } from "../transport/MockTransport.js";
+import { addHexPrefix } from "../utils/hex.js";
 import { PublicClient } from "./PublicClient.js";
 
 test("getBlockByHash", async ({ expect }) => {

@@ -18,14 +18,12 @@ import type {
 import type { AbiConstructor, AbiError, AbiFallback, AbiReceive } from "abitype";
 import { AbiFunction as AbiFunctionZod, Abi as AbiZod } from "abitype/zod";
 import type { Prettify } from "ts-essentials";
-import type { PublicClient } from "../clients/index.js";
-import type { ISigner } from "../signers/index.js";
-import type {
-  SendTransactionParams,
-  SmartAccountInterface,
-} from "../smart-accounts/SmartAccountInterface.js";
+import type { PublicClient } from "../clients/PublicClient.js";
+import type { ISigner } from "../signers/types/ISigner.js";
+import type { SmartAccountInterface } from "../smart-accounts/SmartAccountInterface.js";
+import type { SendTransactionParams } from "../smart-accounts/SmartAccountV1/types.js";
 import type { CallArgs } from "../types/CallArgs.js";
-import type { Hex } from "../types/index.js";
+import type { Hex } from "../types/Hex.js";
 import type {
   ArrayToObject,
   ExternalContractsMethod,

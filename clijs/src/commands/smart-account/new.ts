@@ -74,7 +74,7 @@ export default class SmartAccountNew extends BaseCommand {
     if (!this.rpcClient) {
       throw new Error("RPC client is not initialized");
     }
-    if (!this.faucetClient) {
+    if (!this.faucetService) {
       throw new Error("Faucet client is not initialized");
     }
 
@@ -90,8 +90,8 @@ export default class SmartAccountNew extends BaseCommand {
 
     logger.debug(`Withdrawing ${flags.amount} to ${smartAccountAddress}`);
 
-    const faucets = await this.faucetClient.getAllFaucets();
-    await this.faucetClient.topUpAndWaitUntilCompletion(
+    const faucets = await this.faucetService.getAllFaucets();
+    await this.faucetService.topUpAndWaitUntilCompletion(
       {
         amount: flags.amount,
         smartAccountAddress: smartAccountAddress,

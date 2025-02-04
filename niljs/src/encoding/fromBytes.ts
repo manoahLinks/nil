@@ -1,6 +1,3 @@
-import type { Hex } from "../index.js";
-import { toHex } from "./toHex.js";
-
 const decoder = new TextDecoder("utf8");
 
 /**
@@ -14,8 +11,4 @@ const bytesToString = (bytes: Uint8Array): string => {
   return str;
 };
 
-const bytesToHex = (bytes: Uint8Array): Hex => {
-  return toHex(bytes);
-};
-
-export { bytesToString, bytesToHex };
+export { bytesToString };

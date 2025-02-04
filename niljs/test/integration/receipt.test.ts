@@ -1,15 +1,15 @@
 import { waitTillCompleted } from "../../src/index.js";
-import { generateRandomAddress, newClient, newFaucetClient } from "./helpers.js";
+import { generateRandomAddress, newClient, newFaucetService } from "./helpers.js";
 
 const client = newClient();
 
 test("Receipt test", async ({ expect }) => {
-  const faucetClient = newFaucetClient();
-  const faucets = await faucetClient.getAllFaucets();
+  const faucetService = newFaucetService();
+  const faucets = await faucetService.getAllFaucets();
 
   const smartAccountAddress = generateRandomAddress();
 
-  const faucetHash = await faucetClient.topUp({
+  const faucetHash = await faucetService.topUp({
     faucetAddress: faucets.NIL,
     smartAccountAddress: smartAccountAddress,
     amount: 100,

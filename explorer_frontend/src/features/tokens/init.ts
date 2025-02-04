@@ -1,14 +1,14 @@
-import { FaucetClient, HttpTransport } from "@nilfoundation/niljs";
+import { HttpTransport } from "@nilfoundation/niljs";
 import { sample } from "effector";
 import { $endpoint } from "../account-connector/model";
 import { $faucets, fetchFaucetsEvent, fetchFaucetsFx } from "./model";
 
 fetchFaucetsFx.use(async (endpoint) => {
-  const faucetClient = new FaucetClient({
+  const faucetService = new FaucetService({
     transport: new HttpTransport({ endpoint }),
   });
 
-  return await faucetClient.getAllFaucets();
+  return await faucetService.getAllFaucets();
 });
 
 sample({

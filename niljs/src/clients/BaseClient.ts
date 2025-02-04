@@ -1,5 +1,5 @@
 import type { RequestArguments } from "@open-rpc/client-js/build/ClientInterface.js";
-import type { ITransport } from "../transport/index.js";
+import type { ITransport } from "../transport/types/ITransport.js";
 import { assertIsValidShardId } from "../utils/assert.js";
 import type { IClientBaseConfig } from "./types/Configs.js";
 

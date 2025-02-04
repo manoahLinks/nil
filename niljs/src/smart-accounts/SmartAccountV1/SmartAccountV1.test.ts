@@ -1,8 +1,9 @@
-import { PublicClient } from "../../clients/index.js";
-import { type SmartAccountV1Config, generateRandomPrivateKey } from "../../index.js";
+import { PublicClient } from "../../clients/PublicClient.js";
 import { LocalECDSAKeySigner } from "../../signers/LocalECDSAKeySigner.js";
+import { generateRandomPrivateKey } from "../../signers/privateKey.js";
 import { MockTransport } from "../../transport/MockTransport.js";
 import { SmartAccountV1 } from "./SmartAccountV1.js";
+import type { SmartAccountV1Config } from "./types.js";
 
 const signer = new LocalECDSAKeySigner({
   privateKey: generateRandomPrivateKey(),

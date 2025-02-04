@@ -47,20 +47,4 @@ type ISmartAccountClientConfig = IClientBaseConfig & {
   signer: ISigner;
 };
 
-/**
- * The type representing the config for the faucet client.
- */
-type FaucetClientConfig = IClientBaseConfig;
-
-/**
- * The type representing the config for the Cometa service client.
- */
-type CometaServiceConfig = IClientBaseConfig;
-
-export type {
-  IClientBaseConfig,
-  IPublicClientConfig,
-  ISmartAccountClientConfig,
-  FaucetClientConfig,
-  CometaServiceConfig,
-};
+export type { IClientBaseConfig, IPublicClientConfig, ISmartAccountClientConfig };

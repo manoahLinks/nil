@@ -1,14 +1,16 @@
 import type { Address } from "abitype";
 import { decodeFunctionResult, encodeFunctionData } from "viem";
-import { bytesToHex, hexToBigInt, hexToBytes, hexToNumber, toHex } from "../encoding/index.js";
+import { hexToBigInt, hexToBytes, hexToNumber } from "../encoding/fromHex.js";
+import { bytesToHex, toHex } from "../encoding/toHex.js";
 import { BlockNotFoundError } from "../errors/block.js";
-import { type Hex, assertIsValidShardId } from "../index.js";
 import type { IAddress } from "../signers/types/IAddress.js";
 import type { Block, BlockTag } from "../types/Block.js";
 import type { CallArgs, CallRes, ContractOverride } from "../types/CallArgs.js";
+import type { Hex } from "../types/Hex.js";
 import type { IReceipt, ProcessedReceipt } from "../types/IReceipt.js";
 import type { ProcessedTransaction } from "../types/ProcessedTransaction.js";
 import type { RPCTransaction } from "../types/RPCTransaction.js";
+import { assertIsValidShardId } from "../utils/assert.js";
 import { addHexPrefix } from "../utils/hex.js";
 import { BaseClient } from "./BaseClient.js";
 import type { IPublicClientConfig } from "./types/Configs.js";
@@ -413,7 +415,9 @@ class PublicClient extends BaseClient {
       });
     } else {
       data =
-        typeof callArgs.data === "string" ? callArgs.data : addHexPrefix(bytesToHex(callArgs.data));
+        typeof callArgs.data === "string"
+          ? addHexPrefix(callArgs.data)
+          : addHexPrefix(bytesToHex(callArgs.data));
     }
     const sendData = {
       from: callArgs.from || undefined,

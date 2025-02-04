@@ -1,17 +1,14 @@
 import { SmartAccount } from "@nilfoundation/smart-contracts";
 import type { Abi } from "abitype";
 import invariant from "tiny-invariant";
-import { bytesToHex, encodeDeployData, encodeFunctionData } from "viem";
+import { encodeDeployData, encodeFunctionData } from "viem";
 import type { PublicClient } from "../../clients/PublicClient.js";
 import type { ContractFunctionName } from "../../contract-factory/ContractFactory.js";
 import { prepareDeployPart } from "../../encoding/deployPart.js";
 import { externalTransactionEncode } from "../../encoding/externalTransaction.js";
 import { hexToBytes } from "../../encoding/fromHex.js";
-import type { ISigner } from "../../signers/index.js";
-import type {
-  SendTransactionParams,
-  SmartAccountInterface,
-} from "../../smart-accounts/SmartAccountInterface.js";
+import { bytesToHex } from "../../encoding/toHex.js";
+import type { ISigner } from "../../signers/types/ISigner.js";
 import type { Hex } from "../../types/Hex.js";
 import type { IDeployData } from "../../types/IDeployData.js";
 import { calculateAddress, getShardIdFromAddress, refineAddress } from "../../utils/address.js";
@@ -22,12 +19,14 @@ import {
   refineFunctionHexData,
   refineSalt,
 } from "../../utils/refiners.js";
+import type { SmartAccountInterface } from "../SmartAccountInterface.js";
 import type {
   DeployParams,
   RequestParams,
   SendSyncTransactionParams,
+  SendTransactionParams,
   SmartAccountV1Config,
-} from "./types/index.js";
+} from "./types.js";
 
 /**
  * SmartAccountV1 is a class used for performing operations on the cluster that require authentication.

@@ -2,7 +2,8 @@ import { IntegerOutOfRangeError } from "../errors/encoding.js";
 import type { Hex } from "../types/Hex.js";
 import { addHexPrefix, isHexString } from "../utils/hex.js";
 
-const hexes = Array.from({ length: 256 }, (Char, i) => i.toString(16).padStart(2, "0"));
+// biome-ignore lint/style/useNamingConvention: <explanation>
+const hexes = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
 
 /**
  * Converts a string to a hex string.
@@ -10,13 +11,22 @@ const hexes = Array.from({ length: 256 }, (Char, i) => i.toString(16).padStart(2
  * @returns The hex string representation of the input.
  */
 const stringToHex = (str: string): Hex => {
-  let hex = "";
+  return addHexPrefix(
+    Array.from(str)
+      .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
+      .join(""),
+  );
+};
 
-  for (let i = 0; i < str.length; i++) {
-    hex += str.charCodeAt(i).toString(16);
-  }
-
-  return addHexPrefix(hex);
+/**
+ * Converts a base64 string to a hex string.
+ * @param base64 - base64 string
+ * @returns hex string
+ */
+const base64ToHex = (base64: string) => {
+  const binaryStr =
+    typeof atob === "function" ? atob(base64) : Buffer.from(base64, "base64").toString("binary");
+  return stringToHex(binaryStr);
 };
 
 /**
@@ -78,4 +88,4 @@ const toHex = <T extends string | Uint8Array | boolean | bigint | number>(value:
   return addHexPrefix((value ? 1 : 0).toString(16));
 };
 
-export { toHex };
+export { toHex, bytesToHex, stringToHex, base64ToHex, numberToHex };

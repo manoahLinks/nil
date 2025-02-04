@@ -44,7 +44,7 @@ Nil.js offers several 'helper' wrappers designed to simplify work with the fauce
 To create a new faucet client:
 
 ```js showLineNumbers
-const faucetClient = new FaucetClient({
+const faucetService = new FaucetService({
 	transport: new HttpTransport({
 		endpoint: FAUCET_ENDPOINT,
 	}),
@@ -54,13 +54,13 @@ const faucetClient = new FaucetClient({
 To request a list of all faucets:
 
 ```js showLineNumbers
-const faucets = await faucetClient.getAllFaucets();
+const faucets = await faucetService.getAllFaucets();
 ```
 
 To request tokens from a faucet:
 
 ```js showLineNumbers
-await faucetClient.topUpAndWaitUntilCompletion({
+await faucetService.topUpAndWaitUntilCompletion({
   smartAccountAddress: SMART_ACCOUNT_ADDRESS,
   faucetAddress: FAUCET_ADDRESS,
   amount: AMOUNT,

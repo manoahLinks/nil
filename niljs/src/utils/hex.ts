@@ -1,4 +1,4 @@
-import type { Hex } from "../index.js";
+import type { Hex } from "../types/Hex.js";
 
 const HEX_REGEX = /^[0-9a-fA-F]+$/;
 

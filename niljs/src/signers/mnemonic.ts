@@ -1,7 +1,7 @@
 import { mnemonicToSeedSync } from "@scure/bip39";
 import { toHex } from "../encoding/toHex.js";
 import { addHexPrefix } from "../utils/hex.js";
-import type { IPrivateKey } from "./index.js";
+import type { IPrivateKey } from "./types/IPrivateKey.js";
 
 /**
  * Generate the private key from the mnemonic phrase.

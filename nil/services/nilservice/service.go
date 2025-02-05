@@ -302,6 +302,7 @@ func CreateNode(ctx context.Context, name string, cfg *Config, database db.DB, i
 	}
 
 	var txnPools map[types.ShardId]txnpool.Pool
+	var syncersReady *sync.WaitGroup
 
 	switch cfg.RunMode {
 	case NormalRunMode, CollatorsOnlyRunMode:
@@ -313,6 +314,7 @@ func CreateNode(ctx context.Context, name string, cfg *Config, database db.DB, i
 
 		funcs = append(funcs, shards.Funcs...)
 		txnPools = shards.Pools
+		syncersReady = shards.SyncersReady
 	case ArchiveRunMode:
 		archiveNodeFunc, err := createArchiveSyncers(cfg, networkManager, database, logger)
 		if err != nil {
@@ -377,6 +379,9 @@ func CreateNode(ctx context.Context, name string, cfg *Config, database db.DB, i
 				if err != nil {
 					return fmt.Errorf("failed to create node client: %w", err)
 				}
+			}
+			if syncersReady != nil {
+				syncersReady.Wait()
 			}
 			if err := startRpcServer(ctx, cfg, rawApi, database, cl); err != nil {
 				logger.Error().Err(err).Msg("RPC server goroutine failed")
@@ -457,6 +462,8 @@ func createNetworkManager(ctx context.Context, cfg *Config) (*network.Manager, e
 type shards struct {
 	Funcs []concurrent.Func
 	Pools map[types.ShardId]txnpool.Pool
+
+	SyncersReady *sync.WaitGroup
 }
 
 func createShards(
@@ -568,7 +575,7 @@ func createShards(
 		}
 	}
 
-	return &shards{Funcs: funcs, Pools: pools}, nil
+	return &shards{Funcs: funcs, Pools: pools, SyncersReady: &wgFetch}, nil
 }
 
 func createActiveCollator(shard types.ShardId, cfg *Config, collatorTickPeriod time.Duration, database db.DB, networkManager *network.Manager, txnPool txnpool.Pool) *collate.Scheduler {

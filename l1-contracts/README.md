@@ -1,6 +1,6 @@
 # Nil L1-Contracts
 
-This repository contains all the L1 contracts that are to be deployed on mainnent & sepolia testnet
+This directory all the L1 contracts that are to be deployed on mainnent & sepolia testnet
 Solidity smart contracts in the repository are used for proof verification and state root updates of L2 on the L1 chain
 
 1. NilRollup
@@ -11,6 +11,32 @@ Contract Architecture
 
 Contract Components
 ![contract-components](./images/contract-components.png)
+
+## Table of Contents
+
+- [Nil L1-Contracts](#nil-l1-contracts)
+  - [NilRollup](#nilrollup)
+    - [commitBatch Logic](#commitbatch-logic)
+    - [updateState Logic](#updatestate-logic)
+    - [ContractUpgradeability](#contractupgradeability)
+    - [AccessControl](#accesscontrol)
+  - [NilVerifier](#nilverifier)
+  - [Proof Generation](#proof-generation)
+  - [Dependencies](#dependencies)
+    - [Node.js](#nodejs)
+    - [Foundry](#foundry)
+    - [Hardhat](#hardhat)
+  - [Build](#build)
+  - [Local Run](#local-run)
+  - [Deployment Steps](#deployment-steps)
+    - [Deploy NilVerifier](#deploy-nilverifier)
+    - [Verify contract code for NilVerifier](#verify-contract-code-for-nilverifier)
+    - [Deploy NilRollup as UpgradeableProxy contract](#deploy-nilrollup-as-upgradeableproxy-contract)
+    - [Verify contract code of NilRollup](#verify-contract-code-of-nilrollup)
+  - [Go - Integration Code - TODO](#go---integration-code---todo)
+  - [Smart Contract - Work In Progress - Items](#smart-contract---work-in-progress---items)
+  - [Outstanding Issues](#outstanding-issues)
+
 
 ## NilRollup
 

@@ -26,4 +26,8 @@ const (
 	TsSize = 8
 	// Incarnation length of uint64 for contract incarnations
 	IncarnationSize = 8
+	// Bls public key size
+	BLSPublicKeySize = 48
+	// Bls public key size
+	BLSSecretKeySize = 32
 )

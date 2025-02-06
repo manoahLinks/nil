@@ -282,9 +282,6 @@ func (devnet *devnet) writeServerConfig(instanceId int, srv server, only string)
 	inst := srv.nodeSpec
 	cfg.MyShards = inst.Shards
 	cfg.SplitShards = inst.SplitShards
-	if spec.EnableRPCOnValidators {
-		cfg.RPCPort = spec.NilRPCPort + instanceId
-	}
 	cfg.BootstrapPeers = devnet.getPeers(devnet.validators, inst.BootstrapPeersIdx)
 	cfg.AdminSocketPath = srv.workDir + "/admin_socket"
 	cfg.DB = db.NewDefaultBadgerDBOptions()

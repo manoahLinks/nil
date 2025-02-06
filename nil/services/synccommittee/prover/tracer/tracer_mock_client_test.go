@@ -14,13 +14,14 @@ import (
 	"github.com/NilFoundation/nil/nil/internal/vm"
 	"github.com/NilFoundation/nil/nil/services/rpc/jsonrpc"
 	"github.com/NilFoundation/nil/nil/services/rpc/transport"
+	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/tracer/api"
 	"github.com/stretchr/testify/suite"
 )
 
 type TracerMockClientTestSuite struct {
 	suite.Suite
 
-	cl           client.Client
+	cl           api.RpcClient
 	shardId      types.ShardId
 	accounts     map[types.Address]types.Code
 	smartAccount types.Address

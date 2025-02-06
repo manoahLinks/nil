@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/NilFoundation/nil/nil/common/logging"
@@ -69,7 +68,7 @@ func (s *TaskResultStorageSuite) Test_Delete_Same_Task_Result_N_Times() {
 	result := types.NewFailureProviderTaskResult(
 		types.NewTaskId(),
 		testaide.RandomExecutorId(),
-		errors.New("something went wrong"),
+		types.NewTaskExecError(types.TaskErrUnknown, "something went wrong"),
 	)
 
 	err := s.storage.Put(s.ctx, result)
@@ -125,7 +124,7 @@ func newTaskResults() []*types.TaskResult {
 		types.NewFailureProviderTaskResult(
 			types.NewTaskId(),
 			testaide.RandomExecutorId(),
-			errors.New("something went wrong"),
+			types.NewTaskExecError(types.TaskErrUnknown, "something went wrong"),
 		),
 		types.NewSuccessProverTaskResult(
 			types.NewTaskId(),
@@ -141,7 +140,7 @@ func newTaskResults() []*types.TaskResult {
 		types.NewFailureProverTaskResult(
 			types.NewTaskId(),
 			testaide.RandomExecutorId(),
-			errors.New("prover failed to handle task"),
+			types.NewTaskExecError(types.TaskErrIO, "prover failed to handle task"),
 		),
 	}
 }

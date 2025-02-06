@@ -17,9 +17,13 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// TaskEntriesTable BadgerDB tables, TaskId is used as a key
 const (
+	// TaskEntriesTable BadgerDB tables, TaskId is used as a key
 	taskEntriesTable db.TableName = "task_entries"
+
+	// rescheduledTasksPerTxLimit defines the maximum number of tasks that can be rescheduled
+	// in a single transaction of TaskStorage.RescheduleHangingTasks.
+	rescheduledTasksPerTxLimit = 100
 )
 
 // TaskViewContainer is an interface for storing task view
@@ -57,15 +61,13 @@ type TaskStorageMetrics interface {
 	RecordTaskAdded(ctx context.Context, task *types.TaskEntry)
 	RecordTaskStarted(ctx context.Context, taskEntry *types.TaskEntry)
 	RecordTaskTerminated(ctx context.Context, taskEntry *types.TaskEntry, taskResult *types.TaskResult)
-	RecordTaskRescheduled(ctx context.Context, taskEntry *types.TaskEntry)
+	RecordTaskRescheduled(ctx context.Context, taskType types.TaskType, previousExecutor types.TaskExecutorId)
 }
 
 type taskStorage struct {
-	database    db.DB
-	retryRunner common.RetryRunner
-	timer       common.Timer
-	metrics     TaskStorageMetrics
-	logger      zerolog.Logger
+	commonStorage
+	timer   common.Timer
+	metrics TaskStorageMetrics
 }
 
 func NewTaskStorage(
@@ -75,14 +77,13 @@ func NewTaskStorage(
 	logger zerolog.Logger,
 ) TaskStorage {
 	return &taskStorage{
-		database: db,
-		retryRunner: badgerRetryRunner(
+		commonStorage: makeCommonStorage(
+			db,
 			logger,
 			common.DoNotRetryIf(types.ErrTaskWrongExecutor, types.ErrTaskInvalidStatus, ErrTaskAlreadyExists),
 		),
 		timer:   timer,
 		metrics: metrics,
-		logger:  logger,
 	}
 }
 
@@ -142,7 +143,7 @@ func (st *taskStorage) addTaskEntriesImpl(ctx context.Context, tasks []*types.Ta
 			return err
 		}
 	}
-	return tx.Commit()
+	return st.commit(tx)
 }
 
 func (st *taskStorage) addSingleTaskEntryTx(tx db.RwTx, entry *types.TaskEntry) error {
@@ -182,12 +183,12 @@ func (st *taskStorage) GetTaskViews(ctx context.Context, destination TaskViewCon
 
 	currentTime := st.timer.NowTime()
 
-	err = st.iterateOverTaskEntries(tx, func(entry *types.TaskEntry) error {
+	err = st.iterateOverTaskEntries(tx, func(entry *types.TaskEntry) (bool, error) {
 		taskView := public.NewTaskView(entry, currentTime)
 		if predicate(taskView) {
 			destination.Add(taskView)
 		}
-		return nil
+		return true, nil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve tasks based on predicate: %w", err)
@@ -254,16 +255,16 @@ func (st *taskStorage) GetTaskTreeView(ctx context.Context, rootTaskId types.Tas
 func (st *taskStorage) findTopPriorityTask(tx db.RoTx) (*types.TaskEntry, error) {
 	var topPriorityTask *types.TaskEntry = nil
 
-	err := st.iterateOverTaskEntries(tx, func(entry *types.TaskEntry) error {
+	err := st.iterateOverTaskEntries(tx, func(entry *types.TaskEntry) (bool, error) {
 		if entry.Status != types.WaitingForExecutor {
-			return nil
+			return true, nil
 		}
 
 		if entry.HasHigherPriorityThan(topPriorityTask) {
 			topPriorityTask = entry
 		}
 
-		return nil
+		return true, nil
 	})
 
 	return topPriorityTask, err
@@ -311,8 +312,8 @@ func (st *taskStorage) requestTaskToExecuteImpl(ctx context.Context, executor ty
 	if err := st.putTaskEntry(tx, taskEntry); err != nil {
 		return nil, fmt.Errorf("failed to update task entry: %w", err)
 	}
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	if err = st.commit(tx); err != nil {
+		return nil, err
 	}
 	return taskEntry, nil
 }
@@ -342,13 +343,43 @@ func (st *taskStorage) processTaskResultImpl(ctx context.Context, res *types.Tas
 		return err
 	}
 
+	if err := res.ValidateForTask(entry); err != nil {
+		return err
+	}
+
+	if res.HasRetryableError() {
+		if err := st.rescheduleTaskTx(tx, entry, res.Error); err != nil {
+			return err
+		}
+
+		if err := st.commit(tx); err != nil {
+			return err
+		}
+
+		st.metrics.RecordTaskRescheduled(ctx, entry.Task.TaskType, res.Sender)
+		return nil
+	}
+
+	if err := st.terminateTaskTx(tx, entry, res); err != nil {
+		return err
+	}
+
+	if err := st.commit(tx); err != nil {
+		return err
+	}
+
+	st.metrics.RecordTaskTerminated(ctx, entry, res)
+	return nil
+}
+
+func (st *taskStorage) terminateTaskTx(tx db.RwTx, entry *types.TaskEntry, res *types.TaskResult) error {
 	currentTime := st.timer.NowTime()
 
 	if err := entry.Terminate(res, currentTime); err != nil {
 		return err
 	}
 
-	if res.IsSuccess {
+	if res.IsSuccess() {
 		// We don't keep finished tasks in DB
 		log.NewTaskResultEvent(st.logger, zerolog.DebugLevel, res).
 			Msg("Task execution is completed successfully, removing it from the storage")
@@ -360,7 +391,19 @@ func (st *taskStorage) processTaskResultImpl(ctx context.Context, res *types.Tas
 		return err
 	}
 
-	// Update all the tasks that are waiting for this result
+	if err := st.updateDependentsTx(tx, entry, res, currentTime); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (st *taskStorage) updateDependentsTx(
+	tx db.RwTx,
+	entry *types.TaskEntry,
+	res *types.TaskResult,
+	currentTime time.Time,
+) error {
 	for taskId := range entry.Dependents {
 		depEntry, err := st.extractTaskEntry(tx, taskId)
 		if err != nil {
@@ -377,70 +420,100 @@ func (st *taskStorage) processTaskResultImpl(ctx context.Context, res *types.Tas
 			return err
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	st.metrics.RecordTaskTerminated(ctx, entry, res)
 	return nil
 }
 
+type rescheduledTask struct {
+	taskType         types.TaskType
+	previousExecutor types.TaskExecutorId
+}
+
 func (st *taskStorage) RescheduleHangingTasks(ctx context.Context, taskExecutionTimeout time.Duration) error {
-	return st.retryRunner.Do(ctx, func(ctx context.Context) error {
-		return st.rescheduleHangingTasksImpl(ctx, taskExecutionTimeout)
+	var rescheduled []rescheduledTask
+	err := st.retryRunner.Do(ctx, func(ctx context.Context) error {
+		var err error
+		rescheduled, err = st.rescheduleHangingTasksImpl(ctx, taskExecutionTimeout)
+		return err
 	})
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range rescheduled {
+		st.metrics.RecordTaskRescheduled(ctx, entry.taskType, entry.previousExecutor)
+	}
+	return nil
 }
 
 func (st *taskStorage) rescheduleHangingTasksImpl(
 	ctx context.Context,
 	taskExecutionTimeout time.Duration,
-) error {
+) (rescheduled []rescheduledTask, err error) {
 	tx, err := st.database.CreateRwTx(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback()
 
-	err = st.iterateOverTaskEntries(tx, func(entry *types.TaskEntry) error {
+	currentTime := st.timer.NowTime()
+
+	err = st.iterateOverTaskEntries(tx, func(entry *types.TaskEntry) (bool, error) {
 		if entry.Status != types.Running {
-			return nil
+			return true, nil
 		}
 
-		currentTime := st.timer.NowTime()
 		executionTime := currentTime.Sub(*entry.Started)
 		if executionTime <= taskExecutionTimeout {
-			return nil
+			return true, nil
 		}
 
-		st.metrics.RecordTaskRescheduled(ctx, entry)
-
-		if err := st.rescheduleTaskTx(tx, entry, executionTime); err != nil {
-			return err
+		previousExecutor := entry.Owner
+		timeoutErr := types.NewTaskErrTimeout(executionTime, taskExecutionTimeout)
+		if err := st.rescheduleTaskTx(tx, entry, timeoutErr); err != nil {
+			return false, err
 		}
 
-		return nil
+		rescheduled = append(rescheduled, rescheduledTask{entry.Task.TaskType, previousExecutor})
+		shouldContinue := len(rescheduled) < rescheduledTasksPerTxLimit
+		return shouldContinue, nil
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return tx.Commit()
+	if err := st.commit(tx); err != nil {
+		return nil, err
+	}
+
+	return rescheduled, nil
 }
 
-func (st *taskStorage) rescheduleTaskTx(tx db.RwTx, entry *types.TaskEntry, executionTime time.Duration) error {
+func (st *taskStorage) rescheduleTaskTx(
+	tx db.RwTx,
+	entry *types.TaskEntry,
+	cause *types.TaskExecError,
+) error {
 	log.NewTaskEvent(st.logger, zerolog.WarnLevel, &entry.Task).
+		Err(cause).
 		Stringer(logging.FieldTaskExecutorId, entry.Owner).
-		Dur(logging.FieldTaskExecTime, executionTime).
-		Msg("Task execution timeout, rescheduling")
+		Int("retryCount", entry.RetryCount).
+		Msg("Task execution error, rescheduling")
 
 	if err := entry.ResetRunning(); err != nil {
 		return fmt.Errorf("failed to reset task: %w", err)
 	}
 
-	return st.putTaskEntry(tx, entry)
+	if err := st.putTaskEntry(tx, entry); err != nil {
+		return fmt.Errorf("failed to put rescheduled task: %w", err)
+	}
+
+	return nil
 }
 
-func (*taskStorage) iterateOverTaskEntries(tx db.RoTx, action func(entry *types.TaskEntry) error) error {
+func (*taskStorage) iterateOverTaskEntries(
+	tx db.RoTx,
+	action func(entry *types.TaskEntry) (shouldContinue bool, err error),
+) error {
 	iter, err := tx.Range(taskEntriesTable, nil, nil)
 	if err != nil {
 		return err
@@ -456,9 +529,12 @@ func (*taskStorage) iterateOverTaskEntries(tx db.RoTx, action func(entry *types.
 		if err = gob.NewDecoder(bytes.NewBuffer(val)).Decode(&entry); err != nil {
 			return fmt.Errorf("%w: failed to decode task with id %v: %w", ErrSerializationFailed, string(key), err)
 		}
-		err = action(entry)
+		shouldContinue, err := action(entry)
 		if err != nil {
 			return err
+		}
+		if !shouldContinue {
+			return nil
 		}
 	}
 

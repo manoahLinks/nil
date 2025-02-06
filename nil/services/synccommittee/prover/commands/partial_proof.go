@@ -7,17 +7,16 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/NilFoundation/nil/nil/client"
-	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/services/rpc/transport"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/rpc"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/types"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/tracer"
+	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/tracer/api"
 	"github.com/rs/zerolog"
 )
 
 type partialProofCmd struct {
-	client         client.Client
+	client         api.RpcClient
 	logger         zerolog.Logger
 	nilRpcEndpoint string
 	cmdCommon
@@ -25,7 +24,7 @@ type partialProofCmd struct {
 
 func NewPartialProofCmd(config CommandConfig, logger zerolog.Logger) Command {
 	return &partialProofCmd{
-		client:         rpc.NewRetryClient(config.NilRpcEndpoint, logging.NewLogger("client")),
+		client:         rpc.NewRetryClient(config.NilRpcEndpoint, logger),
 		nilRpcEndpoint: config.NilRpcEndpoint,
 		cmdCommon:      makeCmdCommon(config),
 		logger:         logger,

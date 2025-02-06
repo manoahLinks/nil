@@ -1,9 +1,6 @@
 package commands
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/types"
 	"github.com/rs/zerolog"
 )
@@ -37,13 +34,10 @@ func (factory *CommandFactory) MakeHandlerCommandForTaskType(taskType types.Task
 	case types.AggregateProofs:
 		return NewAggregateProofCmd(factory.config), nil
 	case types.ProofBlock:
-		err := errors.New("ProofBlock task type is not supposed to be encountered in prover task handler")
-		return nil, err
+		return nil, types.NewTaskErrNotSupportedType(taskType)
 	case types.TaskTypeNone:
-		err := errors.New("Task has unspecified type")
-		return nil, err
+		return nil, types.NewTaskExecErrorf(types.TaskErrInvalidTask, "TaskType cannot be None")
 	default:
-		err := fmt.Errorf("Unhandled task type: %v", taskType.String())
-		return nil, err
+		return nil, types.NewTaskErrNotSupportedType(taskType)
 	}
 }

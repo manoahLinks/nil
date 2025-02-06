@@ -24,6 +24,11 @@ func PanicIfNot(flag bool) {
 	}
 }
 
+// PanicIff panics on true with the given message.
+func PanicIff(flag bool, format string, args ...interface{}) {
+	PanicIfNotf(!flag, format, args...)
+}
+
 // PanicIfNotf panics on false with the given message.
 func PanicIfNotf(flag bool, format string, args ...interface{}) {
 	if !flag {

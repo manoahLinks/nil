@@ -5,12 +5,13 @@ import type { Flags } from "./RPCTransaction.js";
 /**
  * The receipt interface.
  */
-type IReceipt = {
+type Receipt = {
   flags: Flags[];
   success: boolean;
+  status: string;
+  failedPc: number;
   gasUsed: string;
   gasPrice?: string;
-  bloom: string;
   logs: ILog[];
   transactionHash: Hex;
   contractAddress: string;
@@ -18,15 +19,16 @@ type IReceipt = {
   blockNumber: number;
   txnIndex: number;
   outTransactions: Hex[] | null;
-  outputReceipts: (IReceipt | null)[] | null;
+  outputReceipts: (Receipt | null)[] | null;
   shardId: number;
   includedInMain: boolean;
+  errorMessage?: string;
 };
 
-type ProcessedReceipt = Omit<IReceipt, "gasUsed" | "gasPrice" | "outputReceipts"> & {
+type ProcessedReceipt = Omit<Receipt, "gasUsed" | "gasPrice" | "outputReceipts"> & {
   gasUsed: bigint;
   gasPrice?: bigint;
   outputReceipts: (ProcessedReceipt | null)[] | null;
 };
 
-export type { IReceipt, ProcessedReceipt };
+export type { Receipt, ProcessedReceipt };

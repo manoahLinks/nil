@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/api"
@@ -67,7 +66,11 @@ func (s *TaskRequestHandlerTestSuite) Test_TaskRequestHandler_UpdateTaskStatus()
 		},
 		{
 			"Failure_Result_Provider",
-			types.NewFailureProverTaskResult(types.NewTaskId(), testaide.RandomExecutorId(), errors.New("something went wrong")),
+			types.NewFailureProverTaskResult(
+				types.NewTaskId(),
+				testaide.RandomExecutorId(),
+				types.NewTaskExecError(types.TaskErrUnknown, "something went wrong"),
+			),
 		},
 	}
 

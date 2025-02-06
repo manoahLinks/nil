@@ -57,6 +57,7 @@ synccommittee_types: \
 	$(root_sce)/internal/types/proverresulttype_string.go \
 	$(root_sce)/internal/types/taskstatus_string.go \
 	$(root_sce)/internal/types/circuittype_string.go \
+	$(root_sce)/internal/types/taskerrtype_string.go \
 	$(root_sce)/public/taskdebugorder_string.go
 
 $(root_sce)/internal/types/tasktype_string.go: $(root_sce)/internal/types/task_type.go
@@ -67,6 +68,8 @@ $(root_sce)/internal/types/taskstatus_string.go: $(root_sce)/internal/types/task
 	go generate -run="TaskStatus" $(root_sce)/internal/types/generate.go
 $(root_sce)/internal/types/circuittype_string.go: $(root_sce)/internal/types/prover_tasks.go
 	go generate -run="CircuitType" $(root_sce)/internal/types/generate.go
+$(root_sce)/internal/types/taskerrtype_string.go: $(root_sce)/internal/types/errors.go
+	go generate -run="TaskErrType" $(root_sce)/internal/types/generate.go
 $(root_sce)/public/taskdebugorder_string.go: $(root_sce)/public/task_debug_api.go
 	go generate $(root_sce)/public
 

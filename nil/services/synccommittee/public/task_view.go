@@ -97,10 +97,15 @@ func NewTaskTreeFromEntry(taskEntry *types.TaskEntry, currentTime time.Time) *Ta
 
 func NewTaskTreeFromResult(result *types.TaskResultDetails) *TaskTreeView {
 	var taskStatus TaskStatus
-	if result.IsSuccess {
+	if result.IsSuccess() {
 		taskStatus = types.Completed
 	} else {
 		taskStatus = types.Failed
+	}
+
+	var errorText string
+	if result.Error != nil {
+		errorText = result.Error.ErrText
 	}
 
 	return &TaskTreeView{
@@ -113,7 +118,7 @@ func NewTaskTreeFromResult(result *types.TaskResultDetails) *TaskTreeView {
 			Owner:         result.Sender,
 			Status:        taskStatus,
 		},
-		ResultErrorText: result.ErrorText,
+		ResultErrorText: errorText,
 		Dependencies:    emptyDependencies(),
 	}
 }

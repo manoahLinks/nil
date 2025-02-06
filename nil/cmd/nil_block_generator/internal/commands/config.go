@@ -46,17 +46,17 @@ func NewCall(contractName string, method, abiPath, address string, args []string
 }
 
 type Config struct {
-	WalletAdr  string              `json:"walletAdr"`
-	PrivateKey string              `json:"privatekey"`
-	Contracts  map[string]Contract `json:"conracts"`
-	Calls      []Call              `json:"calls"`
+	SmartAccountAdr string              `json:"smartAccountAdr"`
+	PrivateKey      string              `json:"privatekey"`
+	Contracts       map[string]Contract `json:"conracts"`
+	Calls           []Call              `json:"calls"`
 }
 
 func NewConfig() *Config {
 	return &Config{
-		WalletAdr:  "",
-		PrivateKey: "",
-		Contracts:  make(map[string]Contract),
+		SmartAccountAdr: "",
+		PrivateKey:      "",
+		Contracts:       make(map[string]Contract),
 	}
 }
 
@@ -96,7 +96,7 @@ func WriteConfigToFile(cfg *Config) error {
 
 func InitConfig(adr, hexKey string) error {
 	cfg := NewConfig()
-	cfg.WalletAdr = adr
+	cfg.SmartAccountAdr = adr
 	cfg.PrivateKey = hexKey
 	return WriteConfigToFile(cfg)
 }

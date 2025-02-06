@@ -3,18 +3,21 @@ package prover
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 
-	"github.com/NilFoundation/nil/nil/client"
+	"github.com/NilFoundation/nil/nil/client/rpc"
 	"github.com/NilFoundation/nil/nil/common"
-	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/api"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/log"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/storage"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/types"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/commands"
+	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/internal/constants"
 	"github.com/rs/zerolog"
 )
 
@@ -23,7 +26,6 @@ type taskHandler struct {
 	timer         common.Timer
 	logger        zerolog.Logger
 	config        taskHandlerConfig
-	client        client.Client
 }
 
 func newTaskHandler(
@@ -37,11 +39,15 @@ func newTaskHandler(
 		timer:         timer,
 		logger:        logger,
 		config:        config,
-		client:        NewRPCClient(config.NilRpcEndpoint, logging.NewLogger("client")),
 	}
 }
 
 type taskHandlerConfig = commands.CommandConfig
+
+type executionResult struct {
+	artifacts  types.TaskOutputArtifacts
+	binaryData types.TaskResultData
+}
 
 func newTaskHandlerConfig(nilRpcEndpoint string) taskHandlerConfig {
 	return taskHandlerConfig{
@@ -52,56 +58,48 @@ func newTaskHandlerConfig(nilRpcEndpoint string) taskHandlerConfig {
 }
 
 func (h *taskHandler) Handle(ctx context.Context, executorId types.TaskExecutorId, task *types.Task) error {
-	if task.TaskType == types.ProofBlock {
-		err := types.UnexpectedTaskType(task)
-		taskResult := types.NewFailureProverTaskResult(task.Id, executorId, fmt.Errorf("failed to create command for task: %w", err))
-		log.NewTaskEvent(h.logger, zerolog.ErrorLevel, task).Err(err).Msg("failed to create command for task")
-		return h.resultStorage.Put(ctx, taskResult)
+	var taskResult *types.TaskResult
+
+	execResult, err := h.handleImpl(ctx, task)
+	if err == nil {
+		log.NewTaskEvent(h.logger, zerolog.InfoLevel, task).Msg("task execution completed successfully")
+		taskResult = types.NewSuccessProverTaskResult(task.Id, executorId, execResult.artifacts, execResult.binaryData)
+	} else {
+		log.NewTaskEvent(h.logger, zerolog.ErrorLevel, task).Err(err).Msg("task execution failed")
+		taskResult = types.NewFailureProverTaskResult(task.Id, executorId, h.mapErrToTaskExec(err))
 	}
+
+	return h.resultStorage.Put(ctx, taskResult)
+}
+
+func (h *taskHandler) handleImpl(ctx context.Context, task *types.Task) (*executionResult, error) {
+	if task.TaskType == types.ProofBlock {
+		return nil, types.NewTaskErrNotSupportedType(task.TaskType)
+	}
+
 	commandFactory := commands.NewCommandFactory(h.config, h.logger)
 	cmd, err := commandFactory.MakeHandlerCommandForTaskType(task.TaskType)
 	if err != nil {
-		taskResult := types.NewFailureProverTaskResult(task.Id, executorId, fmt.Errorf("unable to instantiate handler for task: %w", err))
-		log.NewTaskEvent(h.logger, zerolog.ErrorLevel, task).
-			Err(err).
-			Msg("unable to instantiate handler for task")
-		return h.resultStorage.Put(ctx, taskResult)
+		return nil, fmt.Errorf("unable to instantiate handler for task: %w", err)
 	}
 
 	commandDefinition, err := cmd.MakeCommandDefinition(task)
 	if err != nil {
-		taskResult := types.NewFailureProverTaskResult(task.Id, executorId, fmt.Errorf("failed to create command for task: %w", err))
-		log.NewTaskEvent(h.logger, zerolog.ErrorLevel, task).
-			Err(err).
-			Msg("failed to create command for task")
-		return h.resultStorage.Put(ctx, taskResult)
+		return nil, fmt.Errorf("failed to create command for task: %w", err)
 	}
-	startTime := h.timer.NowTime()
+
 	log.NewTaskEvent(h.logger, zerolog.InfoLevel, task).Msg("Starting task execution")
+
 	if before, ok := cmd.(commands.BeforeCommandExecuted); ok {
 		log.NewTaskEvent(h.logger, zerolog.DebugLevel, task).Msg("Running action before task command")
 		if err := before.BeforeCommandExecuted(ctx, task, commandDefinition.ExpectedResult); err != nil {
-			log.NewTaskEvent(h.logger, zerolog.ErrorLevel, task).Msg("Action before task execution failed")
-			return h.resultStorage.Put(ctx, types.NewFailureProverTaskResult(task.Id, executorId, fmt.Errorf("action before task execution failed: %w", err)))
+			return nil, fmt.Errorf("action before task command failed: %w", err)
 		}
 	}
+
 	for _, execCmd := range commandDefinition.ExecCommands {
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-		execCmd.Stdout = &stdout
-		execCmd.Stderr = &stderr
-		cmdString := strings.Join(execCmd.Args, " ")
-		h.logger.Info().Msgf("Run command %v\n", cmdString)
-		err := execCmd.Run()
-		h.logger.Trace().Msgf("Task execution stdout:\n%v\n", stdout.String())
-		if err != nil {
-			taskResult := types.NewFailureProverTaskResult(task.Id, executorId, fmt.Errorf("task execution failed: %w", err))
-			timeSpent := h.timer.NowTime().Sub(startTime)
-			log.NewTaskEvent(h.logger, zerolog.ErrorLevel, task).
-				Str("commandText", cmdString).
-				Dur(logging.FieldTaskExecTime, timeSpent).
-				Msgf("Task execution failed, stderr:\n%s\n", stderr.String())
-			return h.resultStorage.Put(ctx, taskResult)
+		if err := h.executeCommand(execCmd); err != nil {
+			return nil, fmt.Errorf("command execution failed: %w", err)
 		}
 	}
 
@@ -110,16 +108,86 @@ func (h *taskHandler) Handle(ctx context.Context, executorId types.TaskExecutorI
 		log.NewTaskEvent(h.logger, zerolog.DebugLevel, task).Msg("Running action after task command")
 		taskBinaryResult, err = after.AfterCommandExecuted(task, commandDefinition.ExpectedResult)
 		if err != nil {
-			log.NewTaskEvent(h.logger, zerolog.ErrorLevel, task).Msg("Action after task command failed")
-			return h.resultStorage.Put(ctx, types.NewFailureProverTaskResult(task.Id, executorId, fmt.Errorf("Action after task command failed: %w", err)))
+			return nil, fmt.Errorf("action after task command failed: %w", err)
 		}
 	}
 
-	executionTime := h.timer.NowTime().Sub(startTime)
-	log.NewTaskEvent(h.logger, zerolog.InfoLevel, task).
-		Dur(logging.FieldTaskExecTime, executionTime).
-		Msg("Task execution completed successfully")
+	return &executionResult{
+		artifacts:  commandDefinition.ExpectedResult,
+		binaryData: taskBinaryResult,
+	}, nil
+}
 
-	taskResult := types.NewSuccessProverTaskResult(task.Id, executorId, commandDefinition.ExpectedResult, taskBinaryResult)
-	return h.resultStorage.Put(ctx, taskResult)
+func (h *taskHandler) executeCommand(execCmd *exec.Cmd) error {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	execCmd.Stdout = &stdout
+	execCmd.Stderr = &stderr
+	cmdString := strings.Join(execCmd.Args, " ")
+
+	h.logger.Info().Msgf("Run command %v\n", cmdString)
+
+	startTime := h.timer.NowTime()
+	err := execCmd.Run()
+	h.logger.Trace().Msgf("Task execution stdout:\n%v\n", stdout.String())
+	execTime := h.timer.NowTime().Sub(startTime)
+
+	if err == nil {
+		h.logger.Info().
+			Dur("commandExecTime", execTime).
+			Msg("Command execution completed successfully")
+		return nil
+	}
+
+	h.logger.Error().
+		Err(err).
+		Str("commandText", cmdString).
+		Dur("commandExecTime", execTime).
+		Msgf("Command execution failed, stderr:\n%s\n", stderr.String())
+	return err
+}
+
+func (h *taskHandler) mapErrToTaskExec(err error) *types.TaskExecError {
+	var taskExecError *types.TaskExecError
+	var exitErr *exec.ExitError
+
+	switch {
+	case err == nil:
+		return nil
+
+	case errors.As(err, &taskExecError):
+		return taskExecError
+
+	case errors.As(err, &exitErr):
+		return h.mapCmdExitErrToTaskExec(exitErr)
+
+	case errors.As(err, new(rpc.CallError)):
+		return types.NewTaskExecErrorf(types.TaskErrRpc, "%s", err)
+
+	default:
+		return types.NewTaskErrUnknown(err)
+	}
+}
+
+func (h *taskHandler) mapCmdExitErrToTaskExec(exitErr *exec.ExitError) *types.TaskExecError {
+	status, ok := exitErr.Sys().(syscall.WaitStatus)
+	if !ok {
+		h.logger.Warn().Err(exitErr).Msg("failed to get syscall.WaitStatus from exec.ExitError")
+		return types.NewTaskErrUnknown(exitErr)
+	}
+
+	if status.Signaled() {
+		signal := status.Signal()
+		return types.NewTaskExecErrorf(types.TaskErrTerminated, "process terminated by signal %s", signal)
+	}
+
+	resultCode := constants.ProofProducerResultCode(status.ExitStatus())
+	var taskErrType types.TaskErrType
+	if errType, ok := constants.ProofProducerErrors[resultCode]; ok {
+		taskErrType = errType
+	} else {
+		taskErrType = types.TaskErrUnknown
+	}
+
+	return types.NewTaskExecErrorf(taskErrType, "process exited with code %d", resultCode)
 }

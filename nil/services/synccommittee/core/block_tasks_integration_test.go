@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/NilFoundation/nil/nil/common"
@@ -157,7 +156,7 @@ func (s *BlockTasksIntegrationTestSuite) Test_Provide_Tasks_And_Handle_Failure_R
 	aggregateProofsFailed := types.NewFailureProviderTaskResult(
 		taskToExecute.Id,
 		executorId,
-		errors.New("something went wrong"),
+		types.NewTaskExecError(types.TaskErrProofGenerationFailed, "block proof generation failed"),
 	)
 
 	err = s.scheduler.SetTaskResult(s.ctx, aggregateProofsFailed)

@@ -4,7 +4,6 @@ package testaide
 
 import (
 	"crypto/rand"
-	"errors"
 	"math"
 	"math/big"
 	"time"
@@ -93,10 +92,18 @@ func NewSuccessTaskResult(taskId types.TaskId, executor types.TaskExecutorId) *t
 	)
 }
 
-func NewFailureTaskResult(taskId types.TaskId, executor types.TaskExecutorId) *types.TaskResult {
+func NewRetryableErrorTaskResult(taskId types.TaskId, executor types.TaskExecutorId) *types.TaskResult {
 	return types.NewFailureProverTaskResult(
 		taskId,
 		executor,
-		errors.New("something went wrong"),
+		types.NewTaskExecError(types.TaskErrUnknown, "something went wrong"),
+	)
+}
+
+func NewNonRetryableErrorTaskResult(taskId types.TaskId, executor types.TaskExecutorId) *types.TaskResult {
+	return types.NewFailureProverTaskResult(
+		taskId,
+		executor,
+		types.NewTaskExecError(types.TaskErrProofGenerationFailed, "failed to proof block"),
 	)
 }

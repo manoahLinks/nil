@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/internal/db"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/types"
@@ -36,16 +35,12 @@ func NewTaskResultStorage(
 	logger zerolog.Logger,
 ) TaskResultStorage {
 	return &taskResultStorage{
-		database:    db,
-		retryRunner: badgerRetryRunner(logger),
-		logger:      logger,
+		commonStorage: makeCommonStorage(db, logger),
 	}
 }
 
 type taskResultStorage struct {
-	database    db.DB
-	retryRunner common.RetryRunner
-	logger      zerolog.Logger
+	commonStorage
 }
 
 func (s *taskResultStorage) TryGetPending(ctx context.Context) (*types.TaskResult, error) {
@@ -128,13 +123,6 @@ func (s *taskResultStorage) deleteImpl(ctx context.Context, taskId types.TaskId)
 	}
 
 	return s.commit(tx)
-}
-
-func (*taskResultStorage) commit(tx db.RwTx) error {
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-	return nil
 }
 
 func marshallTaskResult(result *types.TaskResult) ([]byte, error) {

@@ -5,13 +5,13 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/NilFoundation/nil/nil/client"
 	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/internal/db"
 	"github.com/NilFoundation/nil/nil/internal/types"
 	"github.com/NilFoundation/nil/nil/internal/vm"
 	"github.com/NilFoundation/nil/nil/services/rpc/transport"
+	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/tracer/api"
 	"github.com/rs/zerolog"
 )
 
@@ -20,7 +20,7 @@ type RemoteTracer interface {
 }
 
 type RemoteTracerImpl struct {
-	client client.Client
+	client api.RpcClient
 	logger zerolog.Logger
 }
 
@@ -33,7 +33,7 @@ type TraceConfig struct {
 	MarshalMode  MarshalMode
 }
 
-func NewRemoteTracer(client client.Client, logger zerolog.Logger) (*RemoteTracerImpl, error) {
+func NewRemoteTracer(client api.RpcClient, logger zerolog.Logger) (*RemoteTracerImpl, error) {
 	return &RemoteTracerImpl{
 		client: client,
 		logger: logger,
@@ -137,7 +137,7 @@ func (rt *RemoteTracerImpl) GetBlockTraces(
 	return nil
 }
 
-func GenerateTrace(ctx context.Context, rpcClient client.Client, cfg *TraceConfig) error {
+func GenerateTrace(ctx context.Context, rpcClient api.RpcClient, cfg *TraceConfig) error {
 	remoteTracer, err := NewRemoteTracer(rpcClient, logging.NewLogger("tracer"))
 	if err != nil {
 		return err

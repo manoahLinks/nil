@@ -148,6 +148,9 @@ type TaskEntry struct {
 
 	// Status: current status of the task
 	Status TaskStatus
+
+	// RetryCount specifies the number of times the task execution has been retried
+	RetryCount int
 }
 
 // AddDependency adds a dependency to the current task entry and updates the dependents and pending dependencies.
@@ -176,7 +179,7 @@ func (t *TaskEntry) AddDependencyResult(res TaskResultDetails) error {
 	}
 	t.Task.DependencyResults[res.TaskId] = res
 
-	if res.IsSuccess {
+	if res.IsSuccess() {
 		delete(t.PendingDependencies, res.TaskId)
 	}
 	if len(t.PendingDependencies) == 0 {
@@ -205,19 +208,12 @@ func (t *TaskEntry) Start(executorId TaskExecutorId, currentTime time.Time) erro
 
 // Terminate transitions the status of a running task to Completed or Failed based on the input.
 func (t *TaskEntry) Terminate(result *TaskResult, currentTime time.Time) error {
-	if t.Owner != result.Sender {
-		return fmt.Errorf(
-			"%w: taskId=%v, taskStatus=%v, taskOwner=%v, requestSenderId=%v",
-			ErrTaskWrongExecutor, t.Task.Id, t.Status, t.Owner, result.Sender,
-		)
-	}
-
-	if t.Status != Running {
-		return errTaskInvalidStatus(t, "Terminate")
+	if err := result.ValidateForTask(t); err != nil {
+		return err
 	}
 
 	var newStatus TaskStatus
-	if result.IsSuccess {
+	if result.IsSuccess() {
 		newStatus = Completed
 	} else {
 		newStatus = Failed
@@ -237,6 +233,7 @@ func (t *TaskEntry) ResetRunning() error {
 	t.Started = nil
 	t.Status = WaitingForExecutor
 	t.Owner = UnknownExecutorId
+	t.RetryCount++
 	return nil
 }
 

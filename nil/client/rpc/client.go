@@ -144,12 +144,12 @@ func (b *BatchRequestImpl) GetDebugBlock(shardId types.ShardId, blockId any, ful
 }
 
 func (b *BatchRequestImpl) SendTransactionViaSmartContract(
-	ctx context.Context, walletAddress types.Address, bytecode types.Code, fee types.FeePack, value types.Value,
+	ctx context.Context, smartAccountAddress types.Address, bytecode types.Code, fee types.FeePack, value types.Value,
 	tokens []types.TokenBalance, contractAddress types.Address, pk *ecdsa.PrivateKey,
 ) (uint64, error) {
 	id := len(b.requests)
 
-	r, err := b.client.getSendTransactionViaSmartContractRequest(ctx, walletAddress, bytecode, fee, value, tokens, contractAddress, pk, false, id)
+	r, err := b.client.getSendTransactionViaSmartContractRequest(ctx, smartAccountAddress, bytecode, fee, value, tokens, contractAddress, pk, false, id)
 	if err != nil {
 		return 0, err
 	}

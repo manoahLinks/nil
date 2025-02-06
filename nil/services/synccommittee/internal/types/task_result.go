@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 	"time"
+
+	"github.com/NilFoundation/nil/nil/common/check"
 )
 
 type ProverResultType uint8
@@ -34,11 +36,41 @@ type TaskResultData []byte
 // TaskResult represents the result of a task provided via RPC by the executor with id = TaskResult.Sender.
 type TaskResult struct {
 	TaskId          TaskId              `json:"taskId"`
-	IsSuccess       bool                `json:"isSuccess"`
-	ErrorText       string              `json:"errorText,omitempty"`
 	Sender          TaskExecutorId      `json:"sender"`
+	Error           *TaskExecError      `json:"error,omitempty"`
 	OutputArtifacts TaskOutputArtifacts `json:"dataAddresses,omitempty"`
 	Data            TaskResultData      `json:"binaryData,omitempty"`
+}
+
+// IsSuccess determines if the task result indicates success.
+func (r *TaskResult) IsSuccess() bool {
+	return r.Error == nil
+}
+
+// HasRetryableError determines if the task result contains an error eligible for retry.
+func (r *TaskResult) HasRetryableError() bool {
+	return !r.IsSuccess() && r.Error.CanBeRetried()
+}
+
+// ValidateForTask checks the correctness of the TaskResult
+// against the given TaskEntry and returns an error if invalid.
+func (r *TaskResult) ValidateForTask(entry *TaskEntry) error {
+	if r.TaskId != entry.Task.Id {
+		return fmt.Errorf("task result's taskId=%s does not match task entry's taskId=%s", r.TaskId, entry.Task.Id)
+	}
+
+	if r.Sender == UnknownExecutorId || r.Sender != entry.Owner {
+		return fmt.Errorf(
+			"%w: taskId=%v, taskStatus=%v, taskOwner=%v, requestSenderId=%v",
+			ErrTaskWrongExecutor, entry.Task.Id, entry.Status, entry.Owner, r.Sender,
+		)
+	}
+
+	if entry.Status != Running {
+		return errTaskInvalidStatus(entry, "Validate")
+	}
+
+	return nil
 }
 
 func NewSuccessProviderTaskResult(
@@ -49,7 +81,6 @@ func NewSuccessProviderTaskResult(
 ) *TaskResult {
 	return &TaskResult{
 		TaskId:          taskId,
-		IsSuccess:       true,
 		Sender:          proofProviderId,
 		OutputArtifacts: outputArtifacts,
 		Data:            binaryData,
@@ -59,13 +90,14 @@ func NewSuccessProviderTaskResult(
 func NewFailureProviderTaskResult(
 	taskId TaskId,
 	proofProviderId TaskExecutorId,
-	err error,
+	err *TaskExecError,
 ) *TaskResult {
+	check.PanicIff(err == nil, "err cannot be nil")
+
 	return &TaskResult{
-		TaskId:    taskId,
-		IsSuccess: false,
-		Sender:    proofProviderId,
-		ErrorText: fmt.Sprintf("failed to proof block: %v", err),
+		TaskId: taskId,
+		Sender: proofProviderId,
+		Error:  err,
 	}
 }
 
@@ -77,7 +109,6 @@ func NewSuccessProverTaskResult(
 ) *TaskResult {
 	return &TaskResult{
 		TaskId:          taskId,
-		IsSuccess:       true,
 		Sender:          sender,
 		OutputArtifacts: outputArtifacts,
 		Data:            binaryData,
@@ -87,13 +118,14 @@ func NewSuccessProverTaskResult(
 func NewFailureProverTaskResult(
 	taskId TaskId,
 	sender TaskExecutorId,
-	err error,
+	err *TaskExecError,
 ) *TaskResult {
+	check.PanicIff(err == nil, "err cannot be nil")
+
 	return &TaskResult{
-		TaskId:    taskId,
-		Sender:    sender,
-		IsSuccess: false,
-		ErrorText: fmt.Sprintf("failed to generate proof: %v", err),
+		TaskId: taskId,
+		Sender: sender,
+		Error:  err,
 	}
 }
 

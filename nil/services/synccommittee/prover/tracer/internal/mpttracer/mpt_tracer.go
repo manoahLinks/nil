@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/NilFoundation/nil/nil/client"
 	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/internal/db"
 	"github.com/NilFoundation/nil/nil/internal/execution"
 	"github.com/NilFoundation/nil/nil/internal/mpt"
 	"github.com/NilFoundation/nil/nil/internal/types"
-	"github.com/rs/zerolog"
+	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/tracer/api"
 )
 
 // MPTTracer handles interaction with Merkle Patricia Tries
@@ -26,11 +25,10 @@ var _ = (*MPTTracer)(nil)
 
 // New creates a new MPTTracer using a debug API client
 func New(
-	client client.Client,
+	client api.RpcClient,
 	shardBlockNumber types.BlockNumber,
 	rwTx db.RwTx,
 	shardId types.ShardId,
-	logger zerolog.Logger,
 ) *MPTTracer {
 	debugApiReader := NewDebugApiContractReader(client, shardBlockNumber, rwTx, shardId)
 	return NewWithReader(debugApiReader, rwTx, shardId)

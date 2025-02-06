@@ -98,8 +98,7 @@ func (s *taskSchedulerImpl) SetTaskResult(ctx context.Context, result *types.Tas
 
 	entry, err := s.storage.TryGetTaskEntry(ctx, result.TaskId)
 	if err != nil {
-		s.onTaskResultError(ctx, err, result)
-		return err
+		return s.onTaskResultError(ctx, err, result)
 	}
 
 	if entry == nil {
@@ -107,14 +106,16 @@ func (s *taskSchedulerImpl) SetTaskResult(ctx context.Context, result *types.Tas
 		return nil
 	}
 
-	if err = s.stateHandler.OnTaskTerminated(ctx, &entry.Task, result); err != nil {
-		s.onTaskResultError(ctx, err, result)
-		return fmt.Errorf("%w: %w", ErrFailedToProcessTaskResult, err)
+	if err := result.ValidateForTask(entry); err != nil {
+		return s.onTaskResultError(ctx, err, result)
 	}
 
-	if err = s.storage.ProcessTaskResult(ctx, result); err != nil {
-		s.onTaskResultError(ctx, err, result)
-		return fmt.Errorf("%w: %w", ErrFailedToProcessTaskResult, err)
+	if err := s.stateHandler.OnTaskTerminated(ctx, &entry.Task, result); err != nil {
+		return s.onTaskResultError(ctx, err, result)
+	}
+
+	if err := s.storage.ProcessTaskResult(ctx, result); err != nil {
+		return s.onTaskResultError(ctx, err, result)
 	}
 
 	return nil
@@ -205,9 +206,10 @@ func (s *taskSchedulerImpl) GetTaskTree(ctx context.Context, taskId types.TaskId
 	return s.storage.GetTaskTreeView(ctx, taskId)
 }
 
-func (s *taskSchedulerImpl) onTaskResultError(ctx context.Context, err error, result *types.TaskResult) {
-	log.NewTaskResultEvent(s.logger, zerolog.ErrorLevel, result).Err(err).Msg("Failed to process task result")
+func (s *taskSchedulerImpl) onTaskResultError(ctx context.Context, cause error, result *types.TaskResult) error {
+	log.NewTaskResultEvent(s.logger, zerolog.ErrorLevel, result).Err(cause).Msg("Failed to process task result")
 	s.recordError(ctx)
+	return fmt.Errorf("%w: %w", ErrFailedToProcessTaskResult, cause)
 }
 
 func (s *taskSchedulerImpl) Run(ctx context.Context) error {

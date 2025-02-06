@@ -11,6 +11,11 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
+const (
+	attrTaskType     = "task.type"
+	attrTaskExecutor = "task.executor.id"
+)
+
 type taskStorageMetricsHandler struct {
 	attributes metric.MeasurementOption
 
@@ -77,7 +82,7 @@ func (h *taskStorageMetricsHandler) RecordTaskTerminated(ctx context.Context, ta
 	taskAttributes := getTaskAttributes(taskEntry)
 	h.currentActiveTasks.Add(ctx, -1, h.attributes, taskAttributes)
 
-	if taskResult.IsSuccess {
+	if taskResult.IsSuccess() {
 		executionTimeMs := time.Since(*taskEntry.Started).Milliseconds()
 		h.taskExecutionTimeMs.Record(ctx, executionTimeMs, h.attributes, taskAttributes)
 		h.totalTasksSucceeded.Add(ctx, 1, h.attributes, taskAttributes)
@@ -86,8 +91,12 @@ func (h *taskStorageMetricsHandler) RecordTaskTerminated(ctx context.Context, ta
 	}
 }
 
-func (h *taskStorageMetricsHandler) RecordTaskRescheduled(ctx context.Context, taskEntry *types.TaskEntry) {
-	taskAttributes := getTaskAttributes(taskEntry)
+func (h *taskStorageMetricsHandler) RecordTaskRescheduled(ctx context.Context, taskType types.TaskType, previousExecutor types.TaskExecutorId) {
+	taskAttributes := telattr.With(
+		attribute.Stringer(attrTaskType, taskType),
+		attribute.Int64(attrTaskExecutor, int64(previousExecutor)),
+	)
+
 	h.totalTasksRescheduled.Add(ctx, 1, h.attributes, taskAttributes)
 	h.currentActiveTasks.Add(ctx, -1, h.attributes, taskAttributes)
 	h.currentPendingTasks.Add(ctx, 1, h.attributes, taskAttributes)
@@ -95,11 +104,11 @@ func (h *taskStorageMetricsHandler) RecordTaskRescheduled(ctx context.Context, t
 
 func getTaskAttributes(task *types.TaskEntry) metric.MeasurementOption {
 	attributes := []attribute.KeyValue{
-		attribute.Stringer("task.type", task.Task.TaskType),
+		attribute.Stringer(attrTaskType, task.Task.TaskType),
 	}
 
 	if task.Owner != types.UnknownExecutorId {
-		attributes = append(attributes, attribute.Int64("task.executor.id", int64(task.Owner)))
+		attributes = append(attributes, attribute.Int64(attrTaskExecutor, int64(task.Owner)))
 	}
 
 	return telattr.With(attributes...)

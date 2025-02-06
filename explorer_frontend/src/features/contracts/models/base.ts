@@ -91,8 +91,6 @@ export const deploySmartContractFx = createEffect<
     args: unknown[];
     shardId: number;
     smartAccount: SmartAccountV1;
-    cometaService: CometaService | null;
-    solidityVersion: string;
   },
   {
     address: Hex;
@@ -101,7 +99,7 @@ export const deploySmartContractFx = createEffect<
     deployedFrom?: Hex;
     txHash: Hex;
   }
->(async ({ app, args, smartAccount, shardId, cometaService, solidityVersion }) => {
+>(async ({ app, args, smartAccount, shardId }) => {
   const salt = BigInt(Math.floor(Math.random() * 10000000000000000));
 
   const { hash, address } = await smartAccount.deployContract({
@@ -115,18 +113,6 @@ export const deploySmartContractFx = createEffect<
 
   await waitTillCompleted(smartAccount.client, hash);
 
-  const result = createCompileInput(app.sourcecode);
-
-  const refinedSolidityVersion = solidityVersion.match(/\d+\.\d+\.\d+/)?.[0] || "";
-
-  const refinedResult = {
-    ...result,
-    contractName: `Compiled_Contracts:${app.name}`,
-    compilerVersion: refinedSolidityVersion,
-  };
-
-  await cometaService?.registerContract(JSON.stringify(refinedResult), address);
-
   return {
     address,
     app: app.bytecode,
@@ -134,6 +120,32 @@ export const deploySmartContractFx = createEffect<
     deployedFrom: smartAccount.address,
     txHash: hash,
   };
+});
+
+export const registerContractInCometaFx = createEffect<
+  {
+    name: string;
+    app: App;
+    address: Hex;
+    cometaService: CometaService;
+    solidityVersion: string;
+  },
+  void
+>(async ({ name, app, address, cometaService, solidityVersion }) => {
+  console.log("Registering contract in cometa", app, address, solidityVersion, cometaService);
+  const result = createCompileInput(app.sourcecode);
+
+  const refinedSolidityVersion = solidityVersion.match(/\d+\.\d+\.\d+/)?.[0] || "";
+
+  const refinedResult = {
+    ...result,
+    contractName: `Compiled_Contracts:${name}`,
+    compilerVersion: refinedSolidityVersion,
+  };
+
+  console.log("Refined result", refinedResult);
+
+  await cometaService.registerContract(JSON.stringify(refinedResult), address);
 });
 
 export const $assignedSmartContractAddress = createStore<Hex>("0x");

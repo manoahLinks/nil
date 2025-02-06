@@ -2,11 +2,11 @@ import type { Address } from "abitype";
 import { decodeFunctionResult, encodeFunctionData } from "viem";
 import { bytesToHex, hexToBigInt, hexToBytes, hexToNumber, toHex } from "../encoding/index.js";
 import { BlockNotFoundError } from "../errors/block.js";
-import { type Hex, assertIsValidShardId } from "../index.js";
+import { type Hex, assertIsValidShardId, mapReceipt } from "../index.js";
 import type { IAddress } from "../signers/types/IAddress.js";
 import type { Block, BlockTag } from "../types/Block.js";
 import type { CallArgs, CallRes, ContractOverride } from "../types/CallArgs.js";
-import type { IReceipt, ProcessedReceipt } from "../types/IReceipt.js";
+import type { ProcessedReceipt, Receipt } from "../types/IReceipt.js";
 import type { ProcessedTransaction } from "../types/ProcessedTransaction.js";
 import type { RPCTransaction } from "../types/RPCTransaction.js";
 import { addHexPrefix } from "../utils/hex.js";
@@ -268,22 +268,7 @@ class PublicClient extends BaseClient {
    * const receipt = await client.getTransactionReceiptByHash(HASH, 1);
    */
   public async getTransactionReceiptByHash(hash: Hex): Promise<ProcessedReceipt | null> {
-    const mapReceipt = (receipt: IReceipt): ProcessedReceipt => {
-      return {
-        ...receipt,
-        gasUsed: BigInt(receipt.gasUsed),
-        gasPrice: receipt.gasPrice ? BigInt(receipt.gasPrice) : 0n,
-        outputReceipts:
-          receipt.outputReceipts?.map((x) => {
-            if (x === null) {
-              return null;
-            }
-            return mapReceipt(x);
-          }) ?? null,
-      };
-    };
-
-    const res = await this.request<IReceipt | null>({
+    const res = await this.request<Receipt | null>({
       method: "eth_getInTransactionReceipt",
       params: [typeof hash === "string" ? addHexPrefix(hash) : addHexPrefix(bytesToHex(hash))],
     });

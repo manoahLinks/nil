@@ -61,11 +61,9 @@ type BlockStorageMetrics interface {
 }
 
 type blockStorage struct {
-	db          db.DB
-	timer       common.Timer
-	retryRunner common.RetryRunner
-	metrics     BlockStorageMetrics
-	logger      zerolog.Logger
+	commonStorage
+	timer   common.Timer
+	metrics BlockStorageMetrics
 }
 
 func NewBlockStorage(
@@ -75,19 +73,14 @@ func NewBlockStorage(
 	logger zerolog.Logger,
 ) BlockStorage {
 	return &blockStorage{
-		db:    database,
-		timer: timer,
-		retryRunner: badgerRetryRunner(
-			logger,
-			common.DoNotRetryIf(scTypes.ErrBlockMismatch),
-		),
-		metrics: metrics,
-		logger:  logger,
+		commonStorage: makeCommonStorage(database, logger, common.DoNotRetryIf(scTypes.ErrBlockMismatch)),
+		timer:         timer,
+		metrics:       metrics,
 	}
 }
 
 func (bs *blockStorage) TryGetProvedStateRoot(ctx context.Context) (*common.Hash, error) {
-	tx, err := bs.db.CreateRoTx(ctx)
+	tx, err := bs.database.CreateRoTx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +103,7 @@ func (bs *blockStorage) getProvedStateRoot(tx db.RoTx) (*common.Hash, error) {
 }
 
 func (bs *blockStorage) SetProvedStateRoot(ctx context.Context, stateRoot common.Hash) error {
-	tx, err := bs.db.CreateRwTx(ctx)
+	tx, err := bs.database.CreateRwTx(ctx)
 	if err != nil {
 		return err
 	}
@@ -121,11 +114,11 @@ func (bs *blockStorage) SetProvedStateRoot(ctx context.Context, stateRoot common
 		return err
 	}
 
-	return tx.Commit()
+	return bs.commit(tx)
 }
 
 func (bs *blockStorage) TryGetLatestFetched(ctx context.Context) (*scTypes.MainBlockRef, error) {
-	tx, err := bs.db.CreateRoTx(ctx)
+	tx, err := bs.database.CreateRoTx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +133,7 @@ func (bs *blockStorage) TryGetLatestFetched(ctx context.Context) (*scTypes.MainB
 }
 
 func (bs *blockStorage) TryGetBlock(ctx context.Context, id scTypes.BlockId) (*jsonrpc.RPCBlock, error) {
-	tx, err := bs.db.CreateRoTx(ctx)
+	tx, err := bs.database.CreateRoTx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +157,7 @@ func (bs *blockStorage) SetBlockBatch(ctx context.Context, batch *scTypes.BlockB
 }
 
 func (bs *blockStorage) setBlockBatchImpl(ctx context.Context, batch *scTypes.BlockBatch) error {
-	tx, err := bs.db.CreateRwTx(ctx)
+	tx, err := bs.database.CreateRwTx(ctx)
 	if err != nil {
 		return err
 	}
@@ -188,7 +181,7 @@ func (bs *blockStorage) setBlockBatchImpl(ctx context.Context, batch *scTypes.Bl
 		return err
 	}
 
-	return tx.Commit()
+	return bs.commit(tx)
 }
 
 func (bs *blockStorage) putBlockTx(tx db.RwTx, batchId scTypes.BatchId, block *jsonrpc.RPCBlock) error {
@@ -269,7 +262,7 @@ func (bs *blockStorage) SetBlockAsProved(ctx context.Context, id scTypes.BlockId
 }
 
 func (bs *blockStorage) setBlockAsProvedImpl(ctx context.Context, id scTypes.BlockId) (wasSet bool, err error) {
-	tx, err := bs.db.CreateRwTx(ctx)
+	tx, err := bs.database.CreateRwTx(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -298,7 +291,7 @@ func (bs *blockStorage) setBlockAsProvedImpl(ctx context.Context, id scTypes.Blo
 		return false, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := bs.commit(tx); err != nil {
 		return false, err
 	}
 
@@ -306,7 +299,7 @@ func (bs *blockStorage) setBlockAsProvedImpl(ctx context.Context, id scTypes.Blo
 }
 
 func (bs *blockStorage) TryGetNextProposalData(ctx context.Context) (*scTypes.ProposalData, error) {
-	tx, err := bs.db.CreateRoTx(ctx)
+	tx, err := bs.database.CreateRoTx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +375,7 @@ func (bs *blockStorage) SetBlockAsProposed(ctx context.Context, id scTypes.Block
 }
 
 func (bs *blockStorage) setBlockAsProposedImpl(ctx context.Context, id scTypes.BlockId) error {
-	tx, err := bs.db.CreateRwTx(ctx)
+	tx, err := bs.database.CreateRwTx(ctx)
 	if err != nil {
 		return err
 	}
@@ -421,7 +414,7 @@ func (bs *blockStorage) setBlockAsProposedImpl(ctx context.Context, id scTypes.B
 		return err
 	}
 
-	return tx.Commit()
+	return bs.commit(tx)
 }
 
 func isValidProposalCandidate(entry *blockEntry, parentHash common.Hash) bool {

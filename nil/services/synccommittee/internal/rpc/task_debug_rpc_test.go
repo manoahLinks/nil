@@ -363,7 +363,7 @@ func (s *TaskSchedulerDebugRpcTestSuite) requestAndSendResult(
 	if completeSuccessfully {
 		taskResult = testaide.NewSuccessTaskResult(taskToExec.Id, executor)
 	} else {
-		taskResult = testaide.NewFailureTaskResult(taskToExec.Id, executor)
+		taskResult = testaide.NewNonRetryableErrorTaskResult(taskToExec.Id, executor)
 	}
 
 	err = s.storage.ProcessTaskResult(s.context, taskResult)

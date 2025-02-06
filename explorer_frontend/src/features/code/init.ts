@@ -184,6 +184,7 @@ persist({
 sample({
   clock: updateRecentProjects,
   source: combine($code, $recentProjects, (code, projects) => ({ code, projects })),
+  filter: ({ code }) => code.trim().length > 0,
   target: $recentProjects,
   fn: ({ code, projects }) => {
     const limit = Number(getRuntimeConfigOrThrow().RECENT_PROJECTS_STORAGE_LIMIT) || 5;

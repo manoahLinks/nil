@@ -6,6 +6,7 @@ import {
   assignSmartContractFx,
   callFx,
   deploySmartContractFx,
+  registerContractInCometaFx,
   sendMethodFx,
 } from "../contracts/models/base";
 import { ContractDeployedLog } from "./components/ContractDeployedLog";
@@ -13,7 +14,7 @@ import { LogTitleWithDetails } from "./components/LogTitleWithDetails";
 import { TransactionEventLog } from "./components/TransactionEventLog.tsx";
 import { TransactionSentLog } from "./components/TransactionSentLog";
 import { TxDetials } from "./components/TxDetails";
-import { $logs, LogTopic, LogType, clearLogs } from "./model";
+import { $logs, type Log, LogTopic, LogType, clearLogs } from "./model";
 import { formatSolidityError } from "./utils";
 
 $logs.on(deploySmartContractFx.doneData, (logs, { address, name, deployedFrom, txHash }) => {
@@ -203,6 +204,24 @@ $logs.on(sendMethodFx.failData, (logs, error) => {
         <MonoParagraphMedium color={COLORS.red200}>Transaction failed</MonoParagraphMedium>
       ),
       payload: <MonoParagraphMedium color={COLORS.red200}>{String(error)}</MonoParagraphMedium>,
+      timestamp: Date.now(),
+    },
+  ];
+});
+
+$logs.on(registerContractInCometaFx.failData, (logs, error) => {
+  return [
+    ...logs,
+    {
+      id: nanoid(),
+      topic: LogTopic.Deployment,
+      type: LogType.Warn,
+      shortDescription: (
+        <MonoParagraphMedium color={COLORS.yellow200}>
+          Contract registration in Cometa failed. You won't be able to view the source code.
+        </MonoParagraphMedium>
+      ),
+      payload: <MonoParagraphMedium color={COLORS.gray50}>{String(error)}</MonoParagraphMedium>,
       timestamp: Date.now(),
     },
   ];

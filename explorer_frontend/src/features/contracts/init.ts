@@ -42,6 +42,7 @@ import {
   deploySmartContractFx,
   fetchBalanceFx,
   incrementShardId,
+  registerContractInCometaFx,
   removeValueInput,
   sendMethod,
   sendMethodFx,
@@ -132,9 +133,7 @@ sample({
     $deploymentArgs,
     $smartAccount,
     $shardId,
-    $cometaService,
-    $solidityVersion,
-    (app, args, smartAccount, shardId, cometaService, solidityVersion) => {
+    (app, args, smartAccount, shardId) => {
       if (!app) {
         return null;
       }
@@ -158,8 +157,6 @@ sample({
           args: [],
           smartAccount,
           shardId,
-          cometaService,
-          solidityVersion,
         };
       }
 
@@ -200,8 +197,6 @@ sample({
         args: result,
         smartAccount,
         shardId,
-        cometaService,
-        solidityVersion,
       };
     },
   ),
@@ -209,18 +204,15 @@ sample({
     $smartAccount,
     $activeApp,
     $shardId,
-    $cometaService,
-    (smartAccount, app, shardId, cometa) => !!smartAccount && !!app && shardId !== null && !!cometa,
+    (smartAccount, app, shardId) => !!smartAccount && !!app && shardId !== null,
   ),
   fn: (data) => {
-    const { app, args, smartAccount, shardId, cometaService, solidityVersion } = data!;
+    const { app, args, smartAccount, shardId } = data!;
     return {
       app,
       args,
       smartAccount,
       shardId: shardId as number, // we have filter
-      cometaService: cometaService as CometaService, // we have filter
-      solidityVersion,
     };
   },
   clock: deploySmartContract,
@@ -581,3 +573,27 @@ exportAppFx.use(async (app) => {
 });
 
 $activeComponent.on(setActiveComponent, (_, payload) => payload);
+
+sample({
+  clock: deploySmartContractFx.doneData,
+  target: registerContractInCometaFx,
+  source: combine({
+    app: $activeAppWithState,
+    cometaService: $cometaService,
+    solidityVersion: $solidityVersion,
+  }),
+  filter: combine(
+    $activeAppWithState,
+    $cometaService,
+    (app, cometaService) => !!app && !!cometaService,
+  ),
+  fn: ({ app, cometaService, solidityVersion }, { address, name }) => {
+    return {
+      app: app as App,
+      name: name,
+      address: address as Hex,
+      cometaService: cometaService as CometaService,
+      solidityVersion,
+    };
+  },
+});

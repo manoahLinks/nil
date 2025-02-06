@@ -8,24 +8,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 
-const pattern = /\d+:"([^"]*)"/g;
-
-function processChunk(chunk: string): string {
-  const matches = [...chunk.matchAll(pattern)];
-  const tokens = matches.map((match) => match[1]);
-
-  let cleanedText = tokens.join("");
-  cleanedText = cleanedText.replace(/\\n/g, "\n");
-  
-  return cleanedText;
-}
-
 const CustomModelAdapter: (string, Function) => ChatModelAdapter = (
   token,
   handleReCaptchaVerify,
 ) => ({
   async *run({ messages, abortSignal }) {
-    yield { content: [{ type: "text", text: "..." }] };
+    yield { content: [{ type: "text", text: "Thinking..." }] };
     
     const messagesToSend = messages.map((m) => ({
       role: m.role,
@@ -66,32 +54,16 @@ const CustomModelAdapter: (string, Function) => ChatModelAdapter = (
     try {
       while (true) {
         const { value, done } = await reader.read();
-        
         if (done) break;
-
         const newText = decoder.decode(value, { stream: true });
         buffer += newText;
-        
-        const matches = [...buffer.matchAll(pattern)];
-        if (matches.length > 0) {
-          const tokens = matches.map(match => match[1]);
-          const cleanedText = tokens.join("").replace(/\\n/g, "\n");
-          
-          if (cleanedText) {
             if (isFirstChunk) {
-              accumulatedText = cleanedText;
+              accumulatedText = newText;
               isFirstChunk = false;
             } else {
-              accumulatedText += cleanedText;
+              accumulatedText += newText;
             }
-            
             yield { content: [{ type: "text", text: accumulatedText }] };
-            
-            const lastMatch = matches[matches.length - 1];
-            const lastMatchEnd = lastMatch.index! + lastMatch[0].length;
-            buffer = buffer.slice(lastMatchEnd);
-          }
-        }
       }
     } finally {
       reader.releaseLock();

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/api"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/log"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/storage"
@@ -33,14 +34,17 @@ func (h taskStateChangeHandler) OnTaskTerminated(ctx context.Context, task *type
 		return nil
 	}
 
-	if !result.IsSuccess {
-		log.NewTaskEvent(h.logger, zerolog.WarnLevel, task).
-			Str("errorText", result.ErrorText).
+	if !result.IsSuccess() {
+		// TODO: handle critical errors here
+
+		log.NewTaskResultEvent(h.logger, zerolog.WarnLevel, result).
 			Msg("block proof task has failed, data won't be sent to the L1")
 		return nil
 	}
 
-	log.NewTaskEvent(h.logger, zerolog.InfoLevel, task).Msg("Proof batch completed")
+	log.NewTaskResultEvent(h.logger, zerolog.InfoLevel, result).
+		Stringer(logging.FieldBatchId, task.BatchId).
+		Msg("Proof batch completed")
 
 	blockId := types.NewBlockId(task.ShardId, task.BlockHash)
 

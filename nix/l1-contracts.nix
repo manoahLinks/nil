@@ -3,7 +3,8 @@
 }:
 let
   inherit (lib) optional;
-in stdenv.mkDerivation {
+in
+stdenv.mkDerivation {
 
   name = "l1-contracts";
   pname = "l1-contracts";

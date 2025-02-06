@@ -73,10 +73,10 @@ func (s *TaskHandlerTestSuite) TestReturnErrorOnUnexpectedTaskType() {
 		s.Run(testCase.name, func() {
 			task := testaide.NewTaskOfType(testCase.taskType)
 			err := s.taskHandler.Handle(s.context, executorId, task)
-			s.Require().ErrorIs(
+			s.Require().ErrorContains(
 				err,
-				types.ErrUnexpectedTaskType,
-				"taskHandler should have returned ErrUnexpectedTaskType on task of type %d", testCase.taskType,
+				types.TaskErrNotSupportedType.String(),
+				"taskHandler should have returned TaskErrNotSupportedType on task of type %d", testCase.taskType,
 			)
 		})
 	}
@@ -186,7 +186,7 @@ func (s *TaskHandlerTestSuite) requestTask(executorId types.TaskExecutorId, avai
 // Set result for task
 func (s *TaskHandlerTestSuite) completeTask(sender types.TaskExecutorId, id types.TaskId) {
 	s.T().Helper()
-	result := &types.TaskResult{TaskId: id, IsSuccess: true, Sender: sender}
+	result := &types.TaskResult{TaskId: id, Sender: sender}
 	err := s.taskStorage.ProcessTaskResult(s.context, result)
 	s.Require().NoError(err)
 }

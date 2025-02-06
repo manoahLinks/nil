@@ -2,17 +2,14 @@ package proofprovider
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
+	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/api"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/log"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/storage"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/types"
 	"github.com/rs/zerolog"
 )
-
-var ErrChildTaskFailed = errors.New("child prover task failed")
 
 type taskStateChangeHandler struct {
 	resultStorage     storage.TaskResultStorage
@@ -43,18 +40,29 @@ func (h taskStateChangeHandler) OnTaskTerminated(ctx context.Context, task *type
 		return nil
 	}
 
-	if !result.IsSuccess {
-		log.NewTaskEvent(h.logger, zerolog.WarnLevel, task).Msgf("Prover task has failed")
+	if result.HasRetryableError() {
+		log.NewTaskResultEvent(h.logger, zerolog.WarnLevel, result).
+			Stringer(logging.FieldTaskParentId, task.ParentTaskId).
+			Msgf("Child task will be rescheduled for retry, parent is not updated")
+		return nil
 	}
 
 	var parentTaskResult *types.TaskResult
-	if result.IsSuccess {
-		parentTaskResult = types.NewSuccessProviderTaskResult(*task.ParentTaskId, h.currentExecutorId, result.OutputArtifacts, result.Data)
+	if result.IsSuccess() {
+		parentTaskResult = types.NewSuccessProviderTaskResult(
+			*task.ParentTaskId,
+			h.currentExecutorId,
+			result.OutputArtifacts,
+			result.Data,
+		)
 	} else {
+		log.NewTaskResultEvent(h.logger, zerolog.WarnLevel, result).
+			Stringer(logging.FieldTaskParentId, task.ParentTaskId).
+			Msgf("Prover task cannot be retried, parent will marked as failed")
 		parentTaskResult = types.NewFailureProviderTaskResult(
 			*task.ParentTaskId,
 			h.currentExecutorId,
-			fmt.Errorf("%w: childTaskId=%s, errorText=%s", ErrChildTaskFailed, task.Id, result.ErrorText),
+			types.NewTaskErrChildFailed(result),
 		)
 	}
 

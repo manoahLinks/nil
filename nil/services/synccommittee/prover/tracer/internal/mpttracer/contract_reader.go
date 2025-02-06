@@ -3,7 +3,6 @@ package mpttracer
 import (
 	"context"
 
-	"github.com/NilFoundation/nil/nil/client"
 	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/internal/db"
 	"github.com/NilFoundation/nil/nil/internal/execution"
@@ -11,6 +10,7 @@ import (
 	"github.com/NilFoundation/nil/nil/internal/types"
 	"github.com/NilFoundation/nil/nil/services/rpc/jsonrpc"
 	"github.com/NilFoundation/nil/nil/services/rpc/transport"
+	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/tracer/api"
 )
 
 type DeserializedDebugRPCContract struct {
@@ -45,7 +45,7 @@ func deserializeDebugRPCContract(debugRPCContract *jsonrpc.DebugRPCContract) (*D
 
 // DebugApiContractReader implements ContractReader for debug API
 type DebugApiContractReader struct {
-	client           client.Client
+	client           api.RpcClient
 	shardBlockNumber types.BlockNumber
 	rwTx             db.RwTx
 	shardId          types.ShardId
@@ -53,7 +53,7 @@ type DebugApiContractReader struct {
 
 // NewDebugApiContractReader creates a new DebugApiContractReader
 func NewDebugApiContractReader(
-	client client.Client,
+	client api.RpcClient,
 	shardBlockNumber types.BlockNumber,
 	rwTx db.RwTx,
 	shardId types.ShardId,

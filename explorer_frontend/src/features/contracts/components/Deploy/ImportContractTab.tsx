@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useStyletron } from "styletron-react";
 import { $smartAccount } from "../../../account-connector/model";
 import {
+  $activeAppWithState,
   $assignedSmartContractAddress,
   $deployedContracts,
   assignSmartContract,
@@ -14,12 +15,13 @@ import {
   setAssignedSmartContractAddress,
 } from "../../models/base";
 
-export const AssignTab = () => {
-  const [smartAccount, pending, deployedContracts, assignedAddress] = useUnit([
+export const ImportContractTab = () => {
+  const [smartAccount, pending, deployedContracts, assignedAddress, activeApp] = useUnit([
     $smartAccount,
     assignSmartContractFx.pending,
     $deployedContracts,
     $assignedSmartContractAddress,
+    $activeAppWithState,
   ]);
 
   const [css] = useStyletron();
@@ -80,6 +82,14 @@ export const AssignTab = () => {
             {error}
           </LabelSmall>
         )}
+        <LabelSmall
+          className={css({
+            color: COLORS.gray400,
+            marginTop: SPACE[4],
+          })}
+        >
+          Import the already deployed {activeApp?.name} smart contract using its address.
+        </LabelSmall>
       </div>
       <div>
         <Button
@@ -89,7 +99,7 @@ export const AssignTab = () => {
           isLoading={pending}
           disabled={pending || !smartAccount || !!error}
         >
-          Assign
+          Import
         </Button>
       </div>
     </>

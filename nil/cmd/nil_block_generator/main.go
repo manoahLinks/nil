@@ -51,7 +51,7 @@ func execute() error {
 func buildInitCmd(logger zerolog.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Initialize new wallet",
+		Short: "Initialize new smartAccount",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := commands.CleanFiles()
 			if err != nil {
@@ -62,11 +62,11 @@ func buildInitCmd(logger zerolog.Logger) *cobra.Command {
 				return err
 			}
 
-			walletAdr, hexKey, err := commands.CreateNewSmartAccount(logger)
+			smartAccountAdr, hexKey, err := commands.CreateNewSmartAccount(logger)
 			if err != nil {
 				return err
 			}
-			return commands.InitConfig(walletAdr, hexKey)
+			return commands.InitConfig(smartAccountAdr, hexKey)
 		},
 	}
 	return cmd
@@ -88,7 +88,7 @@ func buildAddContractCmd(logger zerolog.Logger) (*cobra.Command, error) {
 			if err != nil {
 				return err
 			}
-			adr, err := commands.DeployContract(contractPath, cfg.PrivateKey, logger)
+			adr, err := commands.DeployContract(cfg.SmartAccountAdr, contractPath, cfg.PrivateKey, logger)
 			if err != nil {
 				return err
 			}
@@ -166,7 +166,7 @@ func buildGetBlockCmd(logger zerolog.Logger) *cobra.Command {
 				return err
 			}
 
-			blockHash, err := commands.CallContract(cfg.WalletAdr, cfg.PrivateKey, cfg.Calls, logger)
+			blockHash, err := commands.CallContract(cfg.SmartAccountAdr, cfg.PrivateKey, cfg.Calls, logger)
 			if err != nil {
 				return err
 			}

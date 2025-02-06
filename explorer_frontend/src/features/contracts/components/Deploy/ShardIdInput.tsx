@@ -10,7 +10,6 @@ import {
 } from "@nilfoundation/ui-kit";
 import type { FC } from "react";
 import { useStyletron } from "styletron-react";
-import { getRuntimeConfigOrThrow } from "../../../runtime-config";
 import { decrementShardId, incrementShardId } from "../../models/base";
 
 type ShardIdInputProps = {
@@ -109,18 +108,7 @@ export const ShardIdInput: FC<ShardIdInputProps> = ({ shardId, setShardId, disab
       <ParagraphXSmall color={COLORS.gray400} marginTop="-16px">
         <div>Choosing a shard can help reduce transaction gas fees.</div>
         <div>
-          Learn{" "}
-          <a
-            className={css({
-              textDecoration: "underline",
-            })}
-            href={getRuntimeConfigOrThrow().EXPLORER_USAGE_DOCS_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
-            how to select
-          </a>{" "}
-          or check shards in the{" "}
+          Learn how to select or check shards in the{" "}
           <a
             href="https://explore.nil.foundation"
             className={css({

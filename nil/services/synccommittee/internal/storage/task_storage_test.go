@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -29,6 +28,8 @@ type TaskStorageSuite struct {
 	ctx      context.Context
 }
 
+type newTaskResultFunc func(taskId types.TaskId, executorId types.TaskExecutorId) *types.TaskResult
+
 func TestTaskStorageSuite(t *testing.T) {
 	t.Parallel()
 	suite.Run(t, new(TaskStorageSuite))
@@ -53,7 +54,7 @@ func (s *TaskStorageSuite) TearDownTest() {
 	s.Require().NoError(err, "failed to clear database in TearDownTest")
 }
 
-func (s *TaskStorageSuite) TestRequestAndProcessResult() {
+func (s *TaskStorageSuite) Test_Request_And_Process_Result() {
 	now := s.timer.NowTime()
 
 	// Initialize two tasks waiting for input
@@ -70,13 +71,7 @@ func (s *TaskStorageSuite) TestRequestAndProcessResult() {
 	dependency2 := testaide.NewTaskEntry(now, types.Running, testaide.RandomExecutorId())
 	higherPriorityEntry.AddDependency(dependency2)
 
-	err := s.ts.AddTaskEntries(s.ctx,
-		lowerPriorityEntry,
-		higherPriorityEntry,
-		dependency1,
-		dependency2,
-	)
-
+	err := s.ts.AddTaskEntries(s.ctx, lowerPriorityEntry, higherPriorityEntry, dependency1, dependency2)
 	s.Require().NoError(err)
 
 	// No available tasks for executor at this point
@@ -108,7 +103,50 @@ func (s *TaskStorageSuite) TestRequestAndProcessResult() {
 	s.Equal(task.Id, higherPriorityEntry.Task.Id)
 }
 
-func (s *TaskStorageSuite) TestTaskRescheduling_NoEntries() {
+func (s *TaskStorageSuite) Test_ProcessTaskResult_Retryable_Error() {
+	now := s.timer.NowTime()
+	executorId := testaide.RandomExecutorId()
+
+	parentTask := testaide.NewTaskEntry(now, types.WaitingForInput, types.UnknownExecutorId)
+
+	fstChildTask := testaide.NewTaskEntry(now, types.Running, executorId)
+	parentTask.AddDependency(fstChildTask)
+
+	sndChildTask := testaide.NewTaskEntry(now, types.Running, testaide.RandomExecutorId())
+	parentTask.AddDependency(sndChildTask)
+
+	err := s.ts.AddTaskEntries(s.ctx, parentTask, fstChildTask, sndChildTask)
+	s.Require().NoError(err)
+
+	err = s.ts.ProcessTaskResult(
+		s.ctx,
+		types.NewFailureProverTaskResult(
+			fstChildTask.Task.Id, executorId,
+			types.NewTaskExecError(types.TaskErrRpc, "RPC method failed"),
+		),
+	)
+	s.Require().NoError(err)
+
+	// failed task was rescheduled
+	failedFromStorage, err := s.ts.TryGetTaskEntry(s.ctx, fstChildTask.Task.Id)
+	s.Require().NoError(err)
+	s.Require().NotNil(failedFromStorage)
+	s.Equal(types.WaitingForExecutor, failedFromStorage.Status)
+	s.Equal(types.UnknownExecutorId, failedFromStorage.Owner)
+	s.Equal(1, failedFromStorage.RetryCount)
+
+	// parentTask and sndChildTask should not be affected by the failure of fstChildTask
+
+	parentFromStorage, err := s.ts.TryGetTaskEntry(s.ctx, parentTask.Task.Id)
+	s.Require().NoError(err)
+	s.Require().Equal(parentTask, parentFromStorage)
+
+	sndChildFromStorage, err := s.ts.TryGetTaskEntry(s.ctx, sndChildTask.Task.Id)
+	s.Require().NoError(err)
+	s.Require().Equal(sndChildTask, sndChildFromStorage)
+}
+
+func (s *TaskStorageSuite) Test_TaskRescheduling_NoEntries() {
 	executionTimeout := time.Minute
 	err := s.ts.RescheduleHangingTasks(s.ctx, executionTimeout)
 	s.Require().NoError(err)
@@ -118,7 +156,7 @@ func (s *TaskStorageSuite) TestTaskRescheduling_NoEntries() {
 	s.Require().Nil(taskToExecute)
 }
 
-func (s *TaskStorageSuite) TestTaskRescheduling_NoActiveTasks() {
+func (s *TaskStorageSuite) Test_TaskRescheduling_NoActiveTasks() {
 	now := s.timer.NowTime()
 	executionTimeout := time.Minute
 
@@ -141,7 +179,7 @@ func (s *TaskStorageSuite) TestTaskRescheduling_NoActiveTasks() {
 	}
 }
 
-func (s *TaskStorageSuite) TestTaskRescheduling_SingleActiveTask() {
+func (s *TaskStorageSuite) Test_TaskRescheduling_SingleActiveTask() {
 	now := s.timer.NowTime()
 	executionTimeout := time.Minute
 
@@ -159,7 +197,7 @@ func (s *TaskStorageSuite) TestTaskRescheduling_SingleActiveTask() {
 	s.Require().Nil(taskToExecute)
 }
 
-func (s *TaskStorageSuite) TestTaskRescheduling_MultipleTasks() {
+func (s *TaskStorageSuite) Test_TaskRescheduling_MultipleTasks() {
 	now := s.timer.NowTime()
 	executionTimeout := time.Minute
 
@@ -309,38 +347,72 @@ func (s *TaskStorageSuite) Test_ProcessTaskResult_Concurrently() {
 }
 
 func (s *TaskStorageSuite) Test_ProcessTaskResult_InvalidStateChange() {
-	testCases := []struct {
-		name      string
-		oldStatus types.TaskStatus
-	}{
-		{"WaitingForInput", types.WaitingForInput},
-		{"WaitingForExecutor", types.WaitingForExecutor},
-		{"Failed", types.Failed},
+	taskStatuses := []types.TaskStatus{
+		types.WaitingForInput,
+		types.WaitingForExecutor,
+		types.Failed,
 	}
 
-	for _, testCase := range testCases {
-		s.Run(testCase.name+"_TrySetSuccess", func() {
-			s.tryToChangeStatus(testCase.oldStatus, true, false, types.ErrTaskInvalidStatus)
-		})
-		s.Run(testCase.name+"_TrySetFailure", func() {
-			s.tryToChangeStatus(testCase.oldStatus, false, false, types.ErrTaskInvalidStatus)
-		})
+	taskResults := getTestTaskResults(false)
+
+	for _, taskStatus := range taskStatuses {
+		for _, result := range taskResults {
+			s.Run(taskStatus.String()+"_"+result.name, func() {
+				s.tryToChangeStatus(taskStatus, result.factory, types.ErrTaskInvalidStatus)
+			})
+		}
 	}
 }
 
 func (s *TaskStorageSuite) Test_ProcessTaskResult_WrongExecutor() {
-	s.Run("TrySetSuccess", func() {
-		s.tryToChangeStatus(types.Running, true, true, types.ErrTaskWrongExecutor)
-	})
-	s.Run("TrySetFailure", func() {
-		s.tryToChangeStatus(types.Running, false, true, types.ErrTaskWrongExecutor)
-	})
+	taskResults := getTestTaskResults(true)
+
+	for _, result := range taskResults {
+		s.Run(result.name, func() {
+			s.tryToChangeStatus(types.Running, result.factory, types.ErrTaskWrongExecutor)
+		})
+	}
+}
+
+func getTestTaskResults(useDifferentExecutorId bool) []struct {
+	name    string
+	factory newTaskResultFunc
+} {
+	substituteId := func(execId types.TaskExecutorId) types.TaskExecutorId {
+		if useDifferentExecutorId {
+			return testaide.RandomExecutorId()
+		}
+		return execId
+	}
+
+	return []struct {
+		name    string
+		factory newTaskResultFunc
+	}{
+		{
+			"Success",
+			func(taskId types.TaskId, executorId types.TaskExecutorId) *types.TaskResult {
+				return testaide.NewSuccessTaskResult(taskId, substituteId(executorId))
+			},
+		},
+		{
+			"RetryableError",
+			func(taskId types.TaskId, executorId types.TaskExecutorId) *types.TaskResult {
+				return testaide.NewRetryableErrorTaskResult(taskId, substituteId(executorId))
+			},
+		},
+		{
+			"NonRetryableError",
+			func(taskId types.TaskId, executorId types.TaskExecutorId) *types.TaskResult {
+				return testaide.NewNonRetryableErrorTaskResult(taskId, substituteId(executorId))
+			},
+		},
+	}
 }
 
 func (s *TaskStorageSuite) tryToChangeStatus(
 	oldStatus types.TaskStatus,
-	trySetSuccess bool,
-	useDifferentExecutorId bool,
+	resultToSubmit newTaskResultFunc,
 	expectedError error,
 ) {
 	s.T().Helper()
@@ -351,17 +423,7 @@ func (s *TaskStorageSuite) tryToChangeStatus(
 	err := s.ts.AddTaskEntries(s.ctx, taskEntry)
 	s.Require().NoError(err)
 
-	if useDifferentExecutorId {
-		executorId = testaide.RandomExecutorId()
-	}
-
-	var taskResult *types.TaskResult
-	if trySetSuccess {
-		taskResult = types.NewSuccessProverTaskResult(taskEntry.Task.Id, executorId, types.TaskOutputArtifacts{}, types.TaskResultData{})
-	} else {
-		taskResult = types.NewFailureProverTaskResult(taskEntry.Task.Id, executorId, errors.New("some error"))
-	}
-
+	taskResult := resultToSubmit(taskEntry.Task.Id, executorId)
 	err = s.ts.ProcessTaskResult(s.ctx, taskResult)
 	s.Require().ErrorIs(err, expectedError)
 }

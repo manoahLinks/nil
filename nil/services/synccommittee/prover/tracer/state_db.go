@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/NilFoundation/nil/nil/client"
 	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/internal/config"
 	"github.com/NilFoundation/nil/nil/internal/db"
@@ -15,12 +14,13 @@ import (
 	"github.com/NilFoundation/nil/nil/internal/tracing"
 	"github.com/NilFoundation/nil/nil/internal/types"
 	"github.com/NilFoundation/nil/nil/internal/vm"
+	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/tracer/api"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/prover/tracer/internal/mpttracer"
 	"github.com/rs/zerolog"
 )
 
 type TracerStateDB struct {
-	client           client.Client
+	client           api.RpcClient
 	shardId          types.ShardId
 	shardBlockNumber types.BlockNumber
 	InTransactions   []*types.Transaction
@@ -156,7 +156,7 @@ func (mtc *transactionTraceContext) saveTransactionTraces(dst ExecutionTraces) e
 func NewTracerStateDB(
 	ctx context.Context,
 	aggTraces ExecutionTraces,
-	client client.Client,
+	client api.RpcClient,
 	shardId types.ShardId,
 	shardBlockNumber types.BlockNumber,
 	blkContext *vm.BlockContext,
@@ -170,7 +170,7 @@ func NewTracerStateDB(
 
 	return &TracerStateDB{
 		client:           client,
-		mptTracer:        mpttracer.New(client, shardBlockNumber, rwTx, shardId, logger),
+		mptTracer:        mpttracer.New(client, shardBlockNumber, rwTx, shardId),
 		shardId:          shardId,
 		shardBlockNumber: shardBlockNumber,
 		blkContext:       blkContext,

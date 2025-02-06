@@ -14,8 +14,8 @@ import type { FC } from "react";
 import {} from "../../models/base";
 import { $activeComponent, setActiveComponent } from "../../models/base";
 import { ActiveComponent } from "./ActiveComponent";
-import { AssignTab } from "./AssignTab";
 import { DeployTab } from "./DeployTab";
+import { ImportContractTab } from "./ImportContractTab";
 
 type DeployContractModalProps = {
   onClose?: () => void;
@@ -68,12 +68,12 @@ export const DeployContractModal: FC<DeployContractModalProps> = ({ onClose, isO
               <DeployTab />
             </Tab>
             <Tab
-              title="Assign address"
+              title="Import Contract"
               kind={TAB_KIND.primary}
               key={ActiveComponent.Assign}
               onClick={() => setActiveComponent(ActiveComponent.Assign)}
             >
-              <AssignTab />
+              <ImportContractTab />
             </Tab>
           </Tabs>
         </ModalBody>

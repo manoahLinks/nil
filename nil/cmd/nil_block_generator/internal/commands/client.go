@@ -112,8 +112,8 @@ func CreateNewSmartAccount(logger zerolog.Logger) (string, string, error) {
 	hexKey := keygen.GetPrivateKey()
 
 	salt := types.NewUint256(0)
-	amount := types.NewValueFromUint64(10_000_000_000)
-	fee := types.NewFeePackFromFeeCredit(types.Value0)
+	amount := types.NewValueFromUint64(2_000_000_000_000_000)
+	fee := types.NewFeePackFromFeeCredit(types.NewValueFromUint64(200_000_000_000_000))
 
 	srv, err := CreateCliService(hexKey, logger)
 	if err != nil {
@@ -130,7 +130,7 @@ func CreateNewSmartAccount(logger zerolog.Logger) (string, string, error) {
 	return smartAccount.Hex(), hexKey, nil
 }
 
-func DeployContract(path, hexKey string, logger zerolog.Logger) (string, error) {
+func DeployContract(smartAccountAdr, path, hexKey string, logger zerolog.Logger) (string, error) {
 	binPath := path + ".bin"
 	abiPath := path + ".abi"
 	var args []string
@@ -142,14 +142,24 @@ func DeployContract(path, hexKey string, logger zerolog.Logger) (string, error) 
 	salt := types.NewUint256(0)
 	payload := types.BuildDeployPayload(bytecode, common.Hash(salt.Bytes32()))
 
-	fee := types.NewFeePackFromGas(100_000)
+	amount := types.Value0
 
 	srv, err := CreateCliService(hexKey, logger)
 	if err != nil {
 		return "", err
 	}
 
-	_, addr, err := srv.DeployContractExternal(types.BaseShardId, payload, fee)
+	var smartAccountAddress types.Address
+	if err := smartAccountAddress.Set(smartAccountAdr); err != nil {
+		return "", fmt.Errorf("invalid smartAccount address: %w", err)
+	}
+
+	txnHash, addr, err := srv.DeployContractViaSmartAccount(types.BaseShardId, smartAccountAddress, payload, amount)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = srv.WaitForReceipt(txnHash)
 	if err != nil {
 		return "", err
 	}
@@ -157,15 +167,15 @@ func DeployContract(path, hexKey string, logger zerolog.Logger) (string, error) 
 	return addr.Hex(), nil
 }
 
-func CallContract(samrtAccountAdr, hexKey string, calls []Call, logger zerolog.Logger) (string, error) {
+func CallContract(smartAccountAdr, hexKey string, calls []Call, logger zerolog.Logger) (string, error) {
 	srv, err := CreateCliService(hexKey, logger)
 	if err != nil {
 		return "", err
 	}
 
-	var samrtAccountAddress types.Address
-	if err := samrtAccountAddress.Set(samrtAccountAdr); err != nil {
-		return "", fmt.Errorf("invalid samrtAccount address: %w", err)
+	var smartAccountAddress types.Address
+	if err := smartAccountAddress.Set(smartAccountAdr); err != nil {
+		return "", fmt.Errorf("invalid smartAccount address: %w", err)
 	}
 
 	tokensStr := make([]string, 0)
@@ -174,7 +184,7 @@ func CallContract(samrtAccountAdr, hexKey string, calls []Call, logger zerolog.L
 		return "", err
 	}
 
-	amount := types.NewValueFromUint64(0)
+	amount := types.Value0
 	fee := types.NewFeePackFromGas(100_000)
 
 	ctx := context.Background()
@@ -205,7 +215,7 @@ func CallContract(samrtAccountAdr, hexKey string, calls []Call, logger zerolog.L
 		callParams[i].Address = address
 		callParams[i].Count = call.Count
 	}
-	transactionHash, err := rpc.RunContractBatch(ctx, client, samrtAccountAddress, callParams, fee, amount, tokens, privateKey)
+	transactionHash, err := rpc.RunContractBatch(ctx, client, smartAccountAddress, callParams, fee, amount, tokens, privateKey)
 	if err != nil {
 		return "", err
 	}
@@ -214,6 +224,15 @@ func CallContract(samrtAccountAdr, hexKey string, calls []Call, logger zerolog.L
 	if err != nil {
 		return "", err
 	}
-
-	return receipt.BlockHash.Hex(), nil
+	if receipt.Success &&
+		len(receipt.OutReceipts) >= 1 &&
+		!receipt.Flags.GetBit(types.TransactionFlagInternal) {
+		internalReceipt := receipt.OutReceipts[0]
+		if internalReceipt.Success &&
+			internalReceipt.Flags.GetBit(types.TransactionFlagInternal) {
+			return internalReceipt.BlockHash.Hex(), nil
+		}
+	}
+	fmt.Println(receipt)
+	return "", fmt.Errorf("invalid receipt for %s", transactionHash.Hex())
 }

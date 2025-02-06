@@ -29,7 +29,7 @@ func newTaskHandler(
 
 func (h *taskHandler) Handle(ctx context.Context, _ types.TaskExecutorId, task *types.Task) error {
 	if (task.TaskType != types.ProofBlock) && (task.TaskType != types.AggregateProofs) {
-		return types.UnexpectedTaskType(task)
+		return types.NewTaskErrNotSupportedType(task.TaskType)
 	}
 
 	log.NewTaskEvent(h.logger, zerolog.InfoLevel, task).Msg("Creating proof tasks for block")

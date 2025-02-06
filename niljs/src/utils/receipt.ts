@@ -1,6 +1,6 @@
 import type { PublicClient } from "../clients/PublicClient.js";
 import type { Hex } from "../types/Hex.js";
-import type { ProcessedReceipt } from "../types/IReceipt.js";
+import type { ProcessedReceipt, Receipt } from "../types/IReceipt.js";
 
 /**
  * Makes it so that the client waits until the processing of the transaction whose hash is passed.
@@ -12,7 +12,7 @@ import type { ProcessedReceipt } from "../types/IReceipt.js";
  * @example
  * await waitTillCompleted(client, hash);
  */
-export async function waitTillCompleted(
+async function waitTillCompleted(
   client: PublicClient,
   hash: Hex,
   options?: { waitTillMainShard?: boolean; interval?: number },
@@ -52,3 +52,20 @@ export async function waitTillCompleted(
 
   return receipts;
 }
+
+function mapReceipt(receipt: Receipt): ProcessedReceipt {
+  return {
+    ...receipt,
+    gasUsed: BigInt(receipt.gasUsed),
+    gasPrice: receipt.gasPrice ? BigInt(receipt.gasPrice) : 0n,
+    outputReceipts:
+      receipt.outputReceipts?.map((x) => {
+        if (x === null) {
+          return null;
+        }
+        return mapReceipt(x);
+      }) ?? null,
+  };
+}
+
+export { waitTillCompleted, mapReceipt };

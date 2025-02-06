@@ -6,8 +6,16 @@ In nil;, every transaction has two fields responsible for handling gas and value
 
 * `FeeCredit`
 * `Value`
+* `MaxPriorityFeePerGas`
+* `MaxFeePerGas`
 
-`FeeCredit` contains the amount of =nil; base tokens to be paid for transaction execution. This is different from regular Ethereum in that there is no base fee or the premium fee. Instead, `FeeCredit` is the gas limit (the maximum possible amount of gas the transaction sender is willing to pay) multiplied by the possible gas price within a specific shard.
+`FeeCredit` is the maximum possible amount of tokens the transaction sender is willing to pay for transaction execution. `Value` is the amount of =nil; base tokens to be debited to another smart account. 
+
+`MaxFeePerGas` is the limit set on the total price of gas that the sender is willing to pay for transaction processing. These two fields ensure that transaction processing on =nil; is handled similarly to Ethereum with only marginal differences.
+
+Each shard also has a `BaseFee` which is the gas price that determines whether a transaction is eligible to be included in a block. If the sender is not willing to pay at least the `BaseFee` when specifying the gas price, their transaction will be rejected. Similarly to Ethereum, `BaseFee` is history-dependent and fluctuates depending on shard congestion. 
+
+In turn, `MaxPriorityFeePerGas` refers to the maximum possible additional price per gas that should act as a reward for validators to prioritize processing a specific transaction. There can be cases where the actual priority fee is lower than the value of `MaxPriorityFeePerGas`. For example, if `BaseFee` plus `MaxPriorityFeePerGas` is higher than `MaxFeePerGas`, the validator reward will be reduced so that the total gas price matches `MaxFeePerGas`.  
 
 :::info
 
@@ -17,47 +25,139 @@ To estimate gas in a different way, use the `eth_estimateFee` JSON-RPC method or
 
 :::
 
-`Value` is the amount of tokens to be transferred to the address where the transaction is sent. These tokens are not used for transaction execution and, instead, are debited to the receiving address.
-
 :::info
 
 If a transaction is made to a non-payable function, and `Value` is not zero, execution will be reverted as the contract will not be able to accept the transferred tokens.
 
 :::
 
-## Basic example
+:::info
 
-This Nil.js example sends a transaction from the user's smart account to another contract. It estimates the gas price to be `100n` and is willing to pay for a maximum of `1_000_000n` units of gas.
+If `MaxFeePerGas` is less than `BaseFee`, a transaction is bounced automatically unless it is the original external transaction that is sent from a user or a dApp to the cluster at the beginning of a call chain.
 
-```typescript showLineNumbers
-const hash = await smartAccount.sendTransaction({
-  to: CONTRACT_ADDRESS,
-  value: 0n,
-  bounceTo: BOUNCE_ADDRESS,
-  feeCredit: 1_000_000n * 100n,
-  data: encodeFunctionData({
-    abi: CONTRACT_ABI,
-    functionName: "func_name()",
-    args: [ARGS],
-  }),
-});
+:::
+
+## Example
+
+Consider the following example of an async transaction that triggers an async call chain. The transaction has the following properties:
+
+* `FeeCredit`: 6000
+* `MaxPriorityFeePerGas`: 1
+* `MaxFeePerGas`: 6
+
+```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#5e5e5e',
+      'mainBkg': '#5e5e5e',
+      'background': '#5e5e5e',
+      'primaryTextColor': '#fff',
+      'primaryBorderColor': '#fff',
+      'lineColor': '#b0aca2',
+      'secondaryColor': '#000',
+      'noteTextColor': '#fff',
+      'tertiaryColor': '#696969',
+      'textColor': '#fff',
+      'tertiaryTextColor': '#fff',
+      'noteBkgColor': '#000',
+      'fontSize': '12px'
+    }
+  }
+}%%
+flowchart TB
+    ET([External transaction])
+    SHONE(["`Gas used by the ext transaction: 10
+    **BaseFee**: 2
+    **MaxFeePerGas**: 6
+    **MaxPriorityFeePerGas**: 1
+    `"])
+    OUTCOMEONE(["`6000 - (10 * (2 + 1)) = 5970
+    Paid tip to validators: 10
+    Paid to meet the base fee: 20 (10 * 2)
+    **FeeCredit** left: 5970 
+    `"])
+    SHTWO(["`Gas used by the transaction: 200
+    **BaseFee**: 2
+    **MaxFeePerGas**: 6
+    **MaxPriorityFeePerGas**: 1
+    `"])
+    OUTCOMETWO(["`5970 - (200 * (2 + 1)) = 5370
+    Paid tip to validators: 200
+    Paid to meet the base fee: 400 (200 * 2)
+    **FeeCredit** left: 5370`"])
+    SHTHREE(["`Gas used by the transaction: 300
+    **BaseFee**: 1
+    **MaxFeePerGas**: 6
+    **MaxPriorityFeePerGas**: 1
+    `"])
+    OUTCOMETHREE(["`5370 - (300 * (1 + 1)) = 4770
+    Paid tip to validators: 300
+    Paid to meet the base fee: 300 (300 * 1)
+    **FeeCredit** left: 4770`"])
+    SHFOUR(["`Gas used by the transaction: 500
+    **BaseFee**: 5
+    **MaxFeePerGas**: 6
+    **MaxPriorityFeePerGas**: 1
+    `"])
+    OUTCOMEFOUR(["`4770 - (500 * (5 + 1)) = 1770
+    Paid tip to validators: 500
+    Paid to meet the base fee: 2500 (500 * 5)
+    **FeeCredit** left: 1770
+    `"])
+    subgraph S1
+      direction LR
+      SHONE --> OUTCOMEONE
+    end
+    subgraph S2
+      direction LR
+      SHTWO --> OUTCOMETWO
+    end
+    subgraph S3
+      direction LR
+      SHTHREE --> OUTCOMETHREE
+    end
+    subgraph S4
+      direction LR
+      SHFOUR --> OUTCOMEFOUR
+    end
+    ET --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
 ```
 
-If the receiver contract has a payable function, the smart account would be able to send the following transaction.
+As shown above, `MaxFeePerGas` and `MaxPriorityFeePerGas` are always propagated across the entire async call chain. This means that the transaction sender can never be charged more than their absolute maximum gas price.
 
-```typescript showLineNumbers
-const hash = await smartAccount.sendTransaction({
-  to: CONTRACT_ADDRESS,
-  value: 5_000_000n,
-  bounceTo: BOUNCE_ADDRESS,
-  feeCredit: 100_000n * 10n,
-  data: encodeFunctionData({
-    abi: CONTRACT_ABI,
-    functionName: "payable_func_name()",
-    args: [ARGS],
-  }),
-});
-```
+:::note[Effective priority fee]
+
+There may be cases when `BaseFee` plus the specified `MaxPriorityFeePerGas` is larger than the provided `MaxFeePerGas`. In this situation, the effective priority fee would be different compared to `MaxPriorityFeePerGas`.
+
+The following formula is used to calculate the effective priority fee when `MaxFeePerGas` is larger than `BaseFee`:
+
+$$
+min(MaxPriorityFeePerGas, MaxFeePerGas - BaseFee)
+$$
+
+A transaction is rejected if both of the below conditions are true:
+
+* `MaxFeePerGas` is less than `BaseFee`
+* The transaction is not the original external transaction that was sent by a user or a dApp to the cluster
+
+:::
+
+:::note[Payment for sync calls]
+
+Payment for sync calls uses the same fields and the same mechanism. 
+
+Unless they trigger new async calls, sync calls do not spawn additional transactions. This makes it possible to easily revert failed sync calls. For example, if someone sends an external transaction which triggers a sync call, and the call reverts for any reason, the initial external transaction is also reverted.
+
+If a sync call triggers an async call, the resulting async call chain is processed according to [**the specified gas forwarding rules**](../smart-contracts/gas-forwarding.mdx).
+
+:::
+
+
 
 
 

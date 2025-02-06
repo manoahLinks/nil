@@ -28,9 +28,16 @@ func NewTaskResultEvent(
 	result *types.TaskResult,
 ) *zerolog.Event {
 	//nolint:zerologlint // 'must be dispatched by Msg or Send method' error is ignored
-	return logger.WithLevel(level).
+	event := logger.WithLevel(level).
 		Stringer(logging.FieldTaskId, result.TaskId).
 		Stringer(logging.FieldTaskExecutorId, result.Sender).
-		Bool("isSuccess", result.IsSuccess).
-		Str("errorText", result.ErrorText)
+		Bool("isSuccess", result.IsSuccess())
+
+	if result.IsSuccess() {
+		return event
+	}
+
+	return event.
+		Str("errorText", result.Error.ErrText).
+		Stringer("errorType", result.Error.ErrType)
 }

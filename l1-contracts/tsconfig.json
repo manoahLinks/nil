@@ -9,5 +9,5 @@
     "resolveJsonModule": true,
     "types": ["node", "hardhat-deploy"]
   },
-  "include": ["./scripts", "./test", "./deploy", "./typechain", "query-nilchain.ts", "deploy-nilrollup.ts"]
+  "include": ["./scripts", "./test", "./deploy", "./typechain"]
 }

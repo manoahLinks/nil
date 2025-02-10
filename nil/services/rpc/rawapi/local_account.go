@@ -111,6 +111,27 @@ func (api *LocalShardApi) GetContract(ctx context.Context, address types.Address
 		return nil, err
 	}
 
+	proof, err := proofBuilder(mpt.ReadMPTOperation)
+	if err != nil {
+		return nil, err
+	}
+	encodedProof, err := proof.Encode()
+	if err != nil {
+		return nil, err
+	}
+
+	if contractRaw == nil {
+		// no contract at such address, return proof of absence
+		return &rawapitypes.SmartContract{
+			ContractSSZ:  nil,
+			Code:         nil,
+			ProofEncoded: encodedProof,
+			Storage:      nil,
+			Tokens:       nil,
+			AsyncContext: nil,
+		}, nil
+	}
+
 	contract := new(types.SmartContract)
 	if err := contract.UnmarshalSSZ(contractRaw); err != nil {
 		return nil, err
@@ -123,16 +144,6 @@ func (api *LocalShardApi) GetContract(ctx context.Context, address types.Address
 		} else {
 			return nil, err
 		}
-	}
-
-	proof, err := proofBuilder(mpt.ReadMPTOperation)
-	if err != nil {
-		return nil, err
-	}
-
-	encodedProof, err := proof.Encode()
-	if err != nil {
-		return nil, err
 	}
 
 	storageReader := execution.NewDbStorageTrieReader(tx, address.ShardId())
@@ -191,7 +202,7 @@ func (api *LocalShardApi) getRawSmartContract(tx db.RoTx, address types.Address,
 	root.SetRootHash(block.SmartContractsRoot)
 	addressBytes := address.Hash().Bytes()
 	contractRaw, err := root.Get(addressBytes)
-	if err != nil {
+	if err != nil && !errors.Is(err, db.ErrKeyNotFound) {
 		return nil, nil, err
 	}
 

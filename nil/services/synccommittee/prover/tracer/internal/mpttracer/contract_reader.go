@@ -77,8 +77,13 @@ func (dacr *DebugApiContractReader) AppendToJournal(je execution.JournalEntry) {
 // GetAccount retrieves an account with its debug information. If not such contract at the given address, nil and empty proof are returned
 func (dacr *DebugApiContractReader) GetAccount(ctx context.Context, addr types.Address) (*TracerAccount, mpt.Proof, error) {
 	debugRPCContract, err := dacr.client.GetDebugContract(ctx, addr, transport.BlockNumber(dacr.shardBlockNumber))
-	if err != nil || debugRPCContract == nil {
+	if err != nil {
 		return nil, mpt.Proof{}, err
+	}
+
+	if len(debugRPCContract.Contract) == 0 {
+		absenceProof, err := mpt.DecodeProof(debugRPCContract.Proof)
+		return nil, absenceProof, err
 	}
 
 	debugContract, err := deserializeDebugRPCContract(debugRPCContract)

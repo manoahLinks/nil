@@ -85,6 +85,13 @@ func (api *DebugAPIImpl) GetContract(ctx context.Context, contractAddr types.Add
 		return nil, err
 	}
 
+	if contract.ContractSSZ == nil {
+		// no such contract found, proof of absence is provided
+		return &DebugRPCContract{
+			Proof: contract.ProofEncoded,
+		}, nil
+	}
+
 	return &DebugRPCContract{
 		Contract:     contract.ContractSSZ,
 		Code:         hexutil.Bytes(contract.Code),

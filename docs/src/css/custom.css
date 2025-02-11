@@ -524,3 +524,9 @@ nav ul li {
 .aui-md-a {
   font-style: italic;
 }
+
+.tutorialTextContainer {
+  float: right;
+  width: 28%;
+  height: 100%;
+}

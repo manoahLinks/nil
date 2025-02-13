@@ -34,6 +34,7 @@ interface IL1BridgeMessenger is IBridgeMessenger {
     uint256 gasLimit;
     uint256 expiryTime;
     bytes message;
+    bool isCancelled;
   }
 
   function sendMessage(address to, uint256 value, bytes memory message, uint256 gasLimit) external payable;

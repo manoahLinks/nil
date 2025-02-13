@@ -5,6 +5,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
+import { Queue } from "../libraries/Queue.sol";
 
 abstract contract L1BridgeMessenger is
   OwnableUpgradeable,
@@ -12,6 +13,8 @@ abstract contract L1BridgeMessenger is
   ReentrancyGuardUpgradeable,
   IL1BridgeMessenger
 {
+  using Queue for Queue.QueueData;
+
   /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
@@ -24,6 +27,9 @@ abstract contract L1BridgeMessenger is
 
   /// @notice The nonce for deposit messages.
   uint256 public depositNonce;
+
+  /// @notice Queue to store message hashes
+  Queue.QueueData private messageQueue;
 
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
@@ -138,7 +144,8 @@ abstract contract L1BridgeMessenger is
       nonce: depositNonce,
       gasLimit: _gasLimit,
       expiryTime: block.timestamp + 5 hours,
-      message: _message
+      message: _message,
+      isCancelled: false
     });
 
     // Compute the message hash
@@ -153,6 +160,7 @@ abstract contract L1BridgeMessenger is
     depositMessages[messageHash] = depositMessage;
 
     // TODO add messageHash to queue
+    messageQueue.pushBack(messageHash);
 
     // Emit the event
     emit MessageSent(_msgSender(), _to, _amount, depositMessage.nonce, _gasLimit, depositMessage.expiryTime, _message);

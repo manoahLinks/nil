@@ -101,97 +101,61 @@ abstract contract L1BridgeMessenger is
     l1MessageHash = keccak256(abi.encodePacked(l1MessageHash, currentDepositMessageHash));
   }
 
-  /// @notice Sends a message to the nil-chain.
-  /// @param from The original sender of the ERC20 tokens who has deposited in bridge in layer-1.
-  /// @param to The recipient address on nil-chain.
-  /// @param amount The amount of tokens to send.
-  /// @param gasLimit The gas limit required to complete the transaction on nil-chain.
-  /// @param refundAddress The address to refund if the transaction fails.
-  /// @param l1TokenAddress The address of the ERC20 token on layer-1.
-  /// @param l2TokenAddress The address of the corresponding ERC20 token on nil-chain.
-  function sendMessage(
-    address from,
-    address to,
-    uint256 amount,
-    uint256 gasLimit,
-    address refundAddress,
-    address l1TokenAddress,
-    address l2TokenAddress
-  ) public {
-    // Validate input parameters
-    if (from == address(0)) {
-      revert ErrorZeroAddress();
-    }
-    if (to == address(0)) {
-      revert ErrorZeroAddress();
-    }
-    if (refundAddress == address(0)) {
-      revert ErrorZeroAddress();
-    }
-    if (l1TokenAddress == address(0)) {
-      revert ErrorZeroAddress();
-    }
-    if (l2TokenAddress == address(0)) {
-      revert ErrorZeroAddress();
-    }
-    if (amount == 0) {
-      revert ErrorInvalidAmount();
-    }
-    if (gasLimit == 0) {
-      revert ErrorInvalidGasLimit();
-    }
+  /*****************************
+   * Public Mutating Functions *
+   *****************************/
 
-    _sendMessage(from, to, amount, gasLimit, refundAddress, l1TokenAddress, l2TokenAddress);
+  /// @inheritdoc IL1BridgeMessenger
+  function sendMessage(
+    address _to,
+    uint256 _value,
+    bytes memory _message,
+    uint256 _gasLimit
+  ) external payable override whenNotPaused {
+    _sendMessage(_to, _value, _message, _gasLimit, _msgSender());
+  }
+
+  /// @inheritdoc IL1BridgeMessenger
+  function sendMessage(
+    address _to,
+    uint256 _value,
+    bytes calldata _message,
+    uint256 _gasLimit,
+    address _refundAddress
+  ) external payable override whenNotPaused {
+    _sendMessage(_to, _value, _message, _gasLimit, _refundAddress);
   }
 
   function _sendMessage(
-    address _from,
     address _to,
     uint256 _amount,
+    bytes memory _message,
     uint256 _gasLimit,
-    address _refundAddress,
-    address _l1TokenAddress,
-    address _l2TokenAddress
+    address _refundAddress // TODO to be used in refundFee internal function
   ) internal nonReentrant {
-    // Get the current nonce
-    uint256 currentNonce = depositNonce;
-
     // Create the DepositMessage struct
     DepositMessage memory depositMessage = DepositMessage({
-      from: _from,
-      recipient: _to,
-      refundAddress: _refundAddress,
-      l1TokenAddress: _l1TokenAddress,
-      l2TokenAddress: _l2TokenAddress,
-      amount: _amount,
-      nonce: currentNonce,
+      nonce: depositNonce,
       gasLimit: _gasLimit,
-      expiryTime: block.timestamp + 5 hours
+      expiryTime: block.timestamp + 5 hours,
+      message: _message
     });
 
     // Compute the message hash
     bytes32 messageHash = _computeMessageHash(depositMessage);
 
-    // queue
+    //perform duplicate message check
+    if (depositMessages[messageHash].expiryTime > 0) {
+      revert DepositMessageAlreadyExist(messageHash);
+    }
 
     // Store the deposit message in the mapping
     depositMessages[messageHash] = depositMessage;
 
-    // message (finalizeDeposit)
+    // TODO add messageHash to queue
 
     // Emit the event
-    emit MessageSent(
-      _from,
-      _to,
-      _amount,
-      _gasLimit,
-      _refundAddress,
-      _l1TokenAddress,
-      _l2TokenAddress,
-      currentNonce,
-      messageHash,
-      depositMessage.expiryTime
-    );
+    emit MessageSent(_msgSender(), _to, _amount, depositMessage.nonce, _gasLimit, depositMessage.expiryTime, _message);
 
     // Increment the deposit nonce
     depositNonce++;
@@ -201,15 +165,10 @@ abstract contract L1BridgeMessenger is
     return
       keccak256(
         abi.encodePacked(
-          depositMessage.from,
-          depositMessage.recipient,
-          depositMessage.refundAddress,
-          depositMessage.l1TokenAddress,
-          depositMessage.l2TokenAddress,
-          depositMessage.amount,
           depositMessage.nonce,
           depositMessage.gasLimit,
-          depositMessage.expiryTime
+          depositMessage.expiryTime,
+          depositMessage.message
         )
       );
   }

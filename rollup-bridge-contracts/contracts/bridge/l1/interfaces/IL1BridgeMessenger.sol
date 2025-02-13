@@ -5,6 +5,12 @@ import { IBridgeMessenger } from "../../interfaces/IBridgeMessenger.sol";
 
 interface IL1BridgeMessenger is IBridgeMessenger {
   /*//////////////////////////////////////////////////////////////////////////
+                             ERRORS
+    //////////////////////////////////////////////////////////////////////////*/
+
+  error DepositMessageAlreadyExist(bytes32 messageHash);
+
+  /*//////////////////////////////////////////////////////////////////////////
                              EVENTS
     //////////////////////////////////////////////////////////////////////////*/
 
@@ -13,13 +19,10 @@ interface IL1BridgeMessenger is IBridgeMessenger {
     address indexed from,
     address indexed to,
     uint256 amount,
+    uint256 messageNonce,
     uint256 gasLimit,
-    address refundAddress,
-    address l1TokenAddress,
-    address l2TokenAddress,
-    uint256 nonce,
-    bytes32 messageHash,
-    uint256 expiryTime
+    uint256 expiryTime,
+    bytes message
   );
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -27,14 +30,19 @@ interface IL1BridgeMessenger is IBridgeMessenger {
     //////////////////////////////////////////////////////////////////////////*/
 
   struct DepositMessage {
-    address from;
-    address recipient;
-    address refundAddress;
-    address l1TokenAddress;
-    address l2TokenAddress;
-    uint256 amount;
     uint256 nonce;
     uint256 gasLimit;
     uint256 expiryTime;
+    bytes message;
   }
+
+  function sendMessage(address to, uint256 value, bytes memory message, uint256 gasLimit) external payable;
+
+  function sendMessage(
+    address to,
+    uint256 value,
+    bytes calldata message,
+    uint256 gasLimit,
+    address refundAddress
+  ) external payable;
 }

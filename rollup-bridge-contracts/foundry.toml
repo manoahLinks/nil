@@ -2,7 +2,7 @@
   auto_detect_solc = false
   bytecode_hash = "none"
   evm_version = "cancun"
-  solc_version = '0.8.27'                                       # override for the solc version (setting this ignores `auto_detect_solc`)
+  solc_version = '0.8.28'                                       # override for the solc version (setting this ignores `auto_detect_solc`)
   fs_permissions = [
     { access = "read", path = "./" },
     { access = "read", path = "package.json" },
@@ -16,7 +16,7 @@
   out = "out"
   libs = ["lib"]
   script = "script"
-  solc = "0.8.27"
+  solc = "0.8.28"
   src = "contracts"
   test = "test"
   verbosity = 2                                                 # the verbosity of tests

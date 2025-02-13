@@ -17,13 +17,17 @@ function getRemappings() {
     .map((line) => line.trim().split("="));
 }
 
+const remappings = getRemappings();
+
+console.log("Remappings:", remappings);
+
 const config: HardhatUserConfig = {
   ignition: {
     requiredConfirmations: 1,
   },
   // defaultNetwork: "nil",
   solidity: {
-    version: "0.8.27",
+    version: "0.8.28",
     settings: {
       viaIR: true,
       optimizer: {
@@ -44,7 +48,7 @@ const config: HardhatUserConfig = {
       transform: (line: string) => {
         if (line.match(/^\s*import /i)) {
           getRemappings().forEach(([find, replace]) => {
-            if (line.match(find)) {
+            if (line.includes(find)) {
               line = line.replace(find, replace);
             }
           });

@@ -15,9 +15,9 @@ import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
   using SafeTransferLib for ERC20;
 
-  /******************************
-   * STORAGE VARIABLES          *
-   ******************************/
+  /*//////////////////////////////////////////////////////////////////////////
+                             STATE-VARIABLES   
+    //////////////////////////////////////////////////////////////////////////*/
 
   /// @notice Mapping from l1 token address to l2 token address for ERC20 token.
   mapping(address => address) public tokenMapping;
@@ -25,9 +25,9 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
 
-  /************************
-   * CONSTRUCTOR          *
-   ************************/
+  /*//////////////////////////////////////////////////////////////////////////
+                             CONSTRUCTOR   
+    //////////////////////////////////////////////////////////////////////////*/
 
   /// @notice Constructor for `L1ERC20Bridge` implementation contract.
   constructor() BridgeBase() {
@@ -51,9 +51,9 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
     BridgeBase._initialize(_owner, _counterPartyERC20Bridge, _router, _messenger);
   }
 
-  /*****************************
-   * Public Mutating Functions *
-   *****************************/
+  /*//////////////////////////////////////////////////////////////////////////
+                             PUBLIC MUTATING FUNCTIONS   
+    //////////////////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IL1ERC20Bridge
   function depositERC20(address _token, uint256 _amount, uint256 _gasLimit) external payable override {

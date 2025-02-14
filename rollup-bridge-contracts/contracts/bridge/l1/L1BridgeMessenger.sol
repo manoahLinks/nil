@@ -22,9 +22,6 @@ abstract contract L1BridgeMessenger is
   // Add this mapping to store deposit messages by their message hash
   mapping(bytes32 => DepositMessage) public depositMessages;
 
-  /// @notice The cumulative hash of all messages.
-  bytes32 public l1MessageHash;
-
   /// @notice The nonce for deposit messages.
   uint256 public depositNonce;
 
@@ -46,16 +43,10 @@ abstract contract L1BridgeMessenger is
                              INITIALIZER   
     //////////////////////////////////////////////////////////////////////////*/
 
-  function initialize(address _owner, bytes32 _genesisL1MessageHash) public initializer {
+  function initialize(address _owner) public initializer {
     OwnableUpgradeable.__Ownable_init(_owner);
     PausableUpgradeable.__Pausable_init();
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
-
-    if (_genesisL1MessageHash == bytes32(0)) {
-      revert ErrorInvalidHash();
-    }
-
-    l1MessageHash = _genesisL1MessageHash;
     depositNonce = 0;
   }
 
@@ -94,22 +85,8 @@ abstract contract L1BridgeMessenger is
   }
 
   /*//////////////////////////////////////////////////////////////////////////
-                             INTERNAL FUNCTIONS   
+                             PUBLIC MUTATING FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
-
-  /// @notice Updates the l1MessageHash with the new deposit message hash.
-  /// @param currentDepositMessageHash The hash of the current deposit message.
-  function updateDepositMessageHash(bytes32 currentDepositMessageHash) internal {
-    if (currentDepositMessageHash == bytes32(0)) {
-      revert ErrorInvalidHash();
-    }
-
-    l1MessageHash = keccak256(abi.encodePacked(l1MessageHash, currentDepositMessageHash));
-  }
-
-  /*****************************
-   * Public Mutating Functions *
-   *****************************/
 
   /// @inheritdoc IL1BridgeMessenger
   function sendMessage(
@@ -132,6 +109,46 @@ abstract contract L1BridgeMessenger is
     _sendMessage(_to, _value, _message, _gasLimit, _refundAddress);
   }
 
+  /// @notice Cancels a deposit message.
+  /// @param messageHash The hash of the deposit message to cancel.
+  function cancelDeposit(bytes32 messageHash) internal {
+    // Check if the deposit message exists
+    DepositMessage storage depositMessage = depositMessages[messageHash];
+    if (depositMessage.expiryTime == 0) {
+      revert DepositMessageDoesNotExist(messageHash);
+    }
+
+    // Check if the deposit message is already canceled
+    if (depositMessage.isCancelled) {
+      revert DepositMessageAlreadyCancelled(messageHash);
+    }
+
+    // Check if the deposit message is expired
+    if (block.timestamp < depositMessage.expiryTime) {
+      revert DepositMessageNotExpired(messageHash);
+    }
+
+    // Check if the message hash is in the queue
+    if (!messageQueue.contains(messageHash)) {
+      revert MessageHashNotInQueue(messageHash);
+    }
+
+    // Mark the deposit message as canceled
+    depositMessage.isCancelled = true;
+
+    // Emit an event for the cancellation
+    emit DepositMessageCancelled(messageHash);
+  }
+
+  // TODO add exclusive role based authorisation to pop the messages
+  function pop_messages(uint256 messageCount) external {
+    messageQueue.popFrontBatch(messageCount);
+  }
+
+  /*//////////////////////////////////////////////////////////////////////////
+                             INTERNAL FUNCTIONS   
+    //////////////////////////////////////////////////////////////////////////*/
+
   function _sendMessage(
     address _to,
     uint256 _amount,
@@ -141,6 +158,7 @@ abstract contract L1BridgeMessenger is
   ) internal nonReentrant {
     // Create the DepositMessage struct
     DepositMessage memory depositMessage = DepositMessage({
+      from: _msgSender(),
       nonce: depositNonce,
       gasLimit: _gasLimit,
       expiryTime: block.timestamp + 5 hours,

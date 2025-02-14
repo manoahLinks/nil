@@ -9,6 +9,10 @@ interface IL1BridgeMessenger is IBridgeMessenger {
     //////////////////////////////////////////////////////////////////////////*/
 
   error DepositMessageAlreadyExist(bytes32 messageHash);
+  error DepositMessageDoesNotExist(bytes32 messageHash);
+  error DepositMessageAlreadyCancelled(bytes32 messageHash);
+  error DepositMessageNotExpired(bytes32 messageHash);
+  error MessageHashNotInQueue(bytes32 messageHash);
 
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS
@@ -25,11 +29,14 @@ interface IL1BridgeMessenger is IBridgeMessenger {
     bytes message
   );
 
+  event DepositMessageCancelled(bytes32 messageHash);
+
   /*//////////////////////////////////////////////////////////////////////////
                              MESSAGE STRUCTS   
     //////////////////////////////////////////////////////////////////////////*/
 
   struct DepositMessage {
+    address from;
     uint256 nonce;
     uint256 gasLimit;
     uint256 expiryTime;

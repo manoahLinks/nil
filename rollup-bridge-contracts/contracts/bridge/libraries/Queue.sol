@@ -89,4 +89,27 @@ library Queue {
       messageHashes[i] = _queue.popFront();
     }
   }
+
+  /// @notice Check if a given messageHash is present in the queue
+  /// @param _messageHash The messageHash to check
+  /// @return Whether the messageHash is present in the queue
+  function contains(QueueData storage _queue, bytes32 _messageHash) internal view returns (bool) {
+    for (uint256 i = _queue.head; i < _queue.tail; i++) {
+      if (_queue.data[i] == _messageHash) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// @notice List all messageHashes in the order they are stored in the queue
+  /// @return An array of messageHashes in the order they are stored in the queue
+  function list(QueueData storage _queue) internal view returns (bytes32[] memory) {
+    uint256 size = _queue.getSize();
+    bytes32[] memory messageHashes = new bytes32[](size);
+    for (uint256 i = 0; i < size; i++) {
+      messageHashes[i] = _queue.data[_queue.head + i];
+    }
+    return messageHashes;
+  }
 }

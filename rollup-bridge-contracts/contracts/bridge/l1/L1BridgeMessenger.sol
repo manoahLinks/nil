@@ -3,12 +3,16 @@ pragma solidity 0.8.28;
 
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
+import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { Queue } from "../libraries/Queue.sol";
 
 contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, IL1BridgeMessenger {
   using Queue for Queue.QueueData;
+  using EnumerableSet for EnumerableSet.AddressSet;
 
   /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
@@ -27,6 +31,10 @@ contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, Reentranc
 
   uint256 public cancelTimeDelta;
 
+  EnumerableSet.AddressSet private authorizedBridges;
+
+  address private l1NilRollup;
+
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
 
@@ -42,7 +50,12 @@ contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, Reentranc
                              INITIALIZER   
     //////////////////////////////////////////////////////////////////////////*/
 
-  function initialize(address _owner, uint256 _maxProcessingTime, uint256 _cancelTimeDelta) public initializer {
+  function initialize(
+    address _owner,
+    address _l1NilRollup,
+    uint256 _maxProcessingTime,
+    uint256 _cancelTimeDelta
+  ) public initializer {
     OwnableUpgradeable.__Ownable_init(_owner);
     PausableUpgradeable.__Pausable_init();
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
@@ -57,10 +70,22 @@ contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, Reentranc
       revert InvalidMessageCancelDeltaTime();
     }
     cancelTimeDelta = _cancelTimeDelta;
+    l1NilRollup = _l1NilRollup;
   }
 
   // make sure only owner can send ether to messenger to avoid possible user fund loss.
   receive() external payable onlyOwner {}
+
+  /*//////////////////////////////////////////////////////////////////////////
+                             MODIFIERS  
+    //////////////////////////////////////////////////////////////////////////*/
+
+  modifier onlyAuthorizedL1Bridge() {
+    if (!authorizedBridges.contains(msg.sender)) {
+      revert BridgeNotAuthorized();
+    }
+    _;
+  }
 
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC CONSTANT FUNCTIONS   
@@ -86,6 +111,11 @@ contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, Reentranc
     return depositMessages[msgHash];
   }
 
+  /// @inheritdoc IL1BridgeMessenger
+  function getAuthorizedBridges() external view returns (address[] memory) {
+    return authorizedBridges.values();
+  }
+
   /*//////////////////////////////////////////////////////////////////////////
                              RESTRICTED FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
@@ -101,6 +131,36 @@ contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, Reentranc
     }
   }
 
+  /// @inheritdoc IL1BridgeMessenger
+  function authorizeBridges(address[] calldata bridges) external onlyOwner {
+    for (uint256 i = 0; i < bridges.length; i++) {
+      _authorizeBridge(bridges[i]);
+    }
+  }
+
+  /// @inheritdoc IL1BridgeMessenger
+  function authorizeBridge(address bridge) external override onlyOwner {
+    _authorizeBridge(bridge);
+  }
+
+  function _authorizeBridge(address bridge) internal {
+    if (!IERC165(bridge).supportsInterface(type(IL1Bridge).interfaceId)) {
+      revert InvalidBridgeInterface();
+    }
+    if (authorizedBridges.contains(bridge)) {
+      revert BridgeAlreadyAuthorized();
+    }
+    authorizedBridges.add(bridge);
+  }
+
+  /// @inheritdoc IL1BridgeMessenger
+  function revokeBridgeAuthorization(address bridge) external override onlyOwner {
+    if (!authorizedBridges.contains(bridge)) {
+      revert BridgeNotAuthorized();
+    }
+    authorizedBridges.remove(bridge);
+  }
+
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATING FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
@@ -112,7 +172,7 @@ contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, Reentranc
     uint256 value,
     bytes memory message,
     uint256 gasLimit
-  ) external payable override whenNotPaused {
+  ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
     _sendMessage(depositType, to, value, message, gasLimit, _msgSender());
   }
 
@@ -124,13 +184,12 @@ contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, Reentranc
     bytes calldata message,
     uint256 gasLimit,
     address refundAddress
-  ) external payable override whenNotPaused {
+  ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
     _sendMessage(depositType, to, value, message, gasLimit, refundAddress);
   }
 
-  /// @notice Cancels a deposit message.
-  /// @param messageHash The hash of the deposit message to cancel.
-  function cancelDeposit(bytes32 messageHash) public override whenNotPaused {
+  /// @inheritdoc IL1BridgeMessenger
+  function cancelDeposit(bytes32 messageHash) public override whenNotPaused onlyAuthorizedL1Bridge {
     // Check if the deposit message exists
     DepositMessage storage depositMessage = depositMessages[messageHash];
     if (depositMessage.expiryTime == 0) {
@@ -165,8 +224,12 @@ contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, Reentranc
     emit DepositMessageCancelled(messageHash);
   }
 
-  // TODO add exclusive role based authorisation to pop the messages
-  function pop_messages(uint256 messageCount) external {
+  /// @inheritdoc IL1BridgeMessenger
+  function popMessages(uint256 messageCount) external override {
+    if (_msgSender() != l1NilRollup) {
+      revert NotAuthorizedToPopMessages();
+    }
+
     messageQueue.popFrontBatch(messageCount);
   }
 

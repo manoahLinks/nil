@@ -37,6 +37,18 @@ interface IL1BridgeMessenger is IBridgeMessenger {
   /// @notice Thrown when the message cancel delta time is invalid.
   error InvalidMessageCancelDeltaTime();
 
+  /// @notice Thrown when a bridge interface is invalid.
+  error InvalidBridgeInterface();
+
+  /// @notice Thrown when a bridge is already authorized.
+  error BridgeAlreadyAuthorized();
+
+  /// @notice Thrown when a bridge is not authorized.
+  error BridgeNotAuthorized();
+
+  /// @notice Thrown when any address other than l1NilRollup is attempting to remove messages from queue
+  error NotAuthorizedToPopMessages();
+
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS
     //////////////////////////////////////////////////////////////////////////*/
@@ -105,6 +117,10 @@ interface IL1BridgeMessenger is IBridgeMessenger {
   /// @return depositMessage The deposit message details.
   function getDepositMessage(bytes32 msgHash) external view returns (DepositMessage memory depositMessage);
 
+  /// @notice Get the list of authorized bridges
+  /// @return The list of authorized bridge addresses.
+  function getAuthorizedBridges() external view returns (address[] memory);
+
   /*//////////////////////////////////////////////////////////////////////////
                            PUBLIC MUTATING FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
@@ -142,4 +158,25 @@ interface IL1BridgeMessenger is IBridgeMessenger {
   /// @notice Cancels a deposit message.
   /// @param messageHash The hash of the deposit message to cancel.
   function cancelDeposit(bytes32 messageHash) external;
+
+  /*//////////////////////////////////////////////////////////////////////////
+                           RESTRICTED FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
+  /// @notice Authorize a bridge addresses
+  /// @param bridges The array of addresses of the bridges to authorize.
+  function authorizeBridges(address[] memory bridges) external;
+
+  /// @notice Authorize a bridge address
+  /// @param bridge The address of the bridge to authorize.
+  function authorizeBridge(address bridge) external;
+
+  /// @notice Revoke authorization of a bridge address
+  /// @param bridge The address of the bridge to revoke.
+  function revokeBridgeAuthorization(address bridge) external;
+
+  /// @notice remove a list of messageHash values from the depositMessageQueue.
+  /// @dev messages are always popped from the queue in FIFIO Order
+  /// @param messageCount number of messages to be removed from the queue
+  function popMessages(uint256 messageCount) external;
 }

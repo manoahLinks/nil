@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-interface IL1ERC20Bridge {
-  error UnAuthorizedCaller();
+import { IL1Bridge } from "./IL1Bridge.sol";
 
+interface IL1ERC20Bridge is IL1Bridge {
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
     //////////////////////////////////////////////////////////////////////////*/

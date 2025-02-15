@@ -3,16 +3,17 @@ pragma solidity 0.8.28;
 
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
-
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IL1ERC20Bridge } from "./interfaces/IL1ERC20Bridge.sol";
 import { IL2ERC20Bridge } from "../l2/interfaces/IL2ERC20Bridge.sol";
 import { IL1BridgeRouter } from "./interfaces/IL1BridgeRouter.sol";
+import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { BridgeBase } from "../BridgeBase.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 
 /// @title L1ERC20Bridge
 /// @notice The `L1ERC20Bridge` contract for ERC20 gateways in L1.
-contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
+contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase, IERC165 {
   using SafeTransferLib for ERC20;
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -79,10 +80,12 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
     _deposit(_token, _to, _amount, _data, _gasLimit);
   }
 
+  /// @inheritdoc IL1ERC20Bridge
   function getL2ERC20Address(address _l1TokenAddress) external view override returns (address) {
     return tokenMapping[_l1TokenAddress];
   }
 
+  /// @inheritdoc IL1ERC20Bridge
   function cancelDeposit(bytes32 messageHash) external payable override nonReentrant {
     address caller = _msgSender();
 
@@ -93,6 +96,10 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
 
     if (caller != router && caller != depositMessage.from) {
       revert UnAuthorizedCaller();
+    }
+
+    if (depositMessage.depositType != IL1BridgeMessenger.DepositType.ERC20) {
+      revert InvalidDepositType();
     }
 
     // L1BridgeMessenger to verify if the deposit can be cancelled
@@ -179,5 +186,10 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
     );
 
     emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
+  }
+
+  /// @inheritdoc IERC165
+  function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+    return interfaceId == type(IL1Bridge).interfaceId || interfaceId == type(IERC165).interfaceId;
   }
 }

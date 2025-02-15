@@ -7,12 +7,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { Queue } from "../libraries/Queue.sol";
 
-abstract contract L1BridgeMessenger is
-  OwnableUpgradeable,
-  PausableUpgradeable,
-  ReentrancyGuardUpgradeable,
-  IL1BridgeMessenger
-{
+contract L1BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, IL1BridgeMessenger {
   using Queue for Queue.QueueData;
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -27,6 +22,10 @@ abstract contract L1BridgeMessenger is
 
   /// @notice Queue to store message hashes
   Queue.QueueData private messageQueue;
+
+  uint256 public maxProcessingTime;
+
+  uint256 public cancelTimeDelta;
 
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
@@ -43,11 +42,21 @@ abstract contract L1BridgeMessenger is
                              INITIALIZER   
     //////////////////////////////////////////////////////////////////////////*/
 
-  function initialize(address _owner) public initializer {
+  function initialize(address _owner, uint256 _maxProcessingTime, uint256 _cancelTimeDelta) public initializer {
     OwnableUpgradeable.__Ownable_init(_owner);
     PausableUpgradeable.__Pausable_init();
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
     depositNonce = 0;
+
+    if (_maxProcessingTime == 0) {
+      revert InvalidMaxMessageProcessingTime();
+    }
+    maxProcessingTime = _maxProcessingTime;
+
+    if (_cancelTimeDelta == 0) {
+      revert InvalidMessageCancelDeltaTime();
+    }
+    cancelTimeDelta = _cancelTimeDelta;
   }
 
   // make sure only owner can send ether to messenger to avoid possible user fund loss.
@@ -57,16 +66,24 @@ abstract contract L1BridgeMessenger is
                              PUBLIC CONSTANT FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @notice Gets the current deposit nonce.
-  /// @return The current deposit nonce.
+  /// @inheritdoc IL1BridgeMessenger
   function getCurrentDepositNonce() public view returns (uint256) {
     return depositNonce;
   }
 
-  /// @notice Gets the next deposit nonce.
-  /// @return The next deposit nonce.
+  /// @inheritdoc IL1BridgeMessenger
   function getNextDepositNonce() public view returns (uint256) {
     return depositNonce + 1;
+  }
+
+  /// @inheritdoc IL1BridgeMessenger
+  function getDepositType(bytes32 msgHash) public view returns (DepositType depositType) {
+    return depositMessages[msgHash].depositType;
+  }
+
+  /// @inheritdoc IL1BridgeMessenger
+  function getDepositMessage(bytes32 msgHash) public view returns (DepositMessage memory depositMessage) {
+    return depositMessages[msgHash];
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -90,28 +107,30 @@ abstract contract L1BridgeMessenger is
 
   /// @inheritdoc IL1BridgeMessenger
   function sendMessage(
-    address _to,
-    uint256 _value,
-    bytes memory _message,
-    uint256 _gasLimit
+    DepositType depositType,
+    address to,
+    uint256 value,
+    bytes memory message,
+    uint256 gasLimit
   ) external payable override whenNotPaused {
-    _sendMessage(_to, _value, _message, _gasLimit, _msgSender());
+    _sendMessage(depositType, to, value, message, gasLimit, _msgSender());
   }
 
   /// @inheritdoc IL1BridgeMessenger
   function sendMessage(
-    address _to,
-    uint256 _value,
-    bytes calldata _message,
-    uint256 _gasLimit,
-    address _refundAddress
+    DepositType depositType,
+    address to,
+    uint256 value,
+    bytes calldata message,
+    uint256 gasLimit,
+    address refundAddress
   ) external payable override whenNotPaused {
-    _sendMessage(_to, _value, _message, _gasLimit, _refundAddress);
+    _sendMessage(depositType, to, value, message, gasLimit, refundAddress);
   }
 
   /// @notice Cancels a deposit message.
   /// @param messageHash The hash of the deposit message to cancel.
-  function cancelDeposit(bytes32 messageHash) internal {
+  function cancelDeposit(bytes32 messageHash) public override whenNotPaused {
     // Check if the deposit message exists
     DepositMessage storage depositMessage = depositMessages[messageHash];
     if (depositMessage.expiryTime == 0) {
@@ -123,18 +142,24 @@ abstract contract L1BridgeMessenger is
       revert DepositMessageAlreadyCancelled(messageHash);
     }
 
-    // Check if the deposit message is expired
-    if (block.timestamp < depositMessage.expiryTime) {
-      revert DepositMessageNotExpired(messageHash);
-    }
-
     // Check if the message hash is in the queue
     if (!messageQueue.contains(messageHash)) {
       revert MessageHashNotInQueue(messageHash);
     }
 
+    // Calculate the expiration time with delta
+    uint256 expirationTimeWithDelta = depositMessage.expiryTime + cancelTimeDelta;
+
+    // Check if the current time is greater than the expiration time with delta
+    if (block.timestamp <= expirationTimeWithDelta) {
+      revert DepositMessageNotExpired(messageHash);
+    }
+
     // Mark the deposit message as canceled
     depositMessage.isCancelled = true;
+
+    // Remove the message hash from the queue
+    messageQueue.popFront();
 
     // Emit an event for the cancellation
     emit DepositMessageCancelled(messageHash);
@@ -150,6 +175,7 @@ abstract contract L1BridgeMessenger is
     //////////////////////////////////////////////////////////////////////////*/
 
   function _sendMessage(
+    DepositType _depositType,
     address _to,
     uint256 _amount,
     bytes memory _message,
@@ -161,9 +187,10 @@ abstract contract L1BridgeMessenger is
       from: _msgSender(),
       nonce: depositNonce,
       gasLimit: _gasLimit,
-      expiryTime: block.timestamp + 5 hours,
+      expiryTime: block.timestamp + maxProcessingTime,
       message: _message,
-      isCancelled: false
+      isCancelled: false,
+      depositType: _depositType
     });
 
     // Compute the message hash
@@ -181,7 +208,16 @@ abstract contract L1BridgeMessenger is
     messageQueue.pushBack(messageHash);
 
     // Emit the event
-    emit MessageSent(_msgSender(), _to, _amount, depositMessage.nonce, _gasLimit, depositMessage.expiryTime, _message);
+    emit MessageSent(
+      _msgSender(),
+      _to,
+      _depositType,
+      _amount,
+      depositMessage.nonce,
+      _gasLimit,
+      depositMessage.expiryTime,
+      _message
+    );
 
     // Increment the deposit nonce
     depositNonce++;

@@ -9,25 +9,24 @@ import { IBridgeMessenger } from "./interfaces/IBridgeMessenger.sol";
 /// @title BridgeBase
 /// @notice The `BridgeBase` is a base contract for Bridge contracts used in both in L1 and L2.
 abstract contract BridgeBase is ReentrancyGuardUpgradeable, OwnableUpgradeable, IBridge {
-    /// @inheritdoc IBridge
-    address public override router;
+  /// @inheritdoc IBridge
+  address public override router;
 
-    /// @inheritdoc IBridge
-    address public override counterpartyBridge;
+  /// @inheritdoc IBridge
+  address public override counterpartyBridge;
 
-    /// @inheritdoc IBridge
-    address public override messenger;
+  /// @inheritdoc IBridge
+  address public override messenger;
 
-    /// @dev The storage slots for future usage.
-    uint256[50] private __gap;
+  /// @dev The storage slots for future usage.
+  uint256[50] private __gap;
 
-    constructor() { }
+  constructor() {}
 
-    function _initialize(address _owner, address _counterpartyBridge, address _router, address _messenger) internal {
-        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
-        OwnableUpgradeable.__Ownable_init(_owner);
-        router = _router;
-        counterpartyBridge = _counterpartyBridge;
-        messenger = _messenger;
-    }
+  function _initialize(address _owner, address _counterpartyBridge, address _messenger) internal {
+    ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+    OwnableUpgradeable.__Ownable_init(_owner);
+    counterpartyBridge = _counterpartyBridge;
+    messenger = _messenger;
+  }
 }

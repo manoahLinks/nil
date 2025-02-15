@@ -6,6 +6,7 @@ import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { IL1ERC20Bridge } from "./interfaces/IL1ERC20Bridge.sol";
 import { IL1BridgeRouter } from "./interfaces/IL1BridgeRouter.sol";
+import {IL1BridgeMessenger} from "./interfaces/IL1BridgeMessenger.sol";
 
 /// @title L1BridgeRouter
 /// @notice The `L1BridgeRouter` is the main entry for depositing ERC20 tokens.
@@ -20,6 +21,9 @@ contract L1BridgeRouter is OwnableUpgradeable, IL1BridgeRouter {
 
   /// @notice The addess of L1ERC20Bridge
   address public l1ERC20Bridge;
+
+  /// @notice The addess of L1BridgeMessenger
+  IL1BridgeMessenger public l1BridgeMessenger;
 
   /// @notice The address of l1Bridge in current execution context.
   address transient public l1BridgeInContext;
@@ -52,10 +56,13 @@ contract L1BridgeRouter is OwnableUpgradeable, IL1BridgeRouter {
 
   /// @notice Initialize the storage of L1BridgeRouter.
   /// @param _l1ERC20Bridge The address of l1ERC20Bridge contract.
-  function initialize(address _owner, address _l1ERC20Bridge) external initializer {
+  /// @param _l1BridgeMessenger The address of l1BridgeMessenger contract.
+  function initialize(address _owner, address _l1ERC20Bridge, address _l1BridgeMessenger) external initializer {
     OwnableUpgradeable.__Ownable_init(_owner);
     l1ERC20Bridge = _l1ERC20Bridge;
+    l1BridgeMessenger = IL1BridgeMessenger(_l1BridgeMessenger);
     emit L1ERC20BridgeSet(address(0), _l1ERC20Bridge);
+    emit L1BridgeMessengerSet(address(0), address(_l1BridgeMessenger));
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -127,6 +134,19 @@ contract L1BridgeRouter is OwnableUpgradeable, IL1BridgeRouter {
     // leave deposit context
     l1BridgeInContext = address(0);
   }
+
+  function cancelDeposit(bytes32 messageHash) external payable {
+    // Get the deposit message from the messenger
+    IL1BridgeMessenger.DepositType depositType = l1BridgeMessenger.getDepositType(messageHash);
+
+    // Route the cancellation request based on the deposit type
+    if (depositType == IL1BridgeMessenger.DepositType.ERC20) {
+      IL1ERC20Bridge(l1ERC20Bridge).cancelDeposit(messageHash);
+    } else {
+      revert("Unknown deposit type");
+    }
+  }
+
 
   /*//////////////////////////////////////////////////////////////////////////
                            RESTRICTED FUNCTIONS

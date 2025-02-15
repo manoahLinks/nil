@@ -40,15 +40,18 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
   ///
   /// @param _owner The owner of L1ERC20Bridge in layer-1.
   /// @param _counterPartyERC20Bridge The address of ERC20Bridge on nil-chain
-  /// @param _router The address of L1BridgeRouter in layer-1.
   /// @param _messenger The address of NilMessenger in layer-1.
-  function initialize(
-    address _owner,
-    address _counterPartyERC20Bridge,
-    address _router,
-    address _messenger
-  ) external initializer {
-    BridgeBase._initialize(_owner, _counterPartyERC20Bridge, _router, _messenger);
+  function initialize(address _owner, address _counterPartyERC20Bridge, address _messenger) external initializer {
+    BridgeBase._initialize(_owner, _counterPartyERC20Bridge, _messenger);
+  }
+
+  function setRouter(address _router) external onlyOwner {
+    router = _router;
+  }
+
+  modifier onlyRouter() {
+    require(msg.sender == router, "Caller is not the router");
+    _;
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -78,6 +81,33 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
 
   function getL2ERC20Address(address _l1TokenAddress) external view override returns (address) {
     return tokenMapping[_l1TokenAddress];
+  }
+
+  function cancelDeposit(bytes32 messageHash) external payable override nonReentrant {
+    address caller = _msgSender();
+
+    // get DepositMessageDetails
+    IL1BridgeMessenger.DepositMessage memory depositMessage = IL1BridgeMessenger(messenger).getDepositMessage(
+      messageHash
+    );
+
+    if (caller != router && caller != depositMessage.from) {
+      revert UnAuthorizedCaller();
+    }
+
+    // L1BridgeMessenger to verify if the deposit can be cancelled
+    IL1BridgeMessenger(messenger).cancelDeposit(messageHash);
+
+    // Decode the message to extract the token address and the original sender (_from)
+    (address l1TokenAddress, , address depositorAddress, , uint256 l1TokenAmount, ) = abi.decode(
+      depositMessage.message,
+      (address, address, address, address, uint256, bytes)
+    );
+
+    // refund the deposited ERC20 tokens to the depositor
+    ERC20(l1TokenAddress).safeTransfer(depositorAddress, l1TokenAmount);
+
+    emit DepositCancelled(messageHash, l1TokenAddress, depositorAddress, l1TokenAmount);
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -139,7 +169,14 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase {
     );
 
     // Send message to L1BridgeMessenger.
-    IL1BridgeMessenger(messenger).sendMessage{ value: msg.value }(counterpartyBridge, 0, _message, _gasLimit, _from);
+    IL1BridgeMessenger(messenger).sendMessage{ value: msg.value }(
+      IL1BridgeMessenger.DepositType.ERC20,
+      counterpartyBridge,
+      0,
+      _message,
+      _gasLimit,
+      _from
+    );
 
     emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
   }

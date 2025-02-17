@@ -10,3 +10,4 @@ import "./features/account-connector/init";
 import "./pages/playground/init";
 import "./features/tokens/init";
 import "./features/cometa/init";
+import "./features/healthcheck/init";

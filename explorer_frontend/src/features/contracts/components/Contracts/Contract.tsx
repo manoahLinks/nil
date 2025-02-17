@@ -86,18 +86,22 @@ export const Contract: FC<ContractProps> = ({ contract, deployedApps, disabled }
                 ...expandProperty("borderRadius", "8px"),
                 ...expandProperty("transition", "background-color 0.15s ease-in"),
                 ":hover": {
-                  backgroundColor: COLORS.gray700,
+                  ...(disabled
+                    ? { backgroundColor: COLORS.gray800 }
+                    : { backgroundColor: COLORS.gray700 }),
                 },
-                cursor: "pointer",
+                cursor: disabled ? "auto" : "pointer",
                 ":first-child": {
                   marginTop: "12px",
                 },
               })}
               key={address}
               onClick={() => {
+                if (disabled) return;
                 choseApp({ address, bytecode });
               }}
               onKeyDown={() => {
+                if (disabled) return;
                 choseApp({ address, bytecode });
               }}
             >

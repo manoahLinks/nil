@@ -8,6 +8,8 @@ import { AccountPane } from "../../features/account-connector";
 import { Code } from "../../features/code/Code";
 import { loadedPlaygroundPage } from "../../features/code/model";
 import { ContractsContainer, closeApp } from "../../features/contracts";
+import { NetworkErrorNotification } from "../../features/healthcheck";
+import { $rpcIsHealthy } from "../../features/healthcheck/model";
 import { Logs } from "../../features/logs/components/Logs";
 import { useMobile } from "../../features/shared";
 import { Navbar } from "../../features/shared/components/Layout/Navbar";
@@ -16,7 +18,7 @@ import { fetchSolidityCompiler } from "../../services/compiler";
 import { PlaygroundMobileLayout } from "./PlaygroundMobileLayout";
 
 export const PlaygroundPage = () => {
-  const [isDownloading] = useUnit([fetchSolidityCompiler.pending]);
+  const [isDownloading, isRPCHealthy] = useUnit([fetchSolidityCompiler.pending, $rpcIsHealthy]);
   const [css] = useStyletron();
   const [isMobile] = useMobile();
 
@@ -30,6 +32,7 @@ export const PlaygroundPage = () => {
 
   return (
     <div className={css(isMobile ? mobileContainerStyle : styles.container)}>
+      {!isRPCHealthy && <NetworkErrorNotification />}
       <Navbar>
         <AccountPane />
       </Navbar>

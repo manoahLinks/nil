@@ -17,6 +17,7 @@ import { useUnit } from "effector-react";
 import { useEffect, useState } from "react";
 import { useStyletron } from "styletron-react";
 import { formatEther } from "viem";
+import { $rpcIsHealthy } from "../../healthcheck/model";
 import { OverflowEllipsis, useMobile } from "../../shared";
 import { ActiveComponent } from "../ActiveComponent";
 import CheckmarkIcon from "../assets/checkmark.svg";
@@ -49,12 +50,8 @@ const MainScreen = () => {
   const [copied, setCopied] = useState(false);
   const endpoint = useUnit($endpoint);
   const latestActivity = useUnit($latestActivity);
-  const [smartAccount, balance, balanceToken, isPendingSmartAccountCreation] = useUnit([
-    $smartAccount,
-    $balance,
-    $balanceToken,
-    createSmartAccountFx.pending,
-  ]);
+  const [smartAccount, balance, balanceToken, isPendingSmartAccountCreation, rpcIsHealthy] =
+    useUnit([$smartAccount, $balance, $balanceToken, createSmartAccountFx.pending, $rpcIsHealthy]);
   const [isPendingTopUp] = useUnit([topUpSmartAccountBalanceFx.pending]);
   const displayBalance = balance === null ? "-" : formatEther(balance);
   const [isMobile] = useMobile();
@@ -319,7 +316,7 @@ const MainScreen = () => {
         kind={BUTTON_KIND.primary}
         onClick={() => setActiveComponent(ActiveComponent.Topup)}
         isLoading={isPendingTopUp}
-        disabled={isPendingTopUp || isPendingSmartAccountCreation || !smartAccount}
+        disabled={isPendingTopUp || isPendingSmartAccountCreation || !smartAccount || !rpcIsHealthy}
         overrides={btnOverrides}
         className={css({
           whiteSpace: "nowrap",

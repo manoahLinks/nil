@@ -76,6 +76,7 @@
             enableTesting = true;
           });
           walletextension = (pkgs.callPackage ./nix/walletextension.nix {
+            nil = packages.nil;
             enableTesting = true;
           });
           uniswap = (pkgs.callPackage ./nix/uniswap.nix {

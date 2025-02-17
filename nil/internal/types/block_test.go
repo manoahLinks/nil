@@ -3,8 +3,7 @@ package types
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
+	"github.com/NilFoundation/nil/nil/internal/crypto/bls"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,37 +13,45 @@ func TestBlock_SignAndVerifySignature(t *testing.T) {
 	block := &Block{}
 
 	// Generate keys
-	privKey, err := crypto.GenerateKey()
+	privKey := bls.NewRandomKey()
+	pubKey := privKey.PublicKey()
+	pubKeys := []bls.PublicKey{pubKey}
+	mask, err := bls.NewMask(pubKeys)
 	require.NoError(t, err)
-	pubKey := crypto.FromECDSAPub(&privKey.PublicKey)
+	require.NoError(t, mask.SetParticipants([]uint32{0}))
+
+	blockHash := block.Hash(BaseShardId)
 
 	// Sign the block
-	err = block.Sign(privKey, BaseShardId)
+	sig, err := privKey.Sign(blockHash[:])
 	require.NoError(t, err)
-	assert.NotEmpty(t, block.Signature)
+	sig, err = bls.AggregateSignatures([]bls.Signature{sig}, mask)
+	require.NoError(t, err)
+	sigBytes, err := sig.Marshal()
+	require.NoError(t, err)
+
+	block.Signature = BlsAggregateSignature{
+		Sig:  sigBytes,
+		Mask: []byte{1},
+	}
 
 	// Check signature
-	err = block.VerifySignature(pubKey, BaseShardId)
+	err = block.VerifySignature([]bls.PublicKey{pubKey}, BaseShardId)
 	require.NoError(t, err)
 
 	// Invalid public key
-	invalidPrivKey, err := crypto.GenerateKey()
-	require.NoError(t, err)
-	invalidPubKey := crypto.FromECDSAPub(&invalidPrivKey.PublicKey)
+	invalidPrivKey := bls.NewRandomKey()
+	invalidPubKey := invalidPrivKey.PublicKey()
 
-	err = block.VerifySignature(invalidPubKey, BaseShardId)
-	require.EqualError(t, err, "invalid signature")
+	err = block.VerifySignature([]bls.PublicKey{invalidPubKey}, BaseShardId)
+	require.ErrorContains(t, err, "invalid signature")
 
 	// Empty public key
 	err = block.VerifySignature(nil, BaseShardId)
-	require.EqualError(t, err, "invalid signature")
-
-	// Attempt to sign twice
-	err = block.Sign(privKey, BaseShardId)
-	require.EqualError(t, err, "block is already signed")
+	require.ErrorContains(t, err, "mismatching mask lengths")
 
 	// Verify with empty signature
-	block.Signature = nil
+	block.Signature = BlsAggregateSignature{}
 	err = block.VerifySignature(nil, BaseShardId)
-	require.EqualError(t, err, "invalid signature")
+	require.ErrorContains(t, err, "not enough data")
 }

@@ -45,7 +45,7 @@ func (s *Validator) VerifyProposal(ctx context.Context, proposal *execution.Prop
 	return res.Block, nil
 }
 
-func (s *Validator) InsertProposal(ctx context.Context, proposal *execution.Proposal, sig types.Signature) error {
+func (s *Validator) InsertProposal(ctx context.Context, proposal *execution.Proposal, sig *types.BlsAggregateSignature) error {
 	gen, err := execution.NewBlockGenerator(ctx, s.params.BlockGeneratorParams, s.txFabric,
 		&proposal.PrevBlockHash, proposal.GetMainShardHash(s.params.ShardId))
 	if err != nil {

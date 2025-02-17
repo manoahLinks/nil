@@ -2,13 +2,16 @@ package ibft
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"math/big"
+	"slices"
 
+	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/go-ibft/core"
 	"github.com/NilFoundation/nil/nil/go-ibft/messages"
 	protoIBFT "github.com/NilFoundation/nil/nil/go-ibft/messages/proto"
+	"github.com/NilFoundation/nil/nil/internal/config"
+	"github.com/NilFoundation/nil/nil/internal/crypto/bls"
 	"github.com/NilFoundation/nil/nil/internal/db"
 	"github.com/NilFoundation/nil/nil/internal/execution"
 	"github.com/NilFoundation/nil/nil/internal/network"
@@ -23,13 +26,13 @@ type ConsensusParams struct {
 	Db         db.DB
 	Validator  validator
 	NetManager *network.Manager
-	PrivateKey *ecdsa.PrivateKey
+	PrivateKey bls.PrivateKey
 }
 
 type validator interface {
 	BuildProposal(ctx context.Context) (*execution.Proposal, error)
 	VerifyProposal(ctx context.Context, proposal *execution.Proposal) (*types.Block, error)
-	InsertProposal(ctx context.Context, proposal *execution.Proposal, sig types.Signature) error
+	InsertProposal(ctx context.Context, proposal *execution.Proposal, sig *types.BlsAggregateSignature) error
 }
 
 type backendIBFT struct {
@@ -79,27 +82,90 @@ func (i *backendIBFT) BuildProposal(view *protoIBFT.View) []byte {
 	return data
 }
 
+func (i *backendIBFT) buildSignature(committedSeals []*messages.CommittedSeal, height uint64, logger zerolog.Logger) (*types.BlsAggregateSignature, error) {
+	validators, err := i.validatorsCache.getValidators(i.ctx, height)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to get validators")
+		return nil, err
+	}
+
+	pubkeys, err := config.CreateValidatorsPublicKeyMap(validators)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to get validators public keys")
+		return nil, err
+	}
+
+	mask, err := bls.NewMask(pubkeys.Keys())
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to create mask")
+		return nil, err
+	}
+
+	sigs := make([]bls.Signature, pubkeys.Len())
+	for _, seal := range committedSeals {
+		index, ok := pubkeys.Find(config.Pubkey(seal.Signer))
+		if !ok {
+			logger.Error().
+				Hex(logging.FieldPublicKey, seal.Signer).
+				Msg("Signer not found in validators list")
+			return nil, err
+		}
+		sig, err := bls.SignatureFromBytes(seal.Signature)
+		if err != nil {
+			logger.Error().Err(err).
+				Hex(logging.FieldSignature, seal.Signature).
+				Msg("Failed to read signature")
+			return nil, err
+		}
+		if err := mask.SetBit(index, true); err != nil {
+			logger.Error().Err(err).Msg("Failed to set index in mask")
+			return nil, err
+		}
+		sigs[index] = sig
+	}
+	sigs = slices.Collect(common.Filter(slices.Values(sigs), func(sig bls.Signature) bool {
+		return sig != nil
+	}))
+
+	aggrSig, err := bls.AggregateSignatures(sigs, mask)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to aggregate signatures")
+		return nil, err
+	}
+
+	aggrSigBytes, err := aggrSig.Marshal()
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to marshal aggregated signature")
+		return nil, err
+	}
+
+	return &types.BlsAggregateSignature{
+		Sig:  aggrSigBytes,
+		Mask: mask.Bytes(),
+	}, nil
+}
+
 func (i *backendIBFT) InsertProposal(proposal *protoIBFT.Proposal, committedSeals []*messages.CommittedSeal) {
 	proposalBlock, err := i.unmarshalProposal(proposal.RawProposal)
 	if err != nil {
 		return
 	}
 
+	height := proposalBlock.PrevBlockId.Uint64() + 1
+
 	logger := i.logger.With().
-		Uint64(logging.FieldHeight, proposalBlock.PrevBlockId.Uint64()+1).
+		Uint64(logging.FieldHeight, height).
 		Uint64(logging.FieldRound, proposal.Round).
 		Logger()
 
 	logger.Trace().Msg("Inserting proposal")
 
-	var signature types.Signature
-	for _, seal := range committedSeals {
-		if len(seal.Signature) != 0 {
-			signature = seal.Signature
-		}
+	sig, err := i.buildSignature(committedSeals, height, logger)
+	if err != nil {
+		return // error is logged in buildSignature
 	}
 
-	if err := i.validator.InsertProposal(i.ctx, proposalBlock, signature); err != nil {
+	if err := i.validator.InsertProposal(i.ctx, proposalBlock, sig); err != nil {
 		logger.Error().Err(err).Msg("failed to insert proposal")
 	}
 }

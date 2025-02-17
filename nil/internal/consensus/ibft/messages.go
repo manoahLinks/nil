@@ -80,6 +80,11 @@ func (i *backendIBFT) BuildPrepareMessage(proposalHash []byte, view *protoIBFT.V
 func (i *backendIBFT) BuildCommitMessage(proposalHash []byte, view *protoIBFT.View) *protoIBFT.IbftMessage {
 	seal, err := i.signer.SignHash(proposalHash)
 	if err != nil {
+		i.logger.Err(err).
+			Hex(logging.FieldPublicKey, i.signer.GetPublicKey()).
+			Hex(logging.FieldSignature, seal).
+			Hex(logging.FieldBlockHash, proposalHash).
+			Msg("Failed to sign a proposal hash")
 		return nil
 	}
 

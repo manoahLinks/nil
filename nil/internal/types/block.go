@@ -1,15 +1,13 @@
 package types
 
 import (
-	"crypto/ecdsa"
-	"errors"
 	"math"
 	"strconv"
 
 	fastssz "github.com/NilFoundation/fastssz"
 	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/common/sszx"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/NilFoundation/nil/nil/internal/crypto/bls"
 )
 
 type BlockNumber uint64
@@ -54,8 +52,8 @@ type BlockData struct {
 
 type Block struct {
 	BlockData
-	LogsBloom Bloom     `json:"logsBloom" ch:"logs_bloom"`
-	Signature Signature `json:"signature" ch:"signature" ssz-max:"65"`
+	LogsBloom Bloom                 `json:"logsBloom" ch:"logs_bloom"`
+	Signature BlsAggregateSignature `json:"signature" ch:"signature"`
 }
 
 type RawBlockWithExtractedData struct {
@@ -144,25 +142,29 @@ func (b *BlockWithExtractedData) EncodeSSZ() (*RawBlockWithExtractedData, error)
 	}, nil
 }
 
-func (b *Block) VerifySignature(pubkey []byte, shardId ShardId) error {
-	if len(b.Signature) < 64 || !crypto.VerifySignature(pubkey, b.Hash(shardId).Bytes(), b.Signature[:64]) {
-		return errors.New("invalid signature")
-	}
-	return nil
-}
-
-func (b *Block) Sign(prv *ecdsa.PrivateKey, shardId ShardId) error {
-	if len(b.Signature) != 0 {
-		return errors.New("block is already signed")
-	}
-	sig, err := crypto.Sign(b.Hash(shardId).Bytes(), prv)
+func (b *Block) VerifySignature(pubkeys []bls.PublicKey, shardId ShardId) error {
+	sig, err := bls.SignatureFromBytes(b.Signature.Sig)
 	if err != nil {
 		return err
 	}
-	b.Signature = sig
-	return nil
+
+	mask, err := bls.NewMask(pubkeys)
+	if err != nil {
+		return err
+	}
+
+	if err := mask.SetBytes(b.Signature.Mask); err != nil {
+		return err
+	}
+
+	aggregatedKey, err := mask.AggregatePublicKeys()
+	if err != nil {
+		return err
+	}
+
+	return sig.Verify(aggregatedKey, b.Hash(shardId).Bytes())
 }
 
 const InvalidDbTimestamp uint64 = math.MaxUint64
 
-//go:generate go run github.com/NilFoundation/fastssz/sszgen --path block.go -include ../../common/length.go,signature.go,address.go,code.go,shard.go,bloom.go,log.go,value.go,transaction.go,gas.go,../../common/hash.go --objs BlockData,Block
+//go:generate go run github.com/NilFoundation/fastssz/sszgen --path block.go -include ../../common/hexutil/bytes.go,../../common/length.go,signature.go,address.go,code.go,shard.go,bloom.go,log.go,value.go,transaction.go,gas.go,../../common/hash.go --objs BlockData,Block

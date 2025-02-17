@@ -1,15 +1,14 @@
 package keys
 
 import (
-	"crypto/ecdsa"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/NilFoundation/nil/nil/common/hexutil"
 	"github.com/NilFoundation/nil/nil/common/logging"
-	gethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/NilFoundation/nil/nil/internal/crypto/bls"
+	"github.com/NilFoundation/nil/nil/internal/crypto/bls/kyber"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,7 +23,7 @@ type dumpedValidatorKey struct {
 
 type ValidatorKeysManager struct {
 	validatorKeyPath string
-	key              *ecdsa.PrivateKey
+	key              bls.PrivateKey
 }
 
 func NewValidatorKeyManager(validatorKeyPath string) *ValidatorKeysManager {
@@ -33,21 +32,26 @@ func NewValidatorKeyManager(validatorKeyPath string) *ValidatorKeysManager {
 	}
 }
 
-func (v *ValidatorKeysManager) generateKey() error {
-	var err error
-	v.key, err = ecdsa.GenerateKey(gethcrypto.S256(), rand.Reader)
-	if err != nil {
-		return err
-	}
-	return nil
+func (v *ValidatorKeysManager) generateKey() {
+	v.key = kyber.NewRandomKey()
 }
 
 const filePermissions = 0o644
 
 func (v *ValidatorKeysManager) dumpKey() error {
+	sk, err := v.key.Marshal()
+	if err != nil {
+		return err
+	}
+
+	pk, err := v.key.PublicKey().Marshal()
+	if err != nil {
+		return err
+	}
+
 	dumpedKey := &dumpedValidatorKey{
-		PrivateKey: gethcrypto.FromECDSA(v.key),
-		PublicKey:  gethcrypto.FromECDSAPub(&v.key.PublicKey),
+		PrivateKey: sk,
+		PublicKey:  pk,
 	}
 
 	data, err := yaml.Marshal(dumpedKey)
@@ -69,15 +73,15 @@ func (v *ValidatorKeysManager) loadKey() error {
 		return err
 	}
 
-	privKey, err := gethcrypto.ToECDSA(dumpedKey.PrivateKey)
+	privKey, err := kyber.PrivateKeyFromBytes(dumpedKey.PrivateKey)
 	if err != nil {
 		return err
 	}
-	pubKey, err := gethcrypto.UnmarshalPubkey(dumpedKey.PublicKey)
+	pubKey, err := kyber.PublicKeyFromBytes(dumpedKey.PublicKey)
 	if err != nil {
 		return err
 	}
-	if !pubKey.Equal(&privKey.PublicKey) {
+	if !pubKey.Equal(privKey.PublicKey()) {
 		return errors.New("public key mismatch")
 	}
 	v.key = privKey
@@ -95,9 +99,7 @@ func (v *ValidatorKeysManager) InitKey() error {
 			return fmt.Errorf("Error checking key file: %w", err)
 		}
 		Logger.Warn().Msgf("Key file not found, generating new key at path: %s", v.validatorKeyPath)
-		if err := v.generateKey(); err != nil {
-			return fmt.Errorf("Error generating key: %w", err)
-		}
+		v.generateKey()
 		if err := v.dumpKey(); err != nil {
 			return fmt.Errorf("Error saving key: %w", err)
 		}
@@ -109,7 +111,7 @@ func (v *ValidatorKeysManager) InitKey() error {
 	return nil
 }
 
-func (v *ValidatorKeysManager) GetKey() (*ecdsa.PrivateKey, error) {
+func (v *ValidatorKeysManager) GetKey() (bls.PrivateKey, error) {
 	if v.key == nil {
 		return nil, errKeysNotInitialized
 	}
@@ -120,7 +122,7 @@ func (v *ValidatorKeysManager) GetPublicKey() ([]byte, error) {
 	if v.key == nil {
 		return nil, errKeysNotInitialized
 	}
-	return gethcrypto.CompressPubkey(&v.key.PublicKey), nil
+	return v.key.PublicKey().Marshal()
 }
 
 func (v *ValidatorKeysManager) GetKeysPath() string {

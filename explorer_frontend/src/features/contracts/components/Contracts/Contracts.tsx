@@ -16,6 +16,7 @@ import { useStyletron } from "styletron-react";
 import { LayoutComponent, setActiveComponent } from "../../../../pages/playground/model";
 import { $smartAccount } from "../../../account-connector/model";
 import { compileCodeFx } from "../../../code/model";
+import { $rpcIsHealthy } from "../../../healthcheck/model";
 import { useMobile } from "../../../shared";
 import { Contract } from "./Contract";
 import { SmartAccountNotConnectedWarning } from "./SmartAccountNotConnectedWarning";
@@ -23,11 +24,12 @@ import { SmartAccountNotConnectedWarning } from "./SmartAccountNotConnectedWarni
 const MemoizedWarning = memo(SmartAccountNotConnectedWarning);
 
 export const Contracts = () => {
-  const [deployedApps, contracts, compilingContracts, smartAccount] = useUnit([
+  const [deployedApps, contracts, compilingContracts, smartAccount, rpcIsHealthy] = useUnit([
     $contractWithState,
     $contracts,
     compileCodeFx.pending,
     $smartAccount,
+    $rpcIsHealthy,
   ]);
   const [css] = useStyletron();
   const [isMobile] = useMobile();
@@ -113,7 +115,7 @@ export const Contracts = () => {
               key={`${contract.bytecode}-${i}`}
               contract={contract}
               deployedApps={appsToShow}
-              disabled={!smartAccountExists}
+              disabled={!smartAccountExists || !rpcIsHealthy}
             />
           );
         })}

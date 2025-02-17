@@ -4,6 +4,7 @@
 , callPackage
 , npmHooks
 , nodejs
+, nil
 , enableTesting ? false
 }:
 
@@ -27,7 +28,7 @@ stdenv.mkDerivation rec {
     nodejs
     npmHooks.npmConfigHook
     biome
-  ];
+  ] ++ (if enableTesting then [ nil ] else [ ]);
 
   dontConfigure = true;
 
@@ -37,22 +38,33 @@ stdenv.mkDerivation rec {
     (cd smart-contracts; npm run build)
     (cd niljs; npm run build)
 
-    (cd wallet-extension; npm run build)
+    cd wallet-extension
+    npm run build
   '';
 
   doCheck = enableTesting;
 
   checkPhase = ''
+    patchShebangs node_modules
+    nohup nild run --http-port 8529 --collator-tick-ms=100 > nild.log 2>&1 & echo $! > nild_pid &
+
     export BIOME_BINARY=${biome}/bin/biome
 
     echo "Checking wallet extension"
-    (cd wallet-extension; npm run lint;)
+
+    npm run lint
+    npm run test:integration --cache=false
+
+    kill `cat nild_pid` && rm nild_pid
 
     echo "tests finished successfully"
   '';
 
   installPhase = ''
     mkdir -p $out
-    mv wallet-extension/ $out/extension
+    mkdir -p $out/dist
+    cp -r package.json $out
+    cp -r src $out
+    cp -r dist/* $out/dist
   '';
 }

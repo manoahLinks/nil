@@ -2,7 +2,6 @@ package ibft
 
 import (
 	"bytes"
-	"slices"
 
 	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/go-ibft/messages"
@@ -26,40 +25,40 @@ func (i *backendIBFT) IsValidValidator(msg *protoIBFT.IbftMessage) bool {
 		return false
 	}
 
+	loggerCtx := i.logger.With().Hex(logging.FieldPublicKey, msg.From)
+	if view := msg.GetView(); view != nil {
+		loggerCtx = loggerCtx.
+			Uint64(logging.FieldHeight, view.Height).
+			Uint64(logging.FieldRound, view.Round)
+	}
+	logger := loggerCtx.Logger()
+
 	// Here we use transportCtx because this method could be called from the transport goroutine
 	validators, err := i.validatorsCache.getValidators(i.transportCtx, msg.View.Height)
 	if err != nil {
-		i.logger.Error().
+		logger.Error().
 			Err(err).
-			Uint64(logging.FieldRound, msg.View.Round).
-			Uint64(logging.FieldHeight, msg.View.Height).
 			Msg("Failed to get validators")
 		return false
 	}
 
-	index := slices.IndexFunc(validators, func(v config.ValidatorInfo) bool {
-		return bytes.Equal(v.PublicKey[:], msg.From)
-	})
-	if index == -1 {
-		event := i.logger.Error().
-			Hex("key", msg.From)
-
-		if view := msg.GetView(); view != nil {
-			event = event.Uint64(logging.FieldHeight, view.Height).
-				Uint64(logging.FieldRound, view.Round)
-		}
-		event.Msg("Key not found in validators list")
+	pubkeys, err := config.CreateValidatorsPublicKeyMap(validators)
+	if err != nil {
+		logger.Error().
+			Err(err).
+			Msg("Failed to get validators public keys")
 		return false
 	}
 
-	validator := validators[index]
-	if !i.signer.VerifyWithKey(validator.PublicKey[:], msgNoSig, msg.Signature) {
-		event := i.logger.Error()
-		if view := msg.GetView(); view != nil {
-			event = event.Uint64(logging.FieldHeight, view.Height).
-				Uint64(logging.FieldRound, view.Round)
-		}
-		event.Msg("Invalid signature")
+	_, ok := pubkeys.Find(config.Pubkey(msg.From))
+	if !ok {
+		logger.Error().
+			Msg("public key not found in validators list")
+		return false
+	}
+
+	if err := i.signer.VerifyWithKey(msg.From, msgNoSig, msg.Signature); err != nil {
+		logger.Err(err).Msg("Failed to verify signature")
 		return false
 	}
 
@@ -104,8 +103,17 @@ func (i *backendIBFT) IsValidProposalHash(proposal *protoIBFT.Proposal, hash []b
 }
 
 func (i *backendIBFT) IsValidCommittedSeal(
-	_ []byte,
+	proposalHash []byte,
 	committedSeal *messages.CommittedSeal,
 ) bool {
+	if err := i.signer.VerifyWithKeyHash(committedSeal.Signer, proposalHash, committedSeal.Signature); err != nil {
+		i.logger.Error().
+			Err(err).
+			Hex(logging.FieldPublicKey, committedSeal.Signer).
+			Hex(logging.FieldSignature, committedSeal.Signature).
+			Hex(logging.FieldBlockHash, proposalHash).
+			Msg("Failed to verify signature")
+		return false
+	}
 	return true
 }

@@ -7,8 +7,15 @@ import { fetchBalance } from "./balance.ts";
 
 // Create Faucet
 export function createFaucetClient(rpcEndpoint: string): FaucetClient {
+  const appVersion = import.meta.env.VITE_APP_VERSION || "1.0";
+
   return new FaucetClient({
-    transport: new HttpTransport({ endpoint: rpcEndpoint }),
+    transport: new HttpTransport({
+      endpoint: rpcEndpoint,
+      headers: {
+        "Client-Type": `wallet v${appVersion}`,
+      },
+    }),
   });
 }
 

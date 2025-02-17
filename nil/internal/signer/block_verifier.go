@@ -31,11 +31,13 @@ func (b *BlockVerifier) VerifyBlock(ctx context.Context, block *types.Block, log
 		return fmt.Errorf("%w: failed to get validators set: %w", errBlockVerify, err)
 	}
 
-	// TODO: for now check that block is signed by one known validator
-	for _, v := range validatorsList {
-		if err = block.VerifySignature(v.PublicKey[:], b.shardId); err == nil {
-			return nil
-		}
+	pubkeys, err := config.CreateValidatorsPublicKeyMap(validatorsList)
+	if err != nil {
+		return fmt.Errorf("%w: failed to get validators public keys: %w", errBlockVerify, err)
 	}
-	return fmt.Errorf("%w: failed to verify signature: %w", errBlockVerify, err)
+
+	if err := block.VerifySignature(pubkeys.Keys(), b.shardId); err != nil {
+		return fmt.Errorf("%w: failed to verify signature: %w", errBlockVerify, err)
+	}
+	return nil
 }

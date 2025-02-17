@@ -8,12 +8,13 @@ import (
 	"github.com/NilFoundation/nil/nil/common/check"
 	"github.com/NilFoundation/nil/nil/common/hexutil"
 	"github.com/NilFoundation/nil/nil/common/logging"
+	"github.com/NilFoundation/nil/nil/internal/crypto/bls"
 	"github.com/NilFoundation/nil/nil/internal/db"
 	"github.com/NilFoundation/nil/nil/internal/types"
 	"github.com/rs/zerolog"
 )
 
-const ValidatorPubkeySize = 33
+const ValidatorPubkeySize = 128
 
 const (
 	NameValidators = "curr_validators"
@@ -64,7 +65,7 @@ type ParamValidators struct {
 }
 
 type ValidatorInfo struct {
-	PublicKey         Pubkey        `json:"pubKey" yaml:"pubKey" ssz-size:"33"`
+	PublicKey         Pubkey        `json:"pubKey" yaml:"pubKey" ssz-size:"128"`
 	WithdrawalAddress types.Address `json:"withdrawalAddress" yaml:"withdrawalAddress"`
 }
 
@@ -200,6 +201,49 @@ func GetValidatorListForShard(
 		return nil, types.NewError(types.ErrorShardIdIsTooBig)
 	}
 	return validatorsList.Validators[shardId-1].List, nil
+}
+
+type PublicKeyMap struct {
+	m    map[Pubkey]uint32
+	keys []bls.PublicKey
+}
+
+func NewPublicKeyMap() *PublicKeyMap {
+	return &PublicKeyMap{m: make(map[Pubkey]uint32)}
+}
+
+func (m *PublicKeyMap) Keys() []bls.PublicKey {
+	return m.keys
+}
+
+func (m *PublicKeyMap) Find(key Pubkey) (uint32, bool) {
+	i, ok := m.m[key]
+	return i, ok
+}
+
+func (m *PublicKeyMap) Len() int {
+	return len(m.keys)
+}
+
+func (m *PublicKeyMap) add(key Pubkey) error {
+	index := uint32(len(m.keys))
+	m.m[key] = index
+	pk, err := bls.PublicKeyFromBytes(key[:])
+	if err != nil {
+		return err
+	}
+	m.keys = append(m.keys, pk)
+	return nil
+}
+
+func CreateValidatorsPublicKeyMap(validators []ValidatorInfo) (*PublicKeyMap, error) {
+	m := NewPublicKeyMap()
+	for _, v := range validators {
+		if err := m.add(v.PublicKey); err != nil {
+			return nil, err
+		}
+	}
+	return m, nil
 }
 
 func SetParamValidators(c ConfigAccessor, params *ParamValidators) error {

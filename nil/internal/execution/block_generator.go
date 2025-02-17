@@ -276,7 +276,7 @@ func (g *BlockGenerator) BuildBlock(proposal *Proposal, logger zerolog.Logger) (
 	return g.executionState.BuildBlock(proposal.PrevBlockId + 1)
 }
 
-func (g *BlockGenerator) GenerateBlock(proposal *Proposal, logger zerolog.Logger, sig types.Signature) (*BlockGenerationResult, error) {
+func (g *BlockGenerator) GenerateBlock(proposal *Proposal, logger zerolog.Logger, sig *types.BlsAggregateSignature) (*BlockGenerationResult, error) {
 	g.mh.StartProcessingMeasurement(g.ctx, g.executionState.GasPrice, proposal.PrevBlockId+1)
 	defer func() { g.mh.EndProcessingMeasurement(g.ctx, g.counters) }()
 
@@ -357,8 +357,8 @@ func (g *BlockGenerator) addReceipt(execResult *ExecutionResult) {
 	}
 }
 
-func (g *BlockGenerator) finalize(blockId types.BlockNumber, sig types.Signature) (*BlockGenerationResult, error) {
-	blockRes, err := g.executionState.Commit(blockId, sig)
+func (g *BlockGenerator) finalize(blockId types.BlockNumber, sig *types.BlsAggregateSignature) (*BlockGenerationResult, error) {
+	blockRes, err := g.executionState.BuildBlock(blockId)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +366,7 @@ func (g *BlockGenerator) finalize(blockId types.BlockNumber, sig types.Signature
 	return blockRes, g.Finalize(blockRes, sig)
 }
 
-func (g *BlockGenerator) Finalize(blockRes *BlockGenerationResult, sig types.Signature) error {
+func (g *BlockGenerator) Finalize(blockRes *BlockGenerationResult, sig *types.BlsAggregateSignature) error {
 	if err := g.executionState.CommitBlock(blockRes.Block, sig); err != nil {
 		return err
 	}

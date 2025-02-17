@@ -1,7 +1,6 @@
 package nilservice
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"slices"
@@ -9,6 +8,7 @@ import (
 	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/internal/collate"
 	"github.com/NilFoundation/nil/nil/internal/config"
+	"github.com/NilFoundation/nil/nil/internal/crypto/bls"
 	"github.com/NilFoundation/nil/nil/internal/execution"
 	"github.com/NilFoundation/nil/nil/internal/keys"
 	"github.com/NilFoundation/nil/nil/internal/network"
@@ -16,7 +16,6 @@ import (
 	"github.com/NilFoundation/nil/nil/internal/types"
 	"github.com/NilFoundation/nil/nil/services/cometa"
 	"github.com/NilFoundation/nil/nil/services/rollup"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 var Logger = logging.NewLogger("config")
@@ -181,14 +180,7 @@ func (c *Config) LoadValidatorKeys() error {
 	return nil
 }
 
-func (c *Config) LoadValidatorPrivateKey() (key *ecdsa.PrivateKey, err error) {
-	defer func() {
-		if err == nil {
-			Logger.Trace().
-				Hex(logging.FieldPublicKey, crypto.FromECDSAPub(&key.PublicKey)).
-				Msg("Loaded validator key")
-		}
-	}()
+func (c *Config) LoadValidatorPrivateKey() (bls.PrivateKey, error) {
 	if err := c.LoadValidatorKeys(); err != nil {
 		return nil, err
 	}

@@ -434,7 +434,7 @@ func (s *Syncer) replayBlock(ctx context.Context, block *types.BlockWithExtracte
 	}
 
 	// Finally, write generated block into the database
-	if err = gen.Finalize(resBlock, block.Signature); err != nil {
+	if err = gen.Finalize(resBlock, &block.Signature); err != nil {
 		return fmt.Errorf("failed to finalize block: %w", err)
 	}
 

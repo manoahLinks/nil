@@ -57,6 +57,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/viper v1.19.0
+	go.dedis.ch/kyber/v3 v3.1.0
 	golang.org/x/term v0.29.0
 	golang.org/x/text v0.22.0
 )
@@ -236,6 +237,7 @@ require (
 	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	go.dedis.ch/fixbuf v1.0.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/dig v1.18.0 // indirect

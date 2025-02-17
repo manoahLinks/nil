@@ -23,10 +23,8 @@ interface INilRollup is INilAccessControl {
     //////////////////////////////////////////////////////////////////////////*/
 
   struct PublicDataInfo {
-    /// @notice Placeholder 1
-    bytes placeholder1;
-    /// @notice Placeholder 2
-    bytes placeholder2;
+    /// @notice The Merkle root representing the rootHash of the merkle tree which has messageHash values of failed deposits
+    bytes32 l2Tol1Root;
   }
 
   struct BatchInfo {

@@ -7,6 +7,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { INilRollup } from "./interfaces/INilRollup.sol";
 import { NilAccessControl } from "./NilAccessControl.sol";
 import { INilVerifier } from "./interfaces/INilVerifier.sol";
+import "forge-std/console.sol";
 
 /// @title NilRollup
 /// @notice Manages rollup batches, state updates, and access control for the Nil protocol.
@@ -90,6 +91,10 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
 
   error Unauthorized(address caller);
 
+  error ErrorInvalidL2ToL1Root();
+
+  error ErrorDuplicateL2ToL1Root();
+
   // ================== @CONSTANTS ==================
 
   /// @dev BLS Modulus defined in EIP-4844.
@@ -97,7 +102,7 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
     52_435_875_175_126_190_479_447_740_508_185_965_837_690_552_500_527_637_822_603_658_699_938_581_184_513;
 
   /// @dev The old state root used for the genesis batch.
-  bytes32 internal constant ZERO_STATE_ROOT = bytes32(0);
+  bytes32 public constant ZERO_STATE_ROOT = bytes32(0);
 
   /// @dev The initial batch index used for the genesis batch.
   string public constant GENESIS_BATCH_INDEX = "GENESIS_BATCH_INDEX";
@@ -243,7 +248,7 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
       newStateRoot: _genesisStateRoot,
       dataProofs: new bytes[](0),
       validityProof: "",
-      publicDataInputs: PublicDataInfo({ placeholder1: "", placeholder2: "" }),
+      publicDataInputs: PublicDataInfo({ l2Tol1Root: ZERO_STATE_ROOT }),
       blobCount: 0
     });
 
@@ -378,6 +383,16 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
       revert ErrorEmptyDataProofs();
     }
 
+    // Validate l2ToL1Root
+    if (publicDataInfo.l2Tol1Root == bytes32(0)) {
+      revert ErrorInvalidL2ToL1Root();
+    }
+
+    // Check if the l2ToL1Root is different from the last finalized batch's l2ToL1Root
+    if (publicDataInfo.l2Tol1Root == batchInfoRecords[lastFinalizedBatchIndex].publicDataInputs.l2Tol1Root) {
+      revert ErrorDuplicateL2ToL1Root();
+    }
+
     // Check if batchIndex has storage values of isCommitted true and isFinalized false
     if (!batchInfoRecords[batchIndex].isCommitted) {
       revert ErrorBatchNotCommitted(batchIndex);
@@ -396,6 +411,11 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
     if (bytes(stateRootIndex[newStateRoot]).length != 0) {
       revert ErrorNewStateRootAlreadyFinalized(batchIndex, newStateRoot);
     }
+
+    console.log("batchInfoRecords[lastFinalizedBatchIndex].newStateRoot is: ");
+    console.logBytes32(batchInfoRecords[lastFinalizedBatchIndex].newStateRoot);
+    console.log("oldStateRoot is: ");
+    console.logBytes32(oldStateRoot);
 
     // Check if the oldStateRoot matches the last finalized batch's newStateRoot
     if (batchInfoRecords[lastFinalizedBatchIndex].newStateRoot != oldStateRoot) {

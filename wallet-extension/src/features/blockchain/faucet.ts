@@ -16,7 +16,7 @@ export function createFaucetClient(rpcEndpoint: string): FaucetClient {
 export async function topUpAllCurrencies(
   smartAccount: SmartAccountV1,
   faucetClient: FaucetClient,
-  amount = 10,
+  amount = 10n,
 ): Promise<void> {
   try {
     // Get the map of all faucets: { [tokenNameOrAddr]: faucetAddress }
@@ -55,7 +55,7 @@ export async function topUpSpecificCurrency(
   smartAccount: SmartAccountV1,
   faucetClient: FaucetClient,
   symbol: string,
-  amount: number,
+  amount: bigint,
   showInActivity = true,
 ): Promise<void> {
   console.log(`Topping up ${amount} ${symbol} to smartAccount ${smartAccount.address}...`);
@@ -67,7 +67,7 @@ export async function topUpSpecificCurrency(
   if (symbol === Currency.NIL) {
     initialBalance = await fetchBalance(smartAccount);
   }
-
+  console.log(`Initial balance: ${initialBalance}`);
   try {
     // Perform the top-up
     txHash = await faucetClient.topUpAndWaitUntilCompletion(
@@ -109,7 +109,7 @@ export async function topUpSpecificCurrency(
 
     // Log failure
     if (txHash && showInActivity) {
-      logTopUpActivity(smartAccount.address, txHash, false, amount, symbol);
+      logTopUpActivity(smartAccount.address, txHash, false, amount.toString(), symbol);
     }
 
     throw new Error(`Failed to top up ${symbol}`);

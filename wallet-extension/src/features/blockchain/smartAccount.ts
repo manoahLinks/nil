@@ -72,7 +72,7 @@ export async function initializeOrDeploySmartAccount(params: {
         smartAccount,
         faucetClient,
         Currency.NIL,
-        Number(convertEthToWei(0.1)),
+        convertEthToWei(0.1),
         false,
       );
     } catch (e) {
@@ -116,8 +116,8 @@ export async function sendCurrency({
     const transactionParams =
       tokenSymbol === Currency.NIL
         ? getNilTransactionParams(to, value, feeCredit)
-        : getTokenTransactionParams(to, value, tokenSymbol, feeCredit);
-
+        : getTokenTransactionParams(to, value, tokenSymbol, feeCredit)
+        
     // Send transaction
     txHash = await smartAccount.sendTransaction(transactionParams);
     console.log(`Transaction sent for ${tokenSymbol}, hash: ${txHash}`);

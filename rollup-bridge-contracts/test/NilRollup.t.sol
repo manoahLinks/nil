@@ -328,7 +328,9 @@ contract NilRollupTest is BaseTest {
         bytes memory validityProof =
             hex"4c746babf097541f290a0b3bd300fa5e7874cecac18404287093b343f86eec75292693c83af3e79058a8f6a555ac92492e8b24cfdcb9b74148c0fc10917430308020c2fcb81a761c74b62042e6331d4f158702e087a32c56479e97ce611770f162606d64f90eb197b8475565ee0a37128a532ea99af9fb72673e37139eed42f60d79c671097d0b566638cc8861fd7cb66ccbecb436c53877e2e74f7db03280a7";
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         // Update the state with the first batch's details
         rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
@@ -436,7 +438,8 @@ contract NilRollupTest is BaseTest {
 
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
 
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         // Expect a revert due to the old state root mismatch
         vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorOldStateRootMismatch.selector));
@@ -589,7 +592,8 @@ contract NilRollupTest is BaseTest {
         bytes memory validityProof =
             hex"4c746babf097541f290a0b3bd300fa5e7874cecac18404287093b343f86eec75292693c83af3e79058a8f6a555ac92492e8b24cfdcb9b74148c0fc10917430308020c2fcb81a761c74b62042e6331d4f158702e087a32c56479e97ce611770f162606d64f90eb197b8475565ee0a37128a532ea99af9fb72673e37139eed42f60d79c671097d0b566638cc8861fd7cb66ccbecb436c53877e2e74f7db03280a7";
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         // Expect a revert due to the mismatch
         vm.expectRevert(
@@ -642,7 +646,10 @@ contract NilRollupTest is BaseTest {
         bytes memory validityProof =
             hex"4c746babf097541f290a0b3bd300fa5e7874cecac18404287093b343f86eec75292693c83af3e79058a8f6a555ac92492e8b24cfdcb9b74148c0fc10917430308020c2fcb81a761c74b62042e6331d4f158702e087a32c56479e97ce611770f162606d64f90eb197b8475565ee0a37128a532ea99af9fb72673e37139eed42f60d79c671097d0b566638cc8861fd7cb66ccbecb436c53877e2e74f7db03280a7";
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
+
         // Expect a revert due to the batch not being committed
         vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorBatchNotCommitted.selector, batchIndex));
 
@@ -691,7 +698,8 @@ contract NilRollupTest is BaseTest {
         bytes memory validityProof =
             hex"4c746babf097541f290a0b3bd300fa5e7874cecac18404287093b343f86eec75292693c83af3e79058a8f6a555ac92492e8b24cfdcb9b74148c0fc10917430308020c2fcb81a761c74b62042e6331d4f158702e087a32c56479e97ce611770f162606d64f90eb197b8475565ee0a37128a532ea99af9fb72673e37139eed42f60d79c671097d0b566638cc8861fd7cb66ccbecb436c53877e2e74f7db03280a7";
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
         // Expect a revert due to the invalid data proof
         vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorInvalidDataProofItem.selector, 0));
 
@@ -795,13 +803,15 @@ contract NilRollupTest is BaseTest {
 
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
 
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         // Update the state with the first batch's details
         rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
 
         l2Tol1Root = hex"02224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
-        publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         // Expect a revert due to the batch already being finalized
         vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorBatchAlreadyFinalized.selector, batchIndex));
@@ -861,7 +871,8 @@ contract NilRollupTest is BaseTest {
 
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
 
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         // Expect a revert due to invalid public input proof
         vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorInvalidPublicInputForProof.selector));
@@ -892,7 +903,8 @@ contract NilRollupTest is BaseTest {
         bytes memory validityProof =
             hex"4c746babf097541f290a0b3bd300fa5e7874cecac18404287093b343f86eec75292693c83af3e79058a8f6a555ac92492e8b24cfdcb9b74148c0fc10917430308020c2fcb81a761c74b62042e6331d4f158702e087a32c56479e97ce611770f162606d64f90eb197b8475565ee0a37128a532ea99af9fb72673e37139eed42f60d79c671097d0b566638cc8861fd7cb66ccbecb436c53877e2e74f7db03280a7";
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorCallPointEvaluationPrecompileFailed.selector));
         rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
@@ -946,7 +958,9 @@ contract NilRollupTest is BaseTest {
 
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
 
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
+
         // Update the state with the first batch's details
         rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
 
@@ -969,7 +983,9 @@ contract NilRollupTest is BaseTest {
         newStateRoot = hex"9de4b8e9649321f6aa403b03144f068e52db6cd0b6645fc572d6a9c600f5cb91";
 
         l2Tol1Root = hex"02224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
-        publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
+
         // Expect a revert due to the new state root already being finalized
         vm.expectRevert(
             abi.encodeWithSelector(NilRollup.ErrorNewStateRootAlreadyFinalized.selector, batchIndex, newStateRoot)
@@ -1091,7 +1107,8 @@ contract NilRollupTest is BaseTest {
 
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
 
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         vm.startPrank(_defaultAdmin);
 

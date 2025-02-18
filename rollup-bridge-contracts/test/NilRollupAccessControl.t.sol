@@ -130,7 +130,8 @@ contract NilRollupAccessControlTest is BaseTest {
     function execute_update_state() internal {
         vm.startPrank(_proposer2);
         bytes32 l2Tol1Root = hex"01224624a9a635f1596717f628afc4a7e01e2afe21a6199e061dd9c7b14053b2";
-        INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root });
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
         rollup.updateState(BATCH_ID, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
         vm.stopPrank();
     }

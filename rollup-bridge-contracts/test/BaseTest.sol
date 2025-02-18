@@ -156,7 +156,8 @@ contract BaseTest is Test {
         _defaultAdmin = vm.addr(2);
         _proposer = vm.addr(3);
 
-        publicDataInfoMock = INilRollup.PublicDataInfo({ l2Tol1Root: ZERO_STATE_ROOT });
+        publicDataInfoMock =
+            INilRollup.PublicDataInfo({ l2Tol1Root: ZERO_STATE_ROOT, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
 
         placeholder = new EmptyContract();
         address proxyAddress = _deployProxy(address(0));
@@ -206,8 +207,11 @@ contract BaseTest is Test {
 
             vm.startPrank(proposerAddress);
 
-            INilRollup.PublicDataInfo memory publicDataInfo =
-                INilRollup.PublicDataInfo({ l2Tol1Root: batchDataItem.l2Tol1Root });
+            INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({
+                l2Tol1Root: ZERO_STATE_ROOT,
+                messageCount: 0,
+                l1MessageHash: ZERO_STATE_ROOT
+            });
 
             rollup.updateState(
                 batchIndex,

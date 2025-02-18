@@ -242,6 +242,9 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
         lastCommittedBatchIndex = GENESIS_BATCH_INDEX;
         lastFinalizedBatchIndex = GENESIS_BATCH_INDEX;
 
+        INilRollup.PublicDataInfo memory publicDataInfo =
+            INilRollup.PublicDataInfo({ l2Tol1Root: ZERO_STATE_ROOT, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
+
         batchInfoRecords[lastFinalizedBatchIndex] = BatchInfo({
             batchIndex: lastFinalizedBatchIndex,
             isCommitted: true,
@@ -251,7 +254,7 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
             newStateRoot: _genesisStateRoot,
             dataProofs: new bytes[](0),
             validityProof: "",
-            publicDataInputs: PublicDataInfo({ l2Tol1Root: ZERO_STATE_ROOT }),
+            publicDataInputs: publicDataInfo,
             blobCount: 0
         });
 

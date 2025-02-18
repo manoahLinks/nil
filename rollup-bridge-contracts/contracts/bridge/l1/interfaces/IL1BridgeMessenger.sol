@@ -191,4 +191,13 @@ interface IL1BridgeMessenger is IBridgeMessenger {
     /// @dev messages are always popped from the queue in FIFIO Order
     /// @param messageCount number of messages to be removed from the queue
     function popMessages(uint256 messageCount) external;
+
+    /**
+     * @notice Pauses or unpauses the contract.
+     * @dev This function allows the owner to pause or unpause the contract.
+     * @param _status The pause status to update.
+     */
+    function setPause(bool _status) external;
+
+    function acceptOwnership() external;
 }

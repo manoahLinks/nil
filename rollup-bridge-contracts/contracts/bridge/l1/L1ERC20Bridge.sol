@@ -1,24 +1,52 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { NilAccessControl } from "../../NilAccessControl.sol";
 import { IL1ERC20Bridge } from "./interfaces/IL1ERC20Bridge.sol";
 import { IL2ERC20Bridge } from "../l2/interfaces/IL2ERC20Bridge.sol";
 import { IL1BridgeRouter } from "./interfaces/IL1BridgeRouter.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
-import { BridgeBase } from "../BridgeBase.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 
 /// @title L1ERC20Bridge
 /// @notice The `L1ERC20Bridge` contract for ERC20 gateways in L1.
-contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase, IERC165 {
+contract L1ERC20Bridge is
+    Ownable2StepUpgradeable,
+    PausableUpgradeable,
+    NilAccessControl,
+    ReentrancyGuardUpgradeable,
+    IL1ERC20Bridge
+{
     using SafeTransferLib for ERC20;
+
+    /*//////////////////////////////////////////////////////////////////////////
+                             ERRORS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /// @dev Invalid owner address.
+    error ErrorInvalidOwner();
+
+    /// @dev Invalid default admin address.
+    error ErrorInvalidDefaultAdmin();
 
     /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IL1Bridge
+    address public override router;
+
+    /// @inheritdoc IL1Bridge
+    address public override counterpartyBridge;
+
+    /// @inheritdoc IL1Bridge
+    address public override messenger;
 
     /// @notice Mapping from l1 token address to l2 token address for ERC20 token.
     mapping(address => address) public tokenMapping;
@@ -31,7 +59,7 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase, IERC165 {
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @notice Constructor for `L1ERC20Bridge` implementation contract.
-    constructor() BridgeBase() {
+    constructor() {
         _disableInitializers();
     }
 
@@ -42,8 +70,55 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase, IERC165 {
     /// @param _owner The owner of L1ERC20Bridge in layer-1.
     /// @param _counterPartyERC20Bridge The address of ERC20Bridge on nil-chain
     /// @param _messenger The address of NilMessenger in layer-1.
-    function initialize(address _owner, address _counterPartyERC20Bridge, address _messenger) external initializer {
-        BridgeBase._initialize(_owner, _counterPartyERC20Bridge, _messenger);
+    function initialize(
+        address _owner,
+        address _defaultAdmin,
+        address _counterPartyERC20Bridge,
+        address _messenger
+    )
+        external
+        initializer
+    {
+        // Validate input parameters
+        if (_owner == address(0)) {
+            revert ErrorInvalidOwner();
+        }
+
+        if (_defaultAdmin == address(0)) {
+            revert ErrorInvalidDefaultAdmin();
+        }
+
+        // Initialize the Ownable contract with the owner address
+        Ownable2StepUpgradeable.__Ownable2Step_init();
+
+        _transferOwnership(_owner);
+
+        // Initialize the Pausable contract
+        PausableUpgradeable.__Pausable_init();
+
+        // Initialize the AccessControlEnumerable contract
+        __AccessControlEnumerable_init();
+
+        // Set role admins
+        // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+
+        // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
+        // role.
+        _setRoleAdmin(DEFAULT_ADMIN_ROLE, OWNER_ROLE);
+
+        // Grant roles to defaultAdmin and owner
+        // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
+        // highest level of control.
+        // The PROPOSER_ROLE_ADMIN is granted to both the default admin and the owner to allow them to manage proposers.
+        // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
+        _grantRole(OWNER_ROLE, _owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+
+        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+
+        counterpartyBridge = _counterPartyERC20Bridge;
+        messenger = _messenger;
     }
 
     function setRouter(address _router) external onlyOwner {
@@ -89,7 +164,7 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase, IERC165 {
         return tokenMapping[_l1TokenAddress];
     }
 
-    /// @inheritdoc IL1ERC20Bridge
+    /// @inheritdoc IL1Bridge
     function cancelDeposit(bytes32 messageHash) external payable override nonReentrant {
         address caller = _msgSender();
 
@@ -189,8 +264,38 @@ contract L1ERC20Bridge is IL1ERC20Bridge, BridgeBase, IERC165 {
         emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
     }
 
+    /*//////////////////////////////////////////////////////////////////////////
+                             RESTRICTED FUNCTIONS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /// @notice Pause the contract
+    /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
+
+    /**
+     * @notice accept ownership by the pendingOwner.
+     * @dev This function revokes the `OWNER_ROLE` from the current owner, calls acceptOwnership using
+     * Ownable2StepUpgradeable's `acceptOwnership`, and grants the `OWNER_ROLE` to the new owner.
+     */
+    function acceptOwnership() public override(Ownable2StepUpgradeable, IL1Bridge) {
+        // Revoke OWNER_ROLE from the current owner
+        _revokeRole(OWNER_ROLE, owner());
+
+        // Transfer ownership using Ownable2StepUpgradeable's acceptOwnership
+        super.acceptOwnership();
+
+        // Grant OWNER_ROLE to the new owner
+        _grantRole(OWNER_ROLE, _msgSender());
+    }
+
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
         return interfaceId == type(IL1Bridge).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 }

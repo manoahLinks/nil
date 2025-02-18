@@ -1,23 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
+import { NilAccessControl } from "../../NilAccessControl.sol";
 import { Queue } from "../libraries/Queue.sol";
 
 contract L1BridgeMessenger is
-    OwnableUpgradeable,
+    Ownable2StepUpgradeable,
     PausableUpgradeable,
+    NilAccessControl,
     ReentrancyGuardUpgradeable,
     IL1BridgeMessenger
 {
     using Queue for Queue.QueueData;
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    /*//////////////////////////////////////////////////////////////////////////
+                             ERRORS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /// @dev Invalid owner address.
+    error ErrorInvalidOwner();
+
+    /// @dev Invalid default admin address.
+    error ErrorInvalidDefaultAdmin();
 
     /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
@@ -44,9 +56,10 @@ contract L1BridgeMessenger is
     uint256[50] private __gap;
 
     /*//////////////////////////////////////////////////////////////////////////
-                             CONSTRUCTOR   
+                                    CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////*/
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
@@ -57,6 +70,7 @@ contract L1BridgeMessenger is
 
     function initialize(
         address _owner,
+        address _defaultAdmin,
         address _l1NilRollup,
         uint256 _maxProcessingTime,
         uint256 _cancelTimeDelta
@@ -64,8 +78,42 @@ contract L1BridgeMessenger is
         public
         initializer
     {
-        OwnableUpgradeable.__Ownable_init(_owner);
+        // Validate input parameters
+        if (_owner == address(0)) {
+            revert ErrorInvalidOwner();
+        }
+
+        if (_defaultAdmin == address(0)) {
+            revert ErrorInvalidDefaultAdmin();
+        }
+
+        // Initialize the Ownable contract with the owner address
+        Ownable2StepUpgradeable.__Ownable2Step_init();
+
+        _transferOwnership(_owner);
+
+        // Initialize the Pausable contract
         PausableUpgradeable.__Pausable_init();
+
+        // Initialize the AccessControlEnumerable contract
+        __AccessControlEnumerable_init();
+
+        // Set role admins
+        // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+
+        // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
+        // role.
+        _setRoleAdmin(DEFAULT_ADMIN_ROLE, OWNER_ROLE);
+
+        // Grant roles to defaultAdmin and owner
+        // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
+        // highest level of control.
+        // The PROPOSER_ROLE_ADMIN is granted to both the default admin and the owner to allow them to manage proposers.
+        // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
+        _grantRole(OWNER_ROLE, _owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         depositNonce = 0;
 
@@ -127,17 +175,6 @@ contract L1BridgeMessenger is
     /*//////////////////////////////////////////////////////////////////////////
                              RESTRICTED FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
-
-    /// @notice Pause the contract
-    /// @dev This function can only called by contract owner.
-    /// @param _status The pause status to update.
-    function setPause(bool _status) external onlyOwner {
-        if (_status) {
-            _pause();
-        } else {
-            _unpause();
-        }
-    }
 
     /// @inheritdoc IL1BridgeMessenger
     function authorizeBridges(address[] calldata bridges) external onlyOwner {
@@ -323,5 +360,35 @@ contract L1BridgeMessenger is
         // @note check more `_target` address to avoid attack in the future when we add more external contracts.
 
         require(_target != address(this), "Forbid to call self");
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                             RESTRICTED FUNCTIONS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /// @notice Pause the contract
+    /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
+
+    /**
+     * @notice accept ownership by the pendingOwner.
+     * @dev This function revokes the `OWNER_ROLE` from the current owner, calls acceptOwnership using
+     * Ownable2StepUpgradeable's `acceptOwnership`, and grants the `OWNER_ROLE` to the new owner.
+     */
+    function acceptOwnership() public override(Ownable2StepUpgradeable, IL1BridgeMessenger) {
+        // Revoke OWNER_ROLE from the current owner
+        _revokeRole(OWNER_ROLE, owner());
+
+        // Transfer ownership using Ownable2StepUpgradeable's acceptOwnership
+        super.acceptOwnership();
+
+        // Grant OWNER_ROLE to the new owner
+        _grantRole(OWNER_ROLE, _msgSender());
     }
 }

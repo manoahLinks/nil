@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import { NilAccessControl } from "../../NilAccessControl.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { IL1ERC20Bridge } from "./interfaces/IL1ERC20Bridge.sol";
@@ -12,8 +15,24 @@ import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 /// @notice The `L1BridgeRouter` is the main entry for depositing ERC20 tokens.
 /// All deposited tokens are routed to corresponding gateways.
 /// @dev use this contract to query L1/L2 token address mapping.
-contract L1BridgeRouter is OwnableUpgradeable, IL1BridgeRouter {
+contract L1BridgeRouter is
+    Ownable2StepUpgradeable,
+    PausableUpgradeable,
+    NilAccessControl,
+    ReentrancyGuardUpgradeable,
+    IL1BridgeRouter
+{
     using SafeTransferLib for ERC20;
+
+    /*//////////////////////////////////////////////////////////////////////////
+                             ERRORS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /// @dev Invalid owner address.
+    error ErrorInvalidOwner();
+
+    /// @dev Invalid default admin address.
+    error ErrorInvalidDefaultAdmin();
 
     /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
@@ -57,8 +76,53 @@ contract L1BridgeRouter is OwnableUpgradeable, IL1BridgeRouter {
     /// @notice Initialize the storage of L1BridgeRouter.
     /// @param _l1ERC20Bridge The address of l1ERC20Bridge contract.
     /// @param _l1BridgeMessenger The address of l1BridgeMessenger contract.
-    function initialize(address _owner, address _l1ERC20Bridge, address _l1BridgeMessenger) external initializer {
-        OwnableUpgradeable.__Ownable_init(_owner);
+    function initialize(
+        address _owner,
+        address _defaultAdmin,
+        address _l1ERC20Bridge,
+        address _l1BridgeMessenger
+    )
+        public
+        initializer
+    {
+        // Validate input parameters
+        if (_owner == address(0)) {
+            revert ErrorInvalidOwner();
+        }
+
+        if (_defaultAdmin == address(0)) {
+            revert ErrorInvalidDefaultAdmin();
+        }
+
+        // Initialize the Ownable contract with the owner address
+        Ownable2StepUpgradeable.__Ownable2Step_init();
+
+        _transferOwnership(_owner);
+
+        // Initialize the Pausable contract
+        PausableUpgradeable.__Pausable_init();
+
+        // Initialize the AccessControlEnumerable contract
+        __AccessControlEnumerable_init();
+
+        // Set role admins
+        // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+
+        // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
+        // role.
+        _setRoleAdmin(DEFAULT_ADMIN_ROLE, OWNER_ROLE);
+
+        // Grant roles to defaultAdmin and owner
+        // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
+        // highest level of control.
+        // The PROPOSER_ROLE_ADMIN is granted to both the default admin and the owner to allow them to manage proposers.
+        // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
+        _grantRole(OWNER_ROLE, _owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+
+        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+
         l1ERC20Bridge = _l1ERC20Bridge;
         l1BridgeMessenger = IL1BridgeMessenger(_l1BridgeMessenger);
         emit L1ERC20BridgeSet(address(0), _l1ERC20Bridge);
@@ -102,17 +166,17 @@ contract L1BridgeRouter is OwnableUpgradeable, IL1BridgeRouter {
                            USER-SPECIFIC MUTATION FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IL1ERC20Bridge
+    /// @inheritdoc IL1BridgeRouter
     function depositERC20(address _token, uint256 _amount, uint256 _gasLimit) external payable override {
         depositERC20AndCall(_token, _msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
-    /// @inheritdoc IL1ERC20Bridge
+    /// @inheritdoc IL1BridgeRouter
     function depositERC20(address _token, address _to, uint256 _amount, uint256 _gasLimit) external payable override {
         depositERC20AndCall(_token, _to, _amount, new bytes(0), _gasLimit);
     }
 
-    /// @inheritdoc IL1ERC20Bridge
+    /// @inheritdoc IL1BridgeRouter
     function depositERC20AndCall(
         address _token,
         address _to,
@@ -163,5 +227,31 @@ contract L1BridgeRouter is OwnableUpgradeable, IL1BridgeRouter {
         l1ERC20Bridge = _newERC20Bridge;
 
         emit L1ERC20BridgeSet(_oldERC20Bridge, _newERC20Bridge);
+    }
+
+    /// @notice Pause the contract
+    /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
+
+    /**
+     * @notice accept ownership by the pendingOwner.
+     * @dev This function revokes the `OWNER_ROLE` from the current owner, calls acceptOwnership using
+     * Ownable2StepUpgradeable's `acceptOwnership`, and grants the `OWNER_ROLE` to the new owner.
+     */
+    function acceptOwnership() public override(Ownable2StepUpgradeable, IL1BridgeRouter) {
+        // Revoke OWNER_ROLE from the current owner
+        _revokeRole(OWNER_ROLE, owner());
+
+        // Transfer ownership using Ownable2StepUpgradeable's acceptOwnership
+        super.acceptOwnership();
+
+        // Grant OWNER_ROLE to the new owner
+        _grantRole(OWNER_ROLE, _msgSender());
     }
 }

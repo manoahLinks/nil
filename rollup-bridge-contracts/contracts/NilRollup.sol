@@ -7,6 +7,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { INilRollup } from "./interfaces/INilRollup.sol";
 import { NilAccessControl } from "./NilAccessControl.sol";
 import { INilVerifier } from "./interfaces/INilVerifier.sol";
+import { IL1BridgeMessenger } from "./bridge/l1/interfaces/IL1BridgeMessenger.sol";
 import "forge-std/console.sol";
 
 /// @title NilRollup
@@ -19,6 +20,9 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
 
     /// @dev Invalid owner address.
     error ErrorInvalidOwner();
+
+    /// @dev Invalid address.
+    error ErrorInvalidAddress();
 
     /// @dev Invalid default admin address.
     error ErrorInvalidDefaultAdmin();
@@ -95,6 +99,8 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
 
     error ErrorDuplicateL2ToL1Root();
 
+    error ErrorL1MessageHashMismatch(bytes32 computedL1MessageHash, bytes32 expectedL1MessageHash);
+
     // ================== @CONSTANTS ==================
 
     /// @dev BLS Modulus defined in EIP-4844.
@@ -131,6 +137,8 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
 
     /// @dev mapping of batchIndex to BatchInformation
     mapping(string => BatchInfo) public batchInfoRecords;
+
+    IL1BridgeMessenger public l1BridgeMessenger;
 
     /// @dev The storage slots for future usage.
     uint256[50] private __gap;
@@ -294,8 +302,8 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
     }
 
     /// @inheritdoc INilRollup
-    function isRootFinalized(bytes32 _stateRoot) external view override returns (bool) {
-        return bytes(stateRootIndex[_stateRoot]).length != 0;
+    function isRootFinalized(bytes32 stateRoot) external view override returns (bool) {
+        return bytes(stateRootIndex[stateRoot]).length != 0;
     }
 
     /// @inheritdoc INilRollup
@@ -434,6 +442,25 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
             revert ErrorIncorrectDataProofSize();
         }
 
+        // get the messageCount from the publicInput
+        uint256 depositMessageCount = publicDataInfo.messageCount;
+
+        if (depositMessageCount > 0) {
+            // pull first n messages from the messageQueue via l1BridgeMessenger
+            bytes32[] memory depositMessageHashes = l1BridgeMessenger.popMessages(depositMessageCount);
+
+            bytes32 l1MessageHash = depositMessageHashes[0]; // Initialize with the 0th element
+
+            for (uint256 j = 1; j < depositMessageHashes.length; j++) {
+                l1MessageHash = keccak256(abi.encodePacked(depositMessageHashes[j], l1MessageHash));
+            }
+
+            // Check if the l1MessageHash in publicDataInput is the same as the l1MessageHash computed above
+            if (l1MessageHash != publicDataInfo.l1MessageHash) {
+                revert ErrorL1MessageHashMismatch(l1MessageHash, publicDataInfo.l1MessageHash);
+            }
+        }
+
         for (uint256 i = 0; i < blobVersionedHashes.length; i++) {
             if (dataProofs[i].length == 0) {
                 revert ErrorInvalidDataProofItem(i);
@@ -508,9 +535,9 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
      */
 
     /// @notice Pause the contract
-    /// @param _status The pause status to update.
-    function setPause(bool _status) external onlyOwner {
-        if (_status) {
+    /// @param status The pause status to update.
+    function setPause(bool status) external onlyOwner {
+        if (status) {
             _pause();
         } else {
             _unpause();
@@ -519,18 +546,26 @@ contract NilRollup is Ownable2StepUpgradeable, PausableUpgradeable, NilAccessCon
 
     /**
      * @dev Sets the address of the NilVerifier contract.
-     * @param _nilVerifierAddress The new address of the NilVerifier contract.
+     * @param nilVerifier The new address of the NilVerifier contract.
      */
-    function setVerifierAddress(address _nilVerifierAddress) external onlyAdmin {
-        if (_nilVerifierAddress == address(0)) {
+    function setVerifierAddress(address nilVerifier) external onlyAdmin {
+        if (nilVerifier == address(0)) {
             revert ErrorInvalidNilVerifier();
         }
 
-        if (_nilVerifierAddress == nilVerifierAddress) {
+        if (nilVerifier == nilVerifierAddress) {
             revert ErrorNilVerifierAddressNotChanged();
         }
 
-        nilVerifierAddress = _nilVerifierAddress;
+        nilVerifierAddress = nilVerifier;
+    }
+
+    function setL1BridgeMessenger(address l1BridgeMessengerAddress) external onlyAdmin {
+        if (l1BridgeMessengerAddress == address(0)) {
+            revert ErrorInvalidAddress();
+        }
+
+        l1BridgeMessenger = IL1BridgeMessenger(l1BridgeMessengerAddress);
     }
 
     /**

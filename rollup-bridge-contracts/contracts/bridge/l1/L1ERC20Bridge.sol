@@ -172,7 +172,11 @@ contract L1ERC20Bridge is
         IL1BridgeMessenger.DepositMessage memory depositMessage =
             IL1BridgeMessenger(messenger).getDepositMessage(messageHash);
 
-        if (caller != router && caller != depositMessage.from) {
+        // Decode the message to extract the token address and the original sender (_from)
+        (address l1TokenAddress,, address depositorAddress,, uint256 l1TokenAmount,) =
+            abi.decode(depositMessage.message, (address, address, address, address, uint256, bytes));
+
+        if (caller != router && caller != depositorAddress) {
             revert UnAuthorizedCaller();
         }
 
@@ -182,10 +186,6 @@ contract L1ERC20Bridge is
 
         // L1BridgeMessenger to verify if the deposit can be cancelled
         IL1BridgeMessenger(messenger).cancelDeposit(messageHash);
-
-        // Decode the message to extract the token address and the original sender (_from)
-        (address l1TokenAddress,, address depositorAddress,, uint256 l1TokenAmount,) =
-            abi.decode(depositMessage.message, (address, address, address, address, uint256, bytes));
 
         // refund the deposited ERC20 tokens to the depositor
         ERC20(l1TokenAddress).safeTransfer(depositorAddress, l1TokenAmount);
@@ -246,6 +246,10 @@ contract L1ERC20Bridge is
         nonReentrant
     {
         address _l2Token = tokenMapping[_token];
+
+        //TODO compute l2TokenAddress
+        // update the mapping
+
         require(_l2Token != address(0), "no corresponding l2 token");
 
         // Transfer token into Bridge contract

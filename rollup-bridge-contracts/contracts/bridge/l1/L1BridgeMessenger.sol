@@ -31,6 +31,8 @@ contract L1BridgeMessenger is
     /// @dev Invalid default admin address.
     error ErrorInvalidDefaultAdmin();
 
+    error NotEnoughMessagesInQueue();
+
     /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
@@ -282,12 +284,21 @@ contract L1BridgeMessenger is
     }
 
     /// @inheritdoc IL1BridgeMessenger
-    function popMessages(uint256 messageCount) external override {
+    function popMessages(uint256 messageCount) external override returns (bytes32[] memory) {
         if (_msgSender() != l1NilRollup) {
             revert NotAuthorizedToPopMessages();
         }
 
-        messageQueue.popFrontBatch(messageCount);
+        // Check queue size and revert if messageCount > queue size
+        uint256 queueSize = messageQueue.getSize();
+        if (messageCount > queueSize) {
+            revert NotEnoughMessagesInQueue();
+        }
+
+        // check queue Size and revert if the messageCount > QueueSize
+        // Pop messages from the queue
+        bytes32[] memory poppedMessages = messageQueue.popFrontBatch(messageCount);
+        return poppedMessages;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -300,65 +311,63 @@ contract L1BridgeMessenger is
         uint256 _amount,
         bytes memory _message,
         uint256 _gasLimit,
-        address _refundAddress // TODO to be used in refundFee internal function
+        address _refundAddress
     )
         internal
         nonReentrant
     {
-        // Create the DepositMessage struct
         DepositMessage memory depositMessage = DepositMessage({
-            from: _msgSender(),
+            sender: _msgSender(),
             nonce: depositNonce,
             gasLimit: _gasLimit,
             expiryTime: block.timestamp + maxProcessingTime,
             message: _message,
             isCancelled: false,
+            refundAddress: _refundAddress,
             depositType: _depositType
         });
 
-        // Compute the message hash
-        bytes32 messageHash = _computeMessageHash(depositMessage);
+        bytes32 messageHash = _computeMessageHash(_to, _amount, depositMessage);
 
-        //perform duplicate message check
         if (depositMessages[messageHash].expiryTime > 0) {
             revert DepositMessageAlreadyExist(messageHash);
         }
 
-        // Store the deposit message in the mapping
         depositMessages[messageHash] = depositMessage;
 
-        // TODO add messageHash to queue
         messageQueue.pushBack(messageHash);
 
-        // Emit the event
         emit MessageSent(
+            messageHash,
             _msgSender(),
             _to,
             _depositType,
             _amount,
             depositMessage.nonce,
-            _gasLimit,
             depositMessage.expiryTime,
+            depositMessage.gasLimit,
             _message
         );
 
-        // Increment the deposit nonce
         depositNonce++;
     }
 
-    function _computeMessageHash(DepositMessage memory depositMessage) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                depositMessage.nonce, depositMessage.gasLimit, depositMessage.expiryTime, depositMessage.message
-            )
-        );
+    function _computeMessageHash(
+        address _to,
+        uint256 _amount,
+        DepositMessage memory _depositMessage
+    )
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(_msgSender(), _to, _amount, _depositMessage.nonce, _depositMessage.message));
     }
 
     /// @dev Internal function to check whether the `_target` address is allowed to avoid attack.
     /// @param _target The address of target address to check.
     function _validateTargetAddress(address _target) internal view {
         // @note check more `_target` address to avoid attack in the future when we add more external contracts.
-
         require(_target != address(this), "Forbid to call self");
     }
 
@@ -382,7 +391,6 @@ contract L1BridgeMessenger is
      * Ownable2StepUpgradeable's `acceptOwnership`, and grants the `OWNER_ROLE` to the new owner.
      */
     function acceptOwnership() public override(Ownable2StepUpgradeable, IL1BridgeMessenger) {
-        // Revoke OWNER_ROLE from the current owner
         _revokeRole(OWNER_ROLE, owner());
 
         // Transfer ownership using Ownable2StepUpgradeable's acceptOwnership

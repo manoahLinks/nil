@@ -50,7 +50,7 @@ interface INilRollup is INilAccessControl {
         /// @notice The validity proof
         bytes validityProof;
         /// @notice The public data inputs
-        PublicDataInfo publicDataInputs;
+        PublicDataInfo publicDataInfo;
         /// @notice The number of blobs in the batch
         uint256 blobCount;
     }
@@ -126,7 +126,7 @@ interface INilRollup is INilAccessControl {
      * @param newStateRoot The new state root.
      * @param dataProofs The data proofs for the blobs in the batch.
      * @param validityProof The validity proof.
-     * @param publicDataInputs The public data inputs.
+     * @param publicDataInfo The public data inputs.
      */
     function updateState(
         string memory batchIndex,
@@ -134,7 +134,7 @@ interface INilRollup is INilAccessControl {
         bytes32 newStateRoot,
         bytes[] calldata dataProofs,
         bytes calldata validityProof,
-        PublicDataInfo calldata publicDataInputs
+        PublicDataInfo calldata publicDataInfo
     )
         external;
 

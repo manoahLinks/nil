@@ -207,10 +207,11 @@ contract BaseTest is Test {
 
             vm.startPrank(proposerAddress);
 
-            bytes32 l2Tol1Root = keccak256("DEFAULT_L2_TO_L1_ROOT");
-
-            INilRollup.PublicDataInfo memory publicDataInfo =
-                INilRollup.PublicDataInfo({ l2Tol1Root: l2Tol1Root, messageCount: 0, l1MessageHash: ZERO_STATE_ROOT });
+            INilRollup.PublicDataInfo memory publicDataInfo = INilRollup.PublicDataInfo({
+                l2Tol1Root: ZERO_STATE_ROOT,
+                messageCount: 0,
+                l1MessageHash: ZERO_STATE_ROOT
+            });
 
             rollup.updateState(
                 batchIndex,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -12,7 +12,7 @@ import { NilAccessControl } from "../../NilAccessControl.sol";
 import { Queue } from "../libraries/Queue.sol";
 
 contract L1BridgeMessenger is
-    Ownable2StepUpgradeable,
+    OwnableUpgradeable,
     PausableUpgradeable,
     NilAccessControl,
     ReentrancyGuardUpgradeable,
@@ -90,9 +90,7 @@ contract L1BridgeMessenger is
         }
 
         // Initialize the Ownable contract with the owner address
-        Ownable2StepUpgradeable.__Ownable2Step_init();
-
-        _transferOwnership(_owner);
+        OwnableUpgradeable.__Ownable_init(_owner);
 
         // Initialize the Pausable contract
         PausableUpgradeable.__Pausable_init();
@@ -375,8 +373,7 @@ contract L1BridgeMessenger is
                              RESTRICTED FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Pause the contract
-    /// @param _status The pause status to update.
+    /// @inheritdoc IL1BridgeMessenger
     function setPause(bool _status) external onlyOwner {
         if (_status) {
             _pause();
@@ -385,18 +382,10 @@ contract L1BridgeMessenger is
         }
     }
 
-    /**
-     * @notice accept ownership by the pendingOwner.
-     * @dev This function revokes the `OWNER_ROLE` from the current owner, calls acceptOwnership using
-     * Ownable2StepUpgradeable's `acceptOwnership`, and grants the `OWNER_ROLE` to the new owner.
-     */
-    function acceptOwnership() public override(Ownable2StepUpgradeable, IL1BridgeMessenger) {
+    /// @inheritdoc IL1BridgeMessenger
+    function transferOwnershipRole(address newOwner) external override onlyOwner {
         _revokeRole(OWNER_ROLE, owner());
-
-        // Transfer ownership using Ownable2StepUpgradeable's acceptOwnership
-        super.acceptOwnership();
-
-        // Grant OWNER_ROLE to the new owner
-        _grantRole(OWNER_ROLE, _msgSender());
+        super.transferOwnership(newOwner);
+        _grantRole(OWNER_ROLE, newOwner);
     }
 }

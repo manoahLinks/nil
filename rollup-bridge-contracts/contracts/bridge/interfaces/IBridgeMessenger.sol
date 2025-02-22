@@ -24,6 +24,4 @@ interface IBridgeMessenger {
      * @param _status The pause status to update.
      */
     function setPause(bool _status) external;
-
-    function acceptOwnership() external;
 }

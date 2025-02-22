@@ -197,5 +197,11 @@ interface IL1BridgeMessenger is IBridgeMessenger {
      */
     function setPause(bool _status) external;
 
-    function acceptOwnership() external;
+    /**
+     * @notice transfers ownership to the newOwner.
+     * @dev This function revokes the `OWNER_ROLE` from the current owner, calls `acceptOwnership` using
+     * OwnableUpgradeable's `transferOwnership` transfer the owner rights to newOwner
+     * @param newOwner The address of the new owner.
+     */
+    function transferOwnershipRole(address newOwner) external;
 }

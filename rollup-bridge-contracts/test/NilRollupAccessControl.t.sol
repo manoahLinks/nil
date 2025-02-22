@@ -229,19 +229,7 @@ contract NilRollupAccessControlTest is BaseTest {
 
     vm.startPrank(_owner);
 
-    rollup.transferOwnership(newOwner);
-
-    vm.stopPrank();
-
-    assertEq(newOwner, rollup.pendingOwner());
-    assertEq(_owner, rollup.owner());
-
-    assertTrue(rollup.hasRole(OWNER_ROLE, _owner));
-    assertFalse(rollup.hasRole(OWNER_ROLE, newOwner));
-
-    vm.startPrank(newOwner);
-
-    rollup.acceptOwnership();
+    rollup.transferOwnershipRole(newOwner);
 
     vm.stopPrank();
 

@@ -13,15 +13,6 @@ interface IL1Bridge is IBridge {
 
     function cancelDeposit(bytes32 messageHash) external payable;
 
-    /**
-     * @notice Pauses or unpauses the contract.
-     * @dev This function allows the owner to pause or unpause the contract.
-     * @param _status The pause status to update.
-     */
-    function setPause(bool _status) external;
-
-    function acceptOwnership() external;
-
     /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC CONSTANT FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/

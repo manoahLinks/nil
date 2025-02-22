@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
@@ -16,7 +16,7 @@ import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 /// All deposited tokens are routed to corresponding gateways.
 /// @dev use this contract to query L1/L2 token address mapping.
 contract L1BridgeRouter is
-    Ownable2StepUpgradeable,
+    OwnableUpgradeable,
     PausableUpgradeable,
     NilAccessControl,
     ReentrancyGuardUpgradeable,
@@ -95,9 +95,7 @@ contract L1BridgeRouter is
         }
 
         // Initialize the Ownable contract with the owner address
-        Ownable2StepUpgradeable.__Ownable2Step_init();
-
-        _transferOwnership(_owner);
+        OwnableUpgradeable.__Ownable_init(_owner);
 
         // Initialize the Pausable contract
         PausableUpgradeable.__Pausable_init();
@@ -229,29 +227,19 @@ contract L1BridgeRouter is
         emit L1ERC20BridgeSet(_oldERC20Bridge, _newERC20Bridge);
     }
 
-    /// @notice Pause the contract
-    /// @param _status The pause status to update.
-    function setPause(bool _status) external onlyOwner {
-        if (_status) {
-            _pause();
-        } else {
-            _unpause();
-        }
+  /// @inheritdoc IL1BridgeRouter
+  function setPause(bool _status) external onlyOwner {
+    if (_status) {
+      _pause();
+    } else {
+      _unpause();
     }
+  }
 
-    /**
-     * @notice accept ownership by the pendingOwner.
-     * @dev This function revokes the `OWNER_ROLE` from the current owner, calls acceptOwnership using
-     * Ownable2StepUpgradeable's `acceptOwnership`, and grants the `OWNER_ROLE` to the new owner.
-     */
-    function acceptOwnership() public override(Ownable2StepUpgradeable, IL1BridgeRouter) {
-        // Revoke OWNER_ROLE from the current owner
-        _revokeRole(OWNER_ROLE, owner());
-
-        // Transfer ownership using Ownable2StepUpgradeable's acceptOwnership
-        super.acceptOwnership();
-
-        // Grant OWNER_ROLE to the new owner
-        _grantRole(OWNER_ROLE, _msgSender());
-    }
+  /// @inheritdoc IL1BridgeRouter
+  function transferOwnershipRole(address newOwner) external override onlyOwner {
+    _revokeRole(OWNER_ROLE, owner());
+    super.transferOwnership(newOwner);
+    _grantRole(OWNER_ROLE, newOwner);
+  }
 }

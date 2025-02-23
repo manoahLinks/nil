@@ -16,7 +16,7 @@ import { IBridge } from "../interfaces/IBridge.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 
 /// @title L1ERC20Bridge
-/// @notice The `L1ERC20Bridge` contract for ERC20 gateways in L1.
+/// @notice The `L1ERC20Bridge` contract for ERC20Bridging in L1.
 contract L1ERC20Bridge is
   OwnableUpgradeable,
   PausableUpgradeable,
@@ -65,9 +65,6 @@ contract L1ERC20Bridge is
   }
 
   /// @notice Initialize the storage of L1ERC20Bridge.
-  ///
-  /// @dev The parameters `_nilERC20Bridge`, `_router` and `_messenger` are no longer used.
-  ///
   /// @param _owner The owner of L1ERC20Bridge in layer-1.
   /// @param _counterPartyERC20Bridge The address of ERC20Bridge on nil-chain
   /// @param _messenger The address of NilMessenger in layer-1.

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-interface IBridgeMessenger {
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+
+interface IBridgeMessenger is IERC165 {
     /*//////////////////////////////////////////////////////////////////////////
                            ERRORS
     //////////////////////////////////////////////////////////////////////////*/
@@ -24,4 +26,12 @@ interface IBridgeMessenger {
      * @param _status The pause status to update.
      */
     function setPause(bool _status) external;
+
+    /**
+     * @notice transfers ownership to the newOwner.
+     * @dev This function revokes the `OWNER_ROLE` from the current owner, calls `acceptOwnership` using
+     * OwnableUpgradeable's `transferOwnership` transfer the owner rights to newOwner
+     * @param newOwner The address of the new owner.
+     */
+    function transferOwnershipRole(address newOwner) external;
 }

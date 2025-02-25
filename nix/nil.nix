@@ -7,6 +7,7 @@
 , testGroup ? "all"
 , jq
 , solc
+, versionFull
 , solc-select
 , clickhouse
 , go-tools
@@ -27,6 +28,7 @@ buildGo124Module rec {
   pname = "nil";
 
   preBuild = ''
+    echo versionFull=${versionFull}
     make -j$NIX_BUILD_CORES generated rpcspec
     export HOME="$TMPDIR"
     mkdir -p ~/.gsolc-select/artifacts/solc-0.8.28

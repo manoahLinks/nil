@@ -30,7 +30,7 @@
       rec {
         packages = rec {
           solc = (pkgs.callPackage ./nix/solc.nix { });
-          nil = (pkgs.callPackage ./nix/nil.nix { solc = solc; });
+          nil = (pkgs.callPackage ./nix/nil.nix { solc = solc; versionFull = versionFull;});
           niljs = (pkgs.callPackage ./nix/niljs.nix { solc = solc; });
           clijs = (pkgs.callPackage ./nix/clijs.nix { nil = nil; });
           nildocs = (pkgs.callPackage ./nix/nildocs.nix { nil = nil; solc = solc; });

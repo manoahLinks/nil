@@ -26,7 +26,9 @@ stdenv.mkDerivation rec {
     "biome.json"
   ];
 
-  npmDeps = (callPackage ./npmdeps.nix { });
+  npmDeps = (callPackage ./npmdeps.nix { }).overrideAttrs (old: {
+    npmDepsHash = lib.fakeHash;
+  });
 
   NODE_PATH = "$npmDeps";
 

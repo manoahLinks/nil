@@ -459,13 +459,6 @@ contract NilRollup is OwnableUpgradeable, PausableUpgradeable, NilAccessControl,
                     )
                 )
         ) {
-            console.log("depositMessageCount is: ", depositMessageCount);
-            console.log("publicDataInfo.l2Tol1Root is: ");
-            console.logBytes32(publicDataInfo.l2Tol1Root);
-            console.log("batchInfoRecords[lastFinalizedBatchIndex].publicDataInfo.l2Tol1Root: ");
-            console.logBytes32(batchInfoRecords[lastFinalizedBatchIndex].publicDataInfo.l2Tol1Root);
-            console.log("publicDataInfo.l1MessageHash: ");
-            console.logBytes32(publicDataInfo.l1MessageHash);
             revert ErrorInvalidPublicDataInfo();
         }
 

@@ -23,7 +23,8 @@ interface INilRollup is INilAccessControl {
     //////////////////////////////////////////////////////////////////////////*/
 
     struct PublicDataInfo {
-        /// @notice The Merkle root representing the rootHash of the merkle tree which has messageHash values of failed
+        /// @notice The Merkle root representing the rootHash of the
+        /// merkle tree which has messageHash values of failed
         /// deposits
         bytes32 l2Tol1Root;
         /// @notice number of depositMessages for verification
@@ -120,7 +121,7 @@ interface INilRollup is INilAccessControl {
 
     /**
      * @notice Updates the state root for a batch.
-     * @dev This function allows an account with the STATE_UPDATER_ROLE to update the state root for a batch.
+     * @dev This function allows an account with the PROPOSER_ROLE to update the state root for a batch.
      * @param batchIndex The index of the batch.
      * @param oldStateRoot The old state root.
      * @param newStateRoot The new state root.

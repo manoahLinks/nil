@@ -40,37 +40,40 @@ interface IL1ERC20Bridge is IL1Bridge {
     //////////////////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Deposits ERC20 tokens to the nil-chain.
-     * @param _token The address of the ERC20 token to deposit.
-     * @param _amount The amount of tokens to deposit.
-     * @param _gasLimit The gas limit required to complete the deposit on nil-chain.
-     */
-    function depositERC20(address _token, uint256 _amount, uint256 _gasLimit) external payable;
-
-    /**
      * @notice Initiates the ERC20 tokens to the nil-chain. for a specified recipient.
-     * @param _token The address of the ERC20 in L1 token to deposit.
-     * @param _to The recipient address to receive the token in nil-chain.
-     * @param _amount The amount of tokens to deposit.
-     * @param _gasLimit The gas limit required to complete the deposit on nil-chain..
+     * @param token The address of the ERC20 in L1 token to deposit.
+     * @param to The recipient address to receive the token in nil-chain.
+     * @param amount The amount of tokens to deposit.
+     * @param l2FeeRefundRecipient The recipient address to receive the refund of excess fee on nil-chain
+     * @param gasLimit The gas limit required to complete the deposit on nil-chain..
      */
-    function depositERC20(address _token, address _to, uint256 _amount, uint256 _gasLimit) external payable;
+    function depositERC20(
+        address token,
+        address to,
+        uint256 amount,
+        address l2FeeRefundRecipient,
+        uint256 gasLimit
+    )
+        external
+        payable;
 
     /**
      * @notice Deposits ERC20 tokens to the nil-chain for a specified recipient and calls a function on the recipient's
      * contract.
-     * @param _token The address of the ERC20 in L1 token to deposit.
-     * @param _to The recipient address to receive the token in nil-chain.
-     * @param _amount The amount of tokens to deposit.
-     * @param _data Optional data to forward to the recipient's account.
-     * @param _gasLimit The gas limit required to complete the deposit on nil-chain.
+     * @param token The address of the ERC20 in L1 token to deposit.
+     * @param to The recipient address to receive the token in nil-chain.
+     * @param amount The amount of tokens to deposit.
+     * @param l2FeeRefundRecipient The recipient address to receive the refund of excess fee on nil-chain
+     * @param data Optional data to forward to the recipient's account.
+     * @param gasLimit The gas limit required to complete the deposit on nil-chain.
      */
     function depositERC20AndCall(
-        address _token,
-        address _to,
-        uint256 _amount,
-        bytes memory _data,
-        uint256 _gasLimit
+        address token,
+        address to,
+        uint256 amount,
+        address l2FeeRefundRecipient,
+        bytes memory data,
+        uint256 gasLimit
     )
         external
         payable;

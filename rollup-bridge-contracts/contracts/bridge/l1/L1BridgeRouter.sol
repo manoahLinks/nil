@@ -165,22 +165,18 @@ contract L1BridgeRouter is
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IL1BridgeRouter
-    function depositERC20(address _token, uint256 _amount, uint256 _gasLimit) external payable override {
-        depositERC20AndCall(_token, _msgSender(), _amount, new bytes(0), _gasLimit);
-    }
-
-    /// @inheritdoc IL1BridgeRouter
-    function depositERC20(address _token, address _to, uint256 _amount, uint256 _gasLimit) external payable override {
-        depositERC20AndCall(_token, _to, _amount, new bytes(0), _gasLimit);
+    function depositERC20(address token, address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit) external payable override {
+        depositERC20AndCall(token, to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit);
     }
 
     /// @inheritdoc IL1BridgeRouter
     function depositERC20AndCall(
-        address _token,
-        address _to,
-        uint256 _amount,
-        bytes memory _data,
-        uint256 _gasLimit
+        address token,
+        address to,
+        uint256 amount,
+        address l2FeeRefundRecipient,
+        bytes memory data,
+        uint256 gasLimit
     )
         public
         payable
@@ -193,10 +189,10 @@ contract L1BridgeRouter is
         l1BridgeInContext = l1ERC20Bridge;
 
         // encode msg.sender with _data
-        bytes memory _routerData = abi.encode(_msgSender(), _data);
+        bytes memory routerData = abi.encode(_msgSender(), data);
 
         IL1ERC20Bridge(l1ERC20Bridge).depositERC20AndCall{ value: msg.value }(
-            _token, _to, _amount, _routerData, _gasLimit
+            token, to, amount, l2FeeRefundRecipient, routerData, gasLimit
         );
 
         // leave deposit context

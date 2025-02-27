@@ -51,7 +51,7 @@ Install [the `biome` extension](https://marketplace.visualstudio.com/items?itemN
 To build the app for production:
 
 ```bash
-npm run build
+npm ci && npm run build
 ```
 
 This will create a `dist` directory with the built app.
@@ -68,7 +68,7 @@ npm run dev # initializes the server in development mode which is suitable for r
 or
 
 ```bash
-npm run build
+npm ci && npm run build
 npm run serve # initializes the server in production mode which is suitable for testing the production build
 ```
 

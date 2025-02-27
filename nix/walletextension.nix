@@ -35,11 +35,11 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     patchShebangs wallet-extension/node_modules
 
-    (cd smart-contracts; npm run build)
-    (cd niljs; npm run build)
+    (cd smart-contracts; npm ci && npm run build)
+    (cd niljs; npm ci && npm run build)
 
     cd wallet-extension
-    npm run build
+    npm ci && npm run build
   '';
 
   doCheck = enableTesting;

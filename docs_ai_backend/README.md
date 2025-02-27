@@ -64,7 +64,7 @@ npm run dev
 To create a production build:
 
 ```bash
-npm run build
+npm ci && npm run build
 ```
 
 To start a previously created production build at port `8092`:

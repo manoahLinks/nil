@@ -23,7 +23,7 @@ This NPM package contains the Solidity libraries for interacting with the =nil; 
 To install the package:
 
 ```bash
-npm install @nilfoundation/smart-contracts
+npm ci @nilfoundation/smart-contracts
 ```
 
 ## Contracts

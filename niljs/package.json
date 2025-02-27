@@ -37,7 +37,7 @@
     "lint:fix": "biome check --write .",
     "lint:types": "tsc --noEmit -p tsconfig.json",
     "lint:jsdoc": "eslint .",
-    "pub": "npm run build && npm publish"
+    "pub": "npm ci && npm run build && npm publish"
   },
   "license": "MIT",
   "devDependencies": {

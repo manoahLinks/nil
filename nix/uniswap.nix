@@ -46,8 +46,8 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     patchShebangs node_modules
 
-    (cd smart-contracts; npm run build)
-    (cd niljs; npm run build)
+    (cd smart-contracts; npm ci && npm run build)
+    (cd niljs; npm ci && npm run build)
   '';
 
   doCheck = enableTesting;

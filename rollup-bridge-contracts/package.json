@@ -23,7 +23,7 @@
     "lint:sol:fix": "npm run solhint \"{benchmark,script,src,contracts,tests}/**/*.sol\" --fix --noPrompt",
     "test": "forge test",
     "test:lite": "FOUNDRY_PROFILE=lite forge test",
-    "test:optimized": "npm run build:optimized && FOUNDRY_PROFILE=test-optimized forge test",
+    "test:optimized": "npm ci && npm run build:optimized && FOUNDRY_PROFILE=test-optimized forge test",
     "solhint": "solhint"
   },
   "main": "artifacts/index.cjs.js",

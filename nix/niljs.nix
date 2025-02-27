@@ -33,9 +33,9 @@ stdenv.mkDerivation rec {
   '';
 
   buildPhase = ''
-    (cd smart-contracts; npm run build)
+    (cd smart-contracts; npm ci && npm run build)
     cd niljs
-    npm run build
+    npm ci && npm run build
   '';
 
   doCheck = enableTesting;

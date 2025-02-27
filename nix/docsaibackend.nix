@@ -34,7 +34,7 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     patchShebangs docs_ai_backend/node_modules
 
-    (cd docs_ai_backend; npm run build)
+    (cd docs_ai_backend; npm ci && npm run build)
   '';
 
   checkPhase = ''

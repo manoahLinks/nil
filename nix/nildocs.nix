@@ -64,8 +64,8 @@ stdenv.mkDerivation rec {
     runHook preBuild
     patchShebangs docs/node_modules
     patchShebangs niljs/node_modules
-    (cd smart-contracts; npm ci && npm run build)
-    (cd niljs; npm ci && npm run build)
+    (cd smart-contracts; npm ci && npm ci && npm run build)
+    (cd niljs; npm ci && npm ci && npm run build)
     export NILJS_SRC=${../niljs}
     export OPENRPC_JSON=${nil}/share/doc/nil/openrpc.json
     export CMD_NIL=${../nil/cmd/nil/internal}
@@ -78,7 +78,7 @@ stdenv.mkDerivation rec {
     # needed to work-around the openssl incompatibility
     # not sure why it happens, but it does the job
     export NODE_OPTIONS=--openssl-legacy-provider
-    npm run build
+    npm ci && npm run build
   '';
 
 

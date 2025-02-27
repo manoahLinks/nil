@@ -32,15 +32,15 @@ By default, everything is in **English**. However, we plan to support multiple l
    ```
 3. Build the `smart contracts`:
    ```sh
-   cd smart-contracts && npm run build && cd ..
+   cd smart-contracts && npm ci && npm run build && cd ..
    ```
 4. Build `niljs`:
    ```sh
-   cd niljs && npm run build && cd ..
+   cd niljs && npm ci && npm run build && cd ..
    ```
 5. Build the `wallet extension`:
    ```sh
-   cd wallet-extension && npm run build
+   cd wallet-extension && npm ci && npm run build
    ```
    This generates the production files.
 6. Load the extension in Chrome:

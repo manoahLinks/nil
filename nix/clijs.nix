@@ -52,8 +52,8 @@ stdenv.mkDerivation rec {
 
     patchShebangs docs/node_modules
     patchShebangs niljs/node_modules
-    (cd smart-contracts; npm run build)
-    (cd niljs; npm run build)
+    (cd smart-contracts; npm ci && npm run build)
+    (cd niljs; npm ci && npm run build)
 
     cd clijs
     npm run bundle

@@ -13,10 +13,17 @@ interface IL2ERC20Bridge {
     /// @param l2Token The address of the token in L2.
     /// @param from The address of sender in L1.
     /// @param to The address of recipient in L2.
+    /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
     /// @param amount The amount of token withdrawn from L1 to L2.
     /// @param data The optional calldata passed to recipient in L2.
     event FinalizeDepositERC20(
-        address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data
+        address indexed l1Token,
+        address indexed l2Token,
+        address indexed from,
+        address to,
+        address feeRefundRecipient,
+        uint256 amount,
+        bytes data
     );
 
     /**
@@ -47,6 +54,7 @@ interface IL2ERC20Bridge {
     /// @param l2Token The address of corresponding L2 token.
     /// @param from The address of account who deposits the token in L1.
     /// @param to The address of recipient in L2 to receive the token.
+    /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
     /// @param amount The amount of the token to deposit.
     /// @param data Optional data to forward to recipient's account.
     function finalizeDepositERC20(
@@ -54,6 +62,7 @@ interface IL2ERC20Bridge {
         address l2Token,
         address from,
         address to,
+        address feeRefundRecipient,
         uint256 amount,
         bytes calldata data
     )

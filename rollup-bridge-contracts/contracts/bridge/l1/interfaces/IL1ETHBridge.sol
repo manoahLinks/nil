@@ -25,27 +25,30 @@ interface IL1ETHBridge is IL1Bridge {
     //////////////////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Deposits ETH to the nil-chain.
-     * @param _amount The amount of ETH to deposit.
-     * @param _gasLimit The gas limit required to complete the deposit on nil-chain.
-     */
-    function depositETH(uint256 _amount, uint256 _gasLimit) external payable;
-
-    /**
      * @notice Initiates the ETH to the nil-chain. for a specified recipient.
-     * @param _to The recipient address to receive the token in nil-chain.
-     * @param _amount The amount of ETH to deposit.
-     * @param _gasLimit The gas limit required to complete the deposit on nil-chain..
+     * @param to The recipient address to receive the token in nil-chain.
+     * @param amount The amount of ETH to deposit.
+     * @param l2FeeRefundRecipient The recipient address for excess-fee refund on nil-chain
+     * @param gasLimit The gas limit required to complete the deposit on nil-chain..
      */
-    function depositETH(address _to, uint256 _amount, uint256 _gasLimit) external payable;
+    function depositETH(address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit) external payable;
 
     /**
      * @notice Deposits ETH to the nil-chain for a specified recipient and calls a function on the recipient's
      * contract.
-     * @param _to The recipient address to receive the ETH in nil-chain.
-     * @param _amount The amount of ETH to deposit.
-     * @param _data Optional data to forward to the recipient's account.
-     * @param _gasLimit The gas limit required to complete the deposit on nil-chain.
+     * @param to The recipient address to receive the ETH in nil-chain.
+     * @param amount The amount of ETH to deposit.
+     * @param l2FeeRefundRecipient The recipient address for excess-fee refund on nil-chain
+     * @param data Optional data to forward to the recipient's account.
+     * @param gasLimit The gas limit required to complete the deposit on nil-chain.
      */
-    function depositETHAndCall(address _to, uint256 _amount, bytes memory _data, uint256 _gasLimit) external payable;
+    function depositETHAndCall(
+        address to,
+        uint256 amount,
+        address l2FeeRefundRecipient,
+        bytes memory data,
+        uint256 gasLimit
+    )
+        external
+        payable;
 }

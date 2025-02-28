@@ -8,6 +8,7 @@ import { NilAccessControl } from "../../NilAccessControl.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { IL1ERC20Bridge } from "./interfaces/IL1ERC20Bridge.sol";
+import { IL1ETHBridge } from "./interfaces/IL1ETHBridge.sol";
 import { IL1BridgeRouter } from "./interfaces/IL1BridgeRouter.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 
@@ -40,6 +41,9 @@ contract L1BridgeRouter is
 
     /// @notice The addess of L1ERC20Bridge
     address public l1ERC20Bridge;
+
+    /// @notice The address of L1EthBridge
+    address public override l1ETHBridge;
 
     /// @notice The addess of L1BridgeMessenger
     IL1BridgeMessenger public l1BridgeMessenger;
@@ -75,11 +79,13 @@ contract L1BridgeRouter is
 
     /// @notice Initialize the storage of L1BridgeRouter.
     /// @param _l1ERC20Bridge The address of l1ERC20Bridge contract.
+    /// @param _l1ETHBridge The address of l1ETHBridge contract.
     /// @param _l1BridgeMessenger The address of l1BridgeMessenger contract.
     function initialize(
         address _owner,
         address _defaultAdmin,
         address _l1ERC20Bridge,
+        address _l1ETHBridge,
         address _l1BridgeMessenger
     )
         public
@@ -122,8 +128,10 @@ contract L1BridgeRouter is
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
 
         l1ERC20Bridge = _l1ERC20Bridge;
+        l1ETHBridge = _l1ETHBridge;
         l1BridgeMessenger = IL1BridgeMessenger(_l1BridgeMessenger);
         emit L1ERC20BridgeSet(address(0), _l1ERC20Bridge);
+        emit L1ETHBridgeSet(address(0), _l1ETHBridge);
         emit L1BridgeMessengerSet(address(0), address(_l1BridgeMessenger));
     }
 
@@ -199,6 +207,40 @@ contract L1BridgeRouter is
         l1BridgeInContext = address(0);
     }
 
+    /// @inheritdoc IL1BridgeRouter
+    function depositETH(address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit) external payable override {
+        depositETHAndCall(to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit);
+    }
+
+    /// @inheritdoc IL1BridgeRouter
+    function depositETHAndCall(
+        address to,
+        uint256 amount,
+        address l2FeeRefundRecipient,
+        bytes memory data,
+        uint256 gasLimit
+    )
+        public
+        payable
+        override
+        onlyNotInContext
+    {
+        require(l1ETHBridge != address(0), "l1ETHBridge not initialized");
+
+        // enter deposit context
+        l1BridgeInContext = l1ETHBridge;
+
+        // encode msg.sender with _data
+        bytes memory routerData = abi.encode(_msgSender(), data);
+
+        IL1ETHBridge(l1ETHBridge).depositETHAndCall{ value: msg.value }(
+            to, amount, l2FeeRefundRecipient, routerData, gasLimit
+        );
+
+        // leave deposit context
+        l1BridgeInContext = address(0);
+    }
+
     function cancelDeposit(bytes32 messageHash) external payable {
         // Get the deposit message from the messenger
         IL1BridgeMessenger.DepositType depositType = l1BridgeMessenger.getDepositType(messageHash);
@@ -206,6 +248,8 @@ contract L1BridgeRouter is
         // Route the cancellation request based on the deposit type
         if (depositType == IL1BridgeMessenger.DepositType.ERC20) {
             IL1ERC20Bridge(l1ERC20Bridge).cancelDeposit(messageHash);
+        } else if (depositType == IL1BridgeMessenger.DepositType.ETH) {
+            IL1ETHBridge(l1ERC20Bridge).cancelDeposit(messageHash);
         } else {
             revert("Unknown deposit type");
         }
@@ -221,6 +265,14 @@ contract L1BridgeRouter is
         l1ERC20Bridge = _newERC20Bridge;
 
         emit L1ERC20BridgeSet(_oldERC20Bridge, _newERC20Bridge);
+    }
+
+    /// @inheritdoc IL1BridgeRouter
+    function setL1ETHBridge(address newL1ETHBridge) external onlyOwner {
+        address oldL1ETHBridge = l1ETHBridge;
+        l1ETHBridge = newL1ETHBridge;
+
+        emit L1ETHBridgeSet(oldL1ETHBridge, newL1ETHBridge);
     }
 
   /// @inheritdoc IL1BridgeRouter

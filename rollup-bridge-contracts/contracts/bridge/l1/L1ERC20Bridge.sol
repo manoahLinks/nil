@@ -261,8 +261,9 @@ contract L1ERC20Bridge is
         (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
 
         // Generate message passed to L2ERC20Bridge
-        bytes memory _message =
-            abi.encodeCall(IL2ERC20Bridge.finalizeDepositERC20, (_token, _l2Token, _from, _to, _amount, _data));
+        bytes memory _message = abi.encodeCall(
+            IL2ERC20Bridge.finalizeDepositERC20, (_token, _l2Token, _from, _to, _l2FeeRefundRecipient, _amount, _data)
+        );
 
         // Send message to L1BridgeMessenger.
         IL1BridgeMessenger(messenger).sendMessage{ value: msg.value }(

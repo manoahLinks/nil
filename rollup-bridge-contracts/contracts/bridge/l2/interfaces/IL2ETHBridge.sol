@@ -18,12 +18,14 @@ interface IL2ETHBridge {
     /// @param l2Token The address of ETH Token on L2.
     /// @param from The address of account who deposits the ETH in L1.
     /// @param to The address of recipient in L2 to receive the ETH-Token.
+    /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
     /// @param amount The amount of the ETH to deposit.
     /// @param data Optional data to forward to recipient's account.
     function finalizeETHDeposit(
         address l2Token,
         address from,
         address to,
+        address feeRefundRecipient,
         uint256 amount,
         bytes calldata data
     )

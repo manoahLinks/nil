@@ -13,10 +13,21 @@ import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 import { BaseBridgeMessenger } from "../BaseBridgeMessenger.sol";
 import { Queue } from "../libraries/Queue.sol";
+import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
 
 contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
   using Queue for Queue.QueueData;
   using EnumerableSet for EnumerableSet.AddressSet;
+
+  struct SendMessageParams {
+    DepositType depositType;
+    address messageTarget;
+    uint256 value;
+    bytes message;
+    uint256 gasLimit;
+    address refundAddress;
+    INilGasPriceOracle.FeeCreditData feeCreditData;
+  }
 
   /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
@@ -173,9 +184,20 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
     address messageTarget,
     uint256 value,
     bytes memory message,
-    uint256 gasLimit
+    uint256 gasLimit,
+    INilGasPriceOracle.FeeCreditData memory feeCreditData
   ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
-    _sendMessage(depositType, messageTarget, value, message, gasLimit, _msgSender());
+    _sendMessage(
+      SendMessageParams({
+        depositType: depositType,
+        messageTarget: messageTarget,
+        value: value,
+        message: message,
+        gasLimit: gasLimit,
+        refundAddress: _msgSender(),
+        feeCreditData: feeCreditData
+      })
+    );
   }
 
   /// @inheritdoc IL1BridgeMessenger
@@ -185,9 +207,20 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
     uint256 value,
     bytes calldata message,
     uint256 gasLimit,
-    address refundAddress
+    address refundAddress,
+    INilGasPriceOracle.FeeCreditData memory feeCreditData
   ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
-    _sendMessage(depositType, messageTarget, value, message, gasLimit, refundAddress);
+    _sendMessage(
+      SendMessageParams({
+        depositType: depositType,
+        messageTarget: messageTarget,
+        value: value,
+        message: message,
+        gasLimit: gasLimit,
+        refundAddress: refundAddress,
+        feeCreditData: feeCreditData
+      })
+    );
   }
 
   /// @inheritdoc IL1BridgeMessenger
@@ -248,64 +281,47 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
                              INTERNAL FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  function _sendMessage(
-    DepositType _depositType,
-    address _messageTarget,
-    uint256 _value,
-    bytes memory _message,
-    uint256 _gasLimit,
-    address _refundAddress
-  ) internal nonReentrant {
-    // compute and deduct the messaging fee to fee vault.
-    // uint256 _fee = l1FeesManager.estimateL2MessageFee(_gasLimit);
-    // require(msg.value >= _fee + _value, "Insufficient msg.value");
-    // if (_fee > 0) {
-    //   (bool _success, ) = feeVault.call{ value: _fee }("");
-    //   require(_success, "Failed to deduct the fee");
-    // }
+  function _sendMessage(SendMessageParams memory params) internal nonReentrant {
+    DepositMessage memory depositMessage = _createDepositMessage(params);
+    bytes32 messageHash = computeMessageHash(_msgSender(), params.messageTarget, params.value, depositMessage.nonce, params.message);
 
-    DepositMessage memory depositMessage = DepositMessage({
-      sender: _msgSender(),
-      target: _messageTarget,
-      value: _value,
-      nonce: depositNonce,
-      gasLimit: _gasLimit,
-      expiryTime: block.timestamp + maxProcessingTime,
-      isCancelled: false,
-      refundAddress: _refundAddress,
-      depositType: _depositType,
-      message: _message
-    });
-
-    bytes32 messageHash = computeMessageHash(_msgSender(), _messageTarget, _value, depositNonce, _message);
-
-    if (depositMessages[messageHash].expiryTime > 0) {
-      revert DepositMessageAlreadyExist(messageHash);
-    }
-
+    require(depositMessages[messageHash].expiryTime == 0, "DepositMessageAlreadyExist");
     depositMessages[messageHash] = depositMessage;
-
     messageQueue.pushBack(messageHash);
 
     emit MessageSent(
       _msgSender(),
-      _messageTarget,
-      _value,
+      params.messageTarget,
+      params.value,
       depositMessage.nonce,
       depositMessage.gasLimit,
-      _message,
+      params.message,
       messageHash,
-      _depositType,
-      _refundAddress,
-      depositMessage.expiryTime
+      params.depositType,
+      params.refundAddress,
+      block.timestamp,
+      params.feeCreditData
     );
-
-    depositNonce++;
   }
 
-  function supportsInterface(
-    bytes4 interfaceId
-  ) public view override(AccessControlEnumerableUpgradeable, IERC165) returns (bool) {
+  function _createDepositMessage(SendMessageParams memory params) internal returns (DepositMessage memory) {
+    return
+      DepositMessage({
+        sender: _msgSender(),
+        target: params.messageTarget,
+        value: params.value,
+        nonce: depositNonce++,
+        gasLimit: params.gasLimit,
+        expiryTime: block.timestamp + maxProcessingTime,
+        isCancelled: false,
+        refundAddress: params.refundAddress,
+        depositType: params.depositType,
+        message: params.message,
+        feeCreditData: params.feeCreditData
+      });
+  }
+
+  function supportsInterface(bytes4 interfaceId) public view override(AccessControlEnumerableUpgradeable, IERC165) returns (bool) {
     return interfaceId == type(IL1Bridge).interfaceId || interfaceId == type(IERC165).interfaceId;
   }
 }

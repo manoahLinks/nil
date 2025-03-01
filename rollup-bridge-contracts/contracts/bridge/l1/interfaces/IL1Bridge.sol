@@ -13,6 +13,12 @@ interface IL1Bridge is IBridge {
 
     function cancelDeposit(bytes32 messageHash) external payable;
 
+    function setRouter(address _router) external;
+
+    function setMessenger(address _messenger) external;
+
+    function setNilGasPriceOracle(address _nilGasPriceOracle) external;
+
     /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC CONSTANT FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
@@ -26,4 +32,7 @@ interface IL1Bridge is IBridge {
 
     /// @notice The address of corresponding L1NilMessenger/L2NilMessenger contract.
     function messenger() external view returns (address);
+
+    /// @notice The address of the nilGasPriceOracle contract which contains the maxFeePerGas and maxPriorityFeePerGas
+    function nilGasPriceOracle() external view returns (address);
 }

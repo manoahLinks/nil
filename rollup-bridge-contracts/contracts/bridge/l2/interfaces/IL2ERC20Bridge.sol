@@ -38,7 +38,7 @@ interface IL2ERC20Bridge {
 
     /// @notice Return the corresponding l2 token address given l1 token address.
     /// @param l1Token The address of l1 token.
-    function getL2ERC20Address(address l1Token) external view returns (address);
+    function getL2TokenAddress(address l1Token) external view returns (address);
 
     /**
      *

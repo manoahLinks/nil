@@ -114,27 +114,10 @@ abstract contract BaseBridgeMessenger is
     // make sure only owner can send ether to messenger to avoid possible user fund loss.
     receive() external payable onlyOwner { }
 
-    /**
-     *
-     * Restricted Functions *
-     *
-     */
+    /*//////////////////////////////////////////////////////////////////////////
+                           PUBLIC CONSTANT FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Update fee vault contract.
-    /// @dev This function can only called by contract owner.
-    /// @param _newFeeVault The address of new fee vault contract.
-    function updateFeeVault(address _newFeeVault) external onlyOwner {
-        address _oldFeeVault = feeVault;
-
-        feeVault = _newFeeVault;
-        emit UpdateFeeVault(_oldFeeVault, _newFeeVault);
-    }
-
-    /**
-     *
-     * Internal Functions *
-     *
-     */
     function computeMessageHash(
         address _sender,
         address _target,
@@ -150,8 +133,18 @@ abstract contract BaseBridgeMessenger is
     }
 
     /*//////////////////////////////////////////////////////////////////////////
-                             RESTRICTED FUNCTIONS   
+                           RESTRICTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
+
+    /// @notice Update fee vault contract.
+    /// @dev This function can only called by contract owner.
+    /// @param _newFeeVault The address of new fee vault contract.
+    function updateFeeVault(address _newFeeVault) external onlyOwner {
+        address _oldFeeVault = feeVault;
+
+        feeVault = _newFeeVault;
+        emit UpdateFeeVault(_oldFeeVault, _newFeeVault);
+    }
 
     /// @inheritdoc IBridgeMessenger
     function setPause(bool _status) external onlyOwner {

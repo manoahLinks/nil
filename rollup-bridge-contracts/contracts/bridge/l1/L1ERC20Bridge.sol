@@ -14,6 +14,7 @@ import { IL1BridgeRouter } from "./interfaces/IL1BridgeRouter.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
+import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
 
 /// @title L1ERC20Bridge
 /// @notice The `L1ERC20Bridge` contract for ERC20Bridging in L1.
@@ -36,6 +37,10 @@ contract L1ERC20Bridge is
     /// @dev Invalid default admin address.
     error ErrorInvalidDefaultAdmin();
 
+    error ErrorInsufficientValueForFeeCredit();
+
+    error ErrorInvalidL2Token();
+
     /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
@@ -48,6 +53,9 @@ contract L1ERC20Bridge is
 
     /// @inheritdoc IL1Bridge
     address public override messenger;
+
+    /// @inheritdoc IL1Bridge
+    address public override nilGasPriceOracle;
 
     /// @notice Mapping from l1 token address to l2 token address for ERC20 token.
     mapping(address => address) public tokenMapping;
@@ -72,7 +80,8 @@ contract L1ERC20Bridge is
         address _owner,
         address _defaultAdmin,
         address _counterPartyERC20Bridge,
-        address _messenger
+        address _messenger,
+        address _nilGasPriceOracle
     )
         external
         initializer
@@ -115,10 +124,19 @@ contract L1ERC20Bridge is
 
         counterpartyBridge = _counterPartyERC20Bridge;
         messenger = _messenger;
+        nilGasPriceOracle = _nilGasPriceOracle;
     }
 
-    function setRouter(address _router) external onlyOwner {
+    function setRouter(address _router) external override onlyOwner {
         router = _router;
+    }
+
+    function setMessenger(address _messenger) external override onlyOwner {
+        messenger = _messenger;
+    }
+
+    function setNilGasPriceOracle(address _nilGasPriceOracle) external override onlyOwner {
+        nilGasPriceOracle = _nilGasPriceOracle;
     }
 
     modifier onlyRouter() {
@@ -136,13 +154,17 @@ contract L1ERC20Bridge is
         address to,
         uint256 amount,
         address l2FeeRefundRecipient,
-        uint256 gasLimit
+        uint256 gasLimit,
+        uint256 userFeePerGas,
+        uint256 userMaxPriorityFeePerGas
     )
         external
         payable
         override
     {
-        _deposit(token, to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit);
+        _deposit(
+            token, to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit, userFeePerGas, userMaxPriorityFeePerGas
+        );
     }
 
     /// @inheritdoc IL1ERC20Bridge
@@ -152,17 +174,19 @@ contract L1ERC20Bridge is
         uint256 amount,
         address l2FeeRefundRecipient,
         bytes memory data,
-        uint256 gasLimit
+        uint256 gasLimit,
+        uint256 userFeePerGas,
+        uint256 userMaxPriorityFeePerGas
     )
         external
         payable
         override
     {
-        _deposit(token, to, amount, l2FeeRefundRecipient, data, gasLimit);
+        _deposit(token, to, amount, l2FeeRefundRecipient, data, gasLimit, userFeePerGas, userMaxPriorityFeePerGas);
     }
 
     /// @inheritdoc IL1ERC20Bridge
-    function getL2ERC20Address(address _l1TokenAddress) external view override returns (address) {
+    function getL2TokenAddress(address _l1TokenAddress) external view override returns (address) {
         return tokenMapping[_l1TokenAddress];
     }
 
@@ -237,13 +261,18 @@ contract L1ERC20Bridge is
     /// @param _data Optional data to forward to recipient's account.
     /// @param _l2FeeRefundRecipient the address of recipient for excess fee refund on L2.
     /// @param _gasLimit Gas limit required to complete the deposit on L2.
+    /// @param _userMaxFeePerGas The maximum Fee per gas unit that the user is willing to pay.
+    /// @param _userMaxPriorityFeePerGas The maximum priority fee per gas unit that the user is willing to pay.
+
     function _deposit(
         address _token,
         address _to,
         uint256 _amount,
         address _l2FeeRefundRecipient,
         bytes memory _data,
-        uint256 _gasLimit
+        uint256 _gasLimit,
+        uint256 _userMaxFeePerGas,
+        uint256 _userMaxPriorityFeePerGas
     )
         internal
         virtual
@@ -254,11 +283,20 @@ contract L1ERC20Bridge is
         //TODO compute l2TokenAddress
         // update the mapping
 
-        require(_l2Token != address(0), "no corresponding l2 token");
+        if (_l2Token == address(0)) {
+            revert ErrorInvalidL2Token();
+        }
 
         // Transfer token into Bridge contract
-        address _from;
-        (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
+        (address _from,,) = _transferERC20In(_token, _amount, _data);
+
+        INilGasPriceOracle.FeeCreditData memory feeCreditData = INilGasPriceOracle(nilGasPriceOracle).computeFeeCredit(
+            _gasLimit, _userMaxFeePerGas, _userMaxPriorityFeePerGas
+        );
+
+        if (msg.value < feeCreditData.feeCredit) {
+            revert ErrorInsufficientValueForFeeCredit();
+        }
 
         // Generate message passed to L2ERC20Bridge
         bytes memory _message = abi.encodeCall(
@@ -267,7 +305,7 @@ contract L1ERC20Bridge is
 
         // Send message to L1BridgeMessenger.
         IL1BridgeMessenger(messenger).sendMessage{ value: msg.value }(
-            IL1BridgeMessenger.DepositType.ERC20, counterpartyBridge, 0, _message, _gasLimit, _from
+            IL1BridgeMessenger.DepositType.ERC20, counterpartyBridge, 0, _message, _gasLimit, _from, feeCreditData
         );
 
         emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);

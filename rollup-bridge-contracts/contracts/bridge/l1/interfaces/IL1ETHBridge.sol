@@ -31,7 +31,16 @@ interface IL1ETHBridge is IL1Bridge {
      * @param l2FeeRefundRecipient The recipient address for excess-fee refund on nil-chain
      * @param gasLimit The gas limit required to complete the deposit on nil-chain..
      */
-    function depositETH(address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit) external payable;
+    function depositETH(
+        address to,
+        uint256 amount,
+        address l2FeeRefundRecipient,
+        uint256 gasLimit,
+        uint256 userFeePerGas,
+        uint256 userMaxFeePerGas
+    )
+        external
+        payable;
 
     /**
      * @notice Deposits ETH to the nil-chain for a specified recipient and calls a function on the recipient's
@@ -47,7 +56,9 @@ interface IL1ETHBridge is IL1Bridge {
         uint256 amount,
         address l2FeeRefundRecipient,
         bytes memory data,
-        uint256 gasLimit
+        uint256 gasLimit,
+        uint256 userFeePerGas,
+        uint256 userMaxFeePerGas
     )
         external
         payable;

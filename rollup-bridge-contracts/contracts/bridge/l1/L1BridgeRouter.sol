@@ -40,10 +40,19 @@ contract L1BridgeRouter is
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @notice The addess of L1ERC20Bridge
-    address public l1ERC20Bridge;
+    address public override l1ERC20Bridge;
 
     /// @notice The address of L1EthBridge
     address public override l1ETHBridge;
+
+    /// @notice The address of L1WETHBridge
+    address public override l1WETHBridge;
+
+    /// @notice The address of the L1WETH contract.
+    address public override l1WETHAddress;
+
+    /// @notice The address of the L2WETH token.
+    address public override l2WETHTokenAddress;
 
     /// @notice The addess of L1BridgeMessenger
     IL1BridgeMessenger public l1BridgeMessenger;
@@ -86,7 +95,9 @@ contract L1BridgeRouter is
         address _defaultAdmin,
         address _l1ERC20Bridge,
         address _l1ETHBridge,
-        address _l1BridgeMessenger
+        address _l1BridgeMessenger,
+        address _l1WETHAddress,
+        address _l2WETHTokenAddress
     )
         public
         initializer
@@ -130,6 +141,8 @@ contract L1BridgeRouter is
         l1ERC20Bridge = _l1ERC20Bridge;
         l1ETHBridge = _l1ETHBridge;
         l1BridgeMessenger = IL1BridgeMessenger(_l1BridgeMessenger);
+        l1WETHAddress = _l1WETHAddress;
+        l2WETHTokenAddress = _l2WETHTokenAddress;
         emit L1ERC20BridgeSet(address(0), _l1ERC20Bridge);
         emit L1ETHBridgeSet(address(0), _l1ETHBridge);
         emit L1BridgeMessengerSet(address(0), address(_l1BridgeMessenger));
@@ -140,18 +153,8 @@ contract L1BridgeRouter is
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IL1BridgeRouter
-    function getL2ERC20Address(address _l1TokenAddress) external view override returns (address) {
-        address _erc20bridgeAddress = getERC20Bridge(_l1TokenAddress);
-        if (_erc20bridgeAddress == address(0)) {
-            return address(0);
-        }
-
-        return IL1ERC20Bridge(_erc20bridgeAddress).getL2ERC20Address(_l1TokenAddress);
-    }
-
-    /// @inheritdoc IL1BridgeRouter
-    function getERC20Bridge(address _token) public view returns (address) {
-        return l1ERC20Bridge;
+    function getL2TokenAddress(address _l1TokenAddress) external view override returns (address) {
+        return IL1ERC20Bridge(l1ERC20Bridge).getL2TokenAddress(_l1TokenAddress);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -173,8 +176,8 @@ contract L1BridgeRouter is
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IL1BridgeRouter
-    function depositERC20(address token, address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit) external payable override {
-        depositERC20AndCall(token, to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit);
+    function depositERC20(address token, address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit, uint256 userFeePerGas, uint256 userMaxPriorityFeePerGas) external payable override {
+        depositERC20AndCall(token, to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit, userFeePerGas, userMaxPriorityFeePerGas);
     }
 
     /// @inheritdoc IL1BridgeRouter
@@ -184,7 +187,9 @@ contract L1BridgeRouter is
         uint256 amount,
         address l2FeeRefundRecipient,
         bytes memory data,
-        uint256 gasLimit
+        uint256 gasLimit,
+        uint256 userFeePerGas, // User-defined optional maxFeePerGas
+        uint256 userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
     )
         public
         payable
@@ -200,7 +205,7 @@ contract L1BridgeRouter is
         bytes memory routerData = abi.encode(_msgSender(), data);
 
         IL1ERC20Bridge(l1ERC20Bridge).depositERC20AndCall{ value: msg.value }(
-            token, to, amount, l2FeeRefundRecipient, routerData, gasLimit
+            token, to, amount, l2FeeRefundRecipient, routerData, gasLimit, userFeePerGas, userMaxPriorityFeePerGas
         );
 
         // leave deposit context
@@ -208,8 +213,8 @@ contract L1BridgeRouter is
     }
 
     /// @inheritdoc IL1BridgeRouter
-    function depositETH(address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit) external payable override {
-        depositETHAndCall(to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit);
+    function depositETH(address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit, uint256 userFeePerGas, uint256 userMaxFeePerGas) external payable override {
+        depositETHAndCall(to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit, userFeePerGas, userMaxFeePerGas);
     }
 
     /// @inheritdoc IL1BridgeRouter
@@ -218,7 +223,9 @@ contract L1BridgeRouter is
         uint256 amount,
         address l2FeeRefundRecipient,
         bytes memory data,
-        uint256 gasLimit
+        uint256 gasLimit,
+        uint256 userFeePerGas, // User-defined optional maxFeePerGas
+        uint256 userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
     )
         public
         payable
@@ -234,7 +241,7 @@ contract L1BridgeRouter is
         bytes memory routerData = abi.encode(_msgSender(), data);
 
         IL1ETHBridge(l1ETHBridge).depositETHAndCall{ value: msg.value }(
-            to, amount, l2FeeRefundRecipient, routerData, gasLimit
+            to, amount, l2FeeRefundRecipient, routerData, gasLimit, userFeePerGas, userMaxPriorityFeePerGas
         );
 
         // leave deposit context

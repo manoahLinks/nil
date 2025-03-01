@@ -33,7 +33,7 @@ interface IL1ERC20Bridge is IL1Bridge {
                              PUBLIC CONSTANT FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
-    function getL2ERC20Address(address l1TokenAddress) external view returns (address);
+    function getL2TokenAddress(address l1TokenAddress) external view returns (address);
 
     /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATING FUNCTIONS   
@@ -52,7 +52,9 @@ interface IL1ERC20Bridge is IL1Bridge {
         address to,
         uint256 amount,
         address l2FeeRefundRecipient,
-        uint256 gasLimit
+        uint256 gasLimit,
+        uint256 userFeePerGas,
+        uint256 userMaxFeePerGas
     )
         external
         payable;
@@ -73,7 +75,9 @@ interface IL1ERC20Bridge is IL1Bridge {
         uint256 amount,
         address l2FeeRefundRecipient,
         bytes memory data,
-        uint256 gasLimit
+        uint256 gasLimit,
+        uint256 userFeePerGas,
+        uint256 userMaxFeePerGas
     )
         external
         payable;

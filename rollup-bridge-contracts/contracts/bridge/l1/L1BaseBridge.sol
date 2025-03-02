@@ -6,7 +6,9 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
+import { IL2Bridge } from "../l2/interfaces/IL2Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
+import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 
 abstract contract L1BaseBridge is
@@ -91,13 +93,15 @@ abstract contract L1BaseBridge is
       revert ErrorInvalidDefaultAdmin();
     }
 
-    // TODO - check if _counterPartyBridge implements IERC165, IBridge interface
-    if (_counterPartyBridge == address(0)) {
+    // TODO - check if _counterPartyBridge implements IL2Bridge interface
+    if (
+      _counterPartyBridge == address(0) || !IERC165(_counterPartyBridge).supportsInterface(type(IL2Bridge).interfaceId)
+    ) {
       revert ErrorInvalidCounterpartyBridge();
     }
 
-    // TODO - check if counterpartyMessener implements IERC165, IBridgeMessenger interface
-    if (_messenger == address(0)) {
+    // Check if the messenger contract implements IL1BridgeMessenger
+    if (_messenger == address(0) || !IERC165(_messenger).supportsInterface(type(IL1BridgeMessenger).interfaceId)) {
       revert ErrorInvalidMessenger();
     }
 
@@ -174,7 +178,7 @@ abstract contract L1BaseBridge is
   }
 
   /// @inheritdoc IERC165
-  function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
-    return interfaceId == type(IL1Bridge).interfaceId || interfaceId == type(IERC165).interfaceId;
+  function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+    return interfaceId == type(IL1Bridge).interfaceId;
   }
 }

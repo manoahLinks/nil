@@ -72,8 +72,7 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
     address _l1NilRollup,
     uint256 _maxProcessingTime,
     uint256 _cancelTimeDelta,
-    address _counterpartMessenger,
-    address _feeVault
+    address _counterpartMessenger
   ) public initializer {
     // Validate input parameters
     if (_owner == address(0)) {
@@ -84,7 +83,7 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
       revert ErrorInvalidDefaultAdmin();
     }
 
-    BaseBridgeMessenger.__BaseBridgeMessenger_init(_owner, _defaultAdmin, _feeVault, _counterpartMessenger);
+    BaseBridgeMessenger.__BaseBridgeMessenger_init(_owner, _defaultAdmin, _counterpartMessenger);
 
     depositNonce = 0;
 

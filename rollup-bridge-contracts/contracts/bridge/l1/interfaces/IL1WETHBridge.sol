@@ -8,38 +8,11 @@ interface IL1WETHBridge is IL1Bridge {
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @dev Invalid owner address.
-  error ErrorInvalidOwner();
-
-  /// @dev Invalid default admin address.
-  error ErrorInvalidDefaultAdmin();
-
-  /// @dev Insufficient value for fee credit.
-  error ErrorInsufficientValueForFeeCredit();
-
-  /// @dev Empty deposit.
-  error ErrorEmptyDeposit();
-
   /// @dev Invalid WETH token address.
   error ErrorInvalidWethToken();
 
   /// @dev Invalid nil-chain WETH token address.
   error ErrorInvalidNilWethToken();
-
-  /// @dev Invalid counterparty WETH bridge address.
-  error ErrorInvalidCounterpartyWethBridge();
-
-  /// @dev Invalid messenger address.
-  error ErrorInvalidMessenger();
-
-  /// @dev Invalid nil gas price oracle address.
-  error ErrorInvalidNilGasPriceOracle();
-
-  error ErrorInvalidL2DepositRecipient();
-
-  error ErrorInvalidL2FeeRefundRecipient();
-
-  error ErrorInvalidNilGasLimit();
 
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
@@ -52,7 +25,14 @@ interface IL1WETHBridge is IL1Bridge {
   /// @param to The address of recipient in nil-chain.
   /// @param amount The amount of token will be deposited from layer-1 to nil-chain.
   /// @param data The optional calldata passed to recipient in nil-chain.
-  event DepositWETH(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data);
+  event DepositWETH(
+    address indexed l1Token,
+    address indexed l2Token,
+    address indexed from,
+    address to,
+    uint256 amount,
+    bytes data
+  );
 
   /**
    * @notice Emitted when a deposit is cancelled.
@@ -61,7 +41,12 @@ interface IL1WETHBridge is IL1Bridge {
    * @param cancelledDepositRecipient The address of the recipient whose deposit was cancelled.
    * @param amount The amount of tokens that were to be deposited.
    */
-  event DepositCancelled(bytes32 indexed messageHash, address indexed l1Token, address indexed cancelledDepositRecipient, uint256 amount);
+  event DepositCancelled(
+    bytes32 indexed messageHash,
+    address indexed l1Token,
+    address indexed cancelledDepositRecipient,
+    uint256 amount
+  );
 
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC CONSTANT FUNCTIONS   

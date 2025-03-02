@@ -4,15 +4,17 @@ pragma solidity 0.8.28;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import { IBridgeMessenger } from "./interfaces/IBridgeMessenger.sol";
-import { NilAccessControl } from "../NilAccessControl.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
+import { IBridge } from "../interfaces/IBridge.sol";
+import { NilAccessControl } from "../../NilAccessControl.sol";
 
-abstract contract BaseBridgeMessenger is
+abstract contract L1BaseBridge is
   OwnableUpgradeable,
   PausableUpgradeable,
   NilAccessControl,
   ReentrancyGuardUpgradeable,
-  IBridgeMessenger
+  IL1Bridge
 {
   /*//////////////////////////////////////////////////////////////////////////
                              ERRORS   
@@ -24,14 +26,42 @@ abstract contract BaseBridgeMessenger is
   /// @dev Invalid default admin address.
   error ErrorInvalidDefaultAdmin();
 
-  error NotEnoughMessagesInQueue();
+  /// @dev Invalid counterparty WETH bridge address.
+  error ErrorInvalidCounterpartyBridge();
+
+  /// @dev Invalid messenger address.
+  error ErrorInvalidMessenger();
+
+  /// @dev Invalid nil gas price oracle address.
+  error ErrorInvalidNilGasPriceOracle();
+
+  error ErrorInvalidL2DepositRecipient();
+
+  error ErrorInvalidL2FeeRefundRecipient();
+
+  error ErrorInvalidNilGasLimit();
+
+  /// @dev Insufficient value for fee credit.
+  error ErrorInsufficientValueForFeeCredit();
+
+  /// @dev Empty deposit.
+  error ErrorEmptyDeposit();
 
   /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @notice The address of counterpart BridgeMessenger contract in L1/NilChain.
-  address public counterpartMessenger;
+  /// @inheritdoc IL1Bridge
+  address public override router;
+
+  /// @inheritdoc IL1Bridge
+  address public override counterpartyBridge;
+
+  /// @inheritdoc IL1Bridge
+  address public override messenger;
+
+  /// @inheritdoc IL1Bridge
+  address public override nilGasPriceOracle;
 
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
@@ -45,10 +75,12 @@ abstract contract BaseBridgeMessenger is
                              INITIALISER  
     //////////////////////////////////////////////////////////////////////////*/
 
-  function __BaseBridgeMessenger_init(
+  function __L1BaseBridge_init(
     address _owner,
     address _defaultAdmin,
-    address _counterpartMessenger
+    address _counterPartyBridge,
+    address _messenger,
+    address _nilGasPriceOracle
   ) internal onlyInitializing {
     // Validate input parameters
     if (_owner == address(0)) {
@@ -59,7 +91,17 @@ abstract contract BaseBridgeMessenger is
       revert ErrorInvalidDefaultAdmin();
     }
 
-    counterpartMessenger = _counterpartMessenger;
+    if (_counterPartyBridge == address(0)) {
+      revert ErrorInvalidCounterpartyBridge();
+    }
+
+    if (_messenger == address(0)) {
+      revert ErrorInvalidMessenger();
+    }
+
+    if (_nilGasPriceOracle == address(0)) {
+      revert ErrorInvalidNilGasPriceOracle();
+    }
 
     // Initialize the Ownable contract with the owner address
     OwnableUpgradeable.__Ownable_init(_owner);
@@ -87,30 +129,32 @@ abstract contract BaseBridgeMessenger is
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
 
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+
+    counterpartyBridge = _counterPartyBridge;
+    messenger = _messenger;
+    nilGasPriceOracle = _nilGasPriceOracle;
   }
 
-  // make sure only owner can send ether to messenger to avoid possible user fund loss.
-  receive() external payable onlyOwner {}
+  /// @inheritdoc IL1Bridge
+  function setRouter(address _router) external override onlyOwner {
+    router = _router;
+  }
 
-  /*//////////////////////////////////////////////////////////////////////////
-                           PUBLIC CONSTANT FUNCTIONS
-    //////////////////////////////////////////////////////////////////////////*/
+  /// @inheritdoc IL1Bridge
+  function setMessenger(address _messenger) external override onlyOwner {
+    messenger = _messenger;
+  }
 
-  function computeMessageHash(
-    address _sender,
-    address _target,
-    uint256 _value,
-    uint256 _messageNonce,
-    bytes memory _message
-  ) public pure returns (bytes32) {
-    return keccak256(_encodeCrossChainCalldata(_sender, _target, _value, _messageNonce, _message));
+  /// @inheritdoc IL1Bridge
+  function setNilGasPriceOracle(address _nilGasPriceOracle) external override onlyAdmin {
+    nilGasPriceOracle = _nilGasPriceOracle;
   }
 
   /*//////////////////////////////////////////////////////////////////////////
-                           RESTRICTED FUNCTIONS
+                             RESTRICTED FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc IBridgeMessenger
+  /// @inheritdoc IBridge
   function setPause(bool _status) external onlyOwner {
     if (_status) {
       _pause();
@@ -119,42 +163,15 @@ abstract contract BaseBridgeMessenger is
     }
   }
 
-  /// @inheritdoc IBridgeMessenger
+  /// @inheritdoc IBridge
   function transferOwnershipRole(address newOwner) external override onlyOwner {
     _revokeRole(OWNER_ROLE, owner());
     super.transferOwnership(newOwner);
     _grantRole(OWNER_ROLE, newOwner);
   }
 
-  /// @dev Internal function to generate the crosschain calldata for a message.
-  /// @param _sender Message sender address.
-  /// @param _target Target contract address.
-  /// @param _value The amount of ETH pass to the target.
-  /// @param _messageNonce Nonce for the provided message.
-  /// @param _message Message to send to the target.
-  /// @return ABI encoded cross domain calldata.
-  function _encodeCrossChainCalldata(
-    address _sender,
-    address _target,
-    uint256 _value,
-    uint256 _messageNonce,
-    bytes memory _message
-  ) internal pure returns (bytes memory) {
-    return
-      abi.encodeWithSignature(
-        "relayMessage(address,address,uint256,uint256,bytes)",
-        _sender,
-        _target,
-        _value,
-        _messageNonce,
-        _message
-      );
-  }
-
-  /// @dev Internal function to check whether the `_target` address is allowed to avoid attack.
-  /// @param _target The address of target address to check.
-  function _validateTargetAddress(address _target) internal view {
-    // @note check more `_target` address to avoid attack in the future when we add more external contracts.
-    require(_target != address(this), "Forbid to call self");
+  /// @inheritdoc IERC165
+  function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
+    return interfaceId == type(IL1Bridge).interfaceId || interfaceId == type(IERC165).interfaceId;
   }
 }

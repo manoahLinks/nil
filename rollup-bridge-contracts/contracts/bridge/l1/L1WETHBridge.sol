@@ -8,22 +8,22 @@ import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
-import { IL1ERC20Bridge } from "./interfaces/IL1ERC20Bridge.sol";
-import { IL2ERC20Bridge } from "../l2/interfaces/IL2ERC20Bridge.sol";
+import { IL1WETHBridge } from "./interfaces/IL1WETHBridge.sol";
+import { IL2WETHBridge } from "../l2/interfaces/IL2WETHBridge.sol";
 import { IL1BridgeRouter } from "./interfaces/IL1BridgeRouter.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
 
-/// @title L1ERC20Bridge
-/// @notice The `L1ERC20Bridge` contract for ERC20Bridging in L1.
-contract L1ERC20Bridge is
+/// @title L1WETHBridge
+/// @notice The `L1WETHBridge` contract for WETHBridging in L1.
+contract L1WETHBridge is
     OwnableUpgradeable,
     PausableUpgradeable,
     NilAccessControl,
     ReentrancyGuardUpgradeable,
-    IL1ERC20Bridge
+    IL1WETHBridge
 {
     using SafeTransferLib for ERC20;
 
@@ -43,10 +43,11 @@ contract L1ERC20Bridge is
     /// @inheritdoc IL1Bridge
     address public override nilGasPriceOracle;
 
+    /// @inheritdoc IL1WETHBridge
     address public override wethToken;
 
-    /// @notice Mapping from l1 token address to l2 token address for ERC20 token.
-    mapping(address => address) public tokenMapping;
+    /// @inheritdoc IL1WETHBridge
+    address public override nilWethToken;
 
     /// @dev The storage slots for future usage.
     uint256[50] private __gap;
@@ -55,20 +56,21 @@ contract L1ERC20Bridge is
                              CONSTRUCTOR   
     //////////////////////////////////////////////////////////////////////////*/
 
-    /// @notice Constructor for `L1ERC20Bridge` implementation contract.
+    /// @notice Constructor for `L1WETHBridge` implementation contract.
     constructor() {
         _disableInitializers();
     }
 
-    /// @notice Initialize the storage of L1ERC20Bridge.
-    /// @param _owner The owner of L1ERC20Bridge in layer-1.
-    /// @param _counterPartyERC20Bridge The address of ERC20Bridge on nil-chain
-    /// @param _messenger The address of NilMessenger in layer-1.
+    /// @notice Initialize the storage of L1WETHBridge.
+    /// @param _owner The owner of L1WETHBridge
+    /// @param _counterPartyWETHBridge The address of WETHBridge on nil-chain
+    /// @param _messenger The address of BridgeMessenger in layer-1.
     function initialize(
         address _owner,
         address _defaultAdmin,
         address _wethToken,
-        address _counterPartyERC20Bridge,
+        address _nilWethToken,
+        address _counterPartyWETHBridge,
         address _messenger,
         address _nilGasPriceOracle
     )
@@ -88,8 +90,12 @@ contract L1ERC20Bridge is
             revert ErrorInvalidWethToken();
         }
 
-        if (_counterPartyERC20Bridge == address(0)) {
-            revert ErrorInvalidCounterpartyERC20Bridge();
+        if (_nilWethToken == address(0)) {
+            revert ErrorInvalidNilWethToken();
+        }
+
+        if (_counterPartyWETHBridge == address(0)) {
+            revert ErrorInvalidCounterpartyWethBridge();
         }
 
         if (_messenger == address(0)) {
@@ -128,7 +134,8 @@ contract L1ERC20Bridge is
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
 
         wethToken = _wethToken;
-        counterpartyBridge = _counterPartyERC20Bridge;
+        nilWethToken = _nilWethToken;
+        counterpartyBridge = _counterPartyWETHBridge;
         messenger = _messenger;
         nilGasPriceOracle = _nilGasPriceOracle;
     }
@@ -144,70 +151,98 @@ contract L1ERC20Bridge is
     }
 
     /// @inheritdoc IL1Bridge
-    function setNilGasPriceOracle(address _nilGasPriceOracle) external override onlyOwner {
+    function setNilGasPriceOracle(address _nilGasPriceOracle) external override onlyAdmin {
         nilGasPriceOracle = _nilGasPriceOracle;
+    }
+
+    /// @inheritdoc IL1WETHBridge
+    function setNilWethToken(address _nilWethToken) external override onlyAdmin {
+        nilWethToken = _nilWethToken;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATING FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IL1ERC20Bridge
-    function depositERC20(
-        address token,
+    /// @inheritdoc IL1WETHBridge
+    function depositWETH(
         address l2DepositRecipient,
         uint256 depositAmount,
         address l2FeeRefundRecipient,
-        uint256 l2GasLimit,
-        uint256 userFeePerGas,
+        uint256 nilGasLimit,
+        uint256 userMaxFeePerGas,
         uint256 userMaxPriorityFeePerGas
     )
         external
         payable
         override
     {
+        if (l2DepositRecipient == address(0)) {
+            revert ErrorInvalidL2DepositRecipient();
+        }
+
+        if (depositAmount == 0) {
+            revert ErrorEmptyDeposit();
+        }
+
+        if (l2FeeRefundRecipient == address(0)) {
+            revert ErrorInvalidL2FeeRefundRecipient();
+        }
+
+        if (nilGasLimit == 0) {
+            revert ErrorInvalidNilGasLimit();
+        }
+
         _deposit(
-            token,
             l2DepositRecipient,
             depositAmount,
             l2FeeRefundRecipient,
             new bytes(0),
-            l2GasLimit,
-            userFeePerGas,
+            nilGasLimit,
+            userMaxFeePerGas,
             userMaxPriorityFeePerGas
         );
     }
 
-    /// @inheritdoc IL1ERC20Bridge
-    function depositERC20AndCall(
-        address token,
+    /// @inheritdoc IL1WETHBridge
+    function depositWETHAndCall(
         address l2DepositRecipient,
         uint256 depositAmount,
         address l2FeeRefundRecipient,
         bytes memory data,
-        uint256 l2GasLimit,
-        uint256 userFeePerGas,
+        uint256 nilGasLimit,
+        uint256 userMaxFeePerGas,
         uint256 userMaxPriorityFeePerGas
     )
         external
         payable
         override
     {
+        if (l2DepositRecipient == address(0)) {
+            revert ErrorInvalidL2DepositRecipient();
+        }
+
+        if (depositAmount == 0) {
+            revert ErrorEmptyDeposit();
+        }
+
+        if (l2FeeRefundRecipient == address(0)) {
+            revert ErrorInvalidL2FeeRefundRecipient();
+        }
+
+        if (nilGasLimit == 0) {
+            revert ErrorInvalidNilGasLimit();
+        }
+
         _deposit(
-            token,
             l2DepositRecipient,
             depositAmount,
             l2FeeRefundRecipient,
             data,
-            l2GasLimit,
-            userFeePerGas,
+            nilGasLimit,
+            userMaxFeePerGas,
             userMaxPriorityFeePerGas
         );
-    }
-
-    /// @inheritdoc IL1ERC20Bridge
-    function getL2TokenAddress(address _l1TokenAddress) external view override returns (address) {
-        return tokenMapping[_l1TokenAddress];
     }
 
     /// @inheritdoc IL1Bridge
@@ -226,7 +261,7 @@ contract L1ERC20Bridge is
             revert UnAuthorizedCaller();
         }
 
-        if (depositMessage.depositType != IL1BridgeMessenger.DepositType.ERC20) {
+        if (depositMessage.depositType != IL1BridgeMessenger.DepositType.WETH) {
             revert InvalidDepositType();
         }
 
@@ -243,73 +278,59 @@ contract L1ERC20Bridge is
                              INTERNAL-FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
-    /// @dev Internal function to transfer ERC20 token to this contract.
-    /// @param _token The address of token to transfer.
+    /// @dev Internal function to transfer WETH token to this contract.
     /// @param _depositAmount The amount of token to transfer.
-    /// @param _encodedERC20TransferData The data passed by router or the caller on to bridge.
-    /// @dev when depositor calls router, then _encodedERC20TransferData will contain the encoded bytes of
+    /// @param _encodedWETHTransferData The data passed by router or the bridge.
+    /// @dev when depositor calls router, then _encodedWETHTransferData will contain the econdoed bytes of
     /// depositorAddress and calldata for the l2 target address
-    /// @dev when depositor calls L1ERC20Bridge, then _encodedERC20TransferData will contain calldata for the l2 target
+    /// @dev when depositor calls WETHBridge, then _encodedWETHTransferData will contain calldata for the l2 target
     /// address
-    function _transferERC20In(
-        address _token,
+    function _transferWETHIn(
         uint256 _depositAmount,
-        bytes memory _encodedERC20TransferData
+        bytes memory _encodedWETHTransferData
     )
         internal
         returns (address, uint256, bytes memory)
     {
-        // If the depositor called depositERC20 via L1BridgeRouter, then _sender will be the l1BridgeRouter-address
-        // If the depositor called depositERC20 directly on L1ERC20Bridge, then _sender will be the
-        // l1ERC20Bridge-address
+        // If the depositor called depositWETH via L1BridgeRouter, then _sender will be the l1BridgeRouter-address
+        // If the depositor called depositWETH directly on L1WETHBridge, then _sender will be the l1WETHBridge-address
         address _sender = _msgSender();
 
         // retain the depositor address
         address _depositor = _sender;
 
-        uint256 _amountPulled = 0;
-
         // initialize _data to hold the Optional data to forward to recipient's account.
-        bytes memory _data = _encodedERC20TransferData;
+        bytes memory _data = _encodedWETHTransferData;
 
         if (router == _sender) {
             // as the depositor called depositWETH function via L1BridgeRouter, extract the depositor-address from the
             // _data AKA routerData
             // _data is the data to be sent on the target address on nil-chain
-            (_depositor, _data) = abi.decode(_encodedERC20TransferData, (address, bytes));
+            (_depositor, _data) = abi.decode(_encodedWETHTransferData, (address, bytes));
 
             // _depositor will be derived from the routerData as the depositor called on router directly
-            // _sender will be router-address and its router's responsibility to pull the ERC20Token from depositor to
-            // L1ERC20Bridge
-            _amountPulled = IL1BridgeRouter(router).pullERC20(_depositor, _token, _depositAmount);
+            // _sender will be router-address and its router's responsibility to pull the wethTokens from depositor to
+            // WethBridge
+            IL1BridgeRouter(router).pullERC20(_depositor, wethToken, _depositAmount);
         } else {
-            uint256 _tokenBalanceBeforePull = ERC20(_token).balanceOf(address(this));
-
-            // L1ERC20Bridge to transfer ERC20 Tokens from depositor address to the L1ERC20Bridge
-            // L1ERC20Bridge must have sufficient approval of spending on ERC20Token
-            ERC20(_token).safeTransferFrom(_depositor, address(this), _depositAmount);
-
-            _amountPulled = ERC20(_token).balanceOf(address(this)) - _tokenBalanceBeforePull;
-        }
-
-        if (_amountPulled != _depositAmount) {
-            revert ErrorIncorrectAmountPulledByBridge();
+            // WETHBridge to transfer WETH tokens from depositor address to the WETHBridgeAddress
+            // WETHBridge must have sufficient approval of spending on WETHAddress
+            ERC20(wethToken).safeTransferFrom(_depositor, address(this), _depositAmount);
         }
 
         return (_depositor, _depositAmount, _data);
     }
 
     /// @dev Internal function to do all the deposit operations.
-    /// @param _token The token to deposit.
     /// @param _l2DepositRecipient The recipient address to recieve the token in L2.
     /// @param _depositAmount The amount of token to deposit.
-    /// @param _l2FeeRefundRecipient the address of recipient for excess fee refund on L2.
     /// @param _data Optional data to forward to recipient's account.
+    /// @param _l2FeeRefundRecipient the address of recipient for excess fee refund on L2.
     /// @param _nilGasLimit Gas limit required to complete the deposit on L2.
     /// @param _userMaxFeePerGas The maximum Fee per gas unit that the user is willing to pay.
     /// @param _userMaxPriorityFeePerGas The maximum priority fee per gas unit that the user is willing to pay.
+
     function _deposit(
-        address _token,
         address _l2DepositRecipient,
         uint256 _depositAmount,
         address _l2FeeRefundRecipient,
@@ -322,41 +343,12 @@ contract L1ERC20Bridge is
         virtual
         nonReentrant
     {
-        if (_token == address(0)) {
-            revert ErrorInvalidTokenAddress();
-        }
-
-        if (_token == wethToken) {
-            revert ErrorWETHTokenNotSupportedOnERC20Bridge();
-        }
-
-        if (_l2DepositRecipient == address(0)) {
-            revert ErrorInvalidL2DepositRecipient();
-        }
-
         if (_depositAmount == 0) {
             revert ErrorEmptyDeposit();
         }
 
-        if (_l2FeeRefundRecipient == address(0)) {
-            revert ErrorInvalidL2FeeRefundRecipient();
-        }
-
-        if (_nilGasLimit == 0) {
-            revert ErrorInvalidNilGasLimit();
-        }
-
-        address _l2Token = tokenMapping[_token];
-
-        //TODO compute l2TokenAddress
-        // update the mapping
-
-        if (_l2Token == address(0)) {
-            revert ErrorInvalidL2Token();
-        }
-
         // Transfer token into Bridge contract
-        (address _depositorAddress,,) = _transferERC20In(_token, _depositAmount, _data);
+        (address _depositor,,) = _transferWETHIn(_depositAmount, _data);
 
         INilGasPriceOracle.FeeCreditData memory feeCreditData = INilGasPriceOracle(nilGasPriceOracle).computeFeeCredit(
             _nilGasLimit, _userMaxFeePerGas, _userMaxPriorityFeePerGas
@@ -368,22 +360,22 @@ contract L1ERC20Bridge is
 
         // Generate message passed to L2ERC20Bridge
         bytes memory _message = abi.encodeCall(
-            IL2ERC20Bridge.finalizeDepositERC20,
-            (_token, _l2Token, _depositorAddress, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
+            IL2WETHBridge.finalizeDepositWETH,
+            (wethToken, nilWethToken, _depositor, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
         );
 
         // Send message to L1BridgeMessenger.
         IL1BridgeMessenger(messenger).sendMessage{ value: msg.value }(
-            IL1BridgeMessenger.DepositType.ERC20,
-            counterpartyBridge,
-            0,
-            _message,
-            _nilGasLimit,
-            _depositorAddress,
+            IL1BridgeMessenger.DepositType.WETH,
+            counterpartyBridge, // target-contract for the message
+            0, // message value
+            _message, // message
+            _nilGasLimit, // gasLimit for execution of message on nil-chain
+            _depositor,
             feeCreditData
         );
 
-        emit DepositERC20(_token, _l2Token, _depositorAddress, _l2DepositRecipient, _depositAmount, _data);
+        emit DepositWETH(wethToken, nilWethToken, _depositor, _l2DepositRecipient, _depositAmount, _data);
     }
 
     /*//////////////////////////////////////////////////////////////////////////

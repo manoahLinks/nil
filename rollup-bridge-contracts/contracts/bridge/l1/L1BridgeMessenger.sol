@@ -283,7 +283,13 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
 
   function _sendMessage(SendMessageParams memory params) internal nonReentrant {
     DepositMessage memory depositMessage = _createDepositMessage(params);
-    bytes32 messageHash = computeMessageHash(_msgSender(), params.messageTarget, params.value, depositMessage.nonce, params.message);
+    bytes32 messageHash = computeMessageHash(
+      _msgSender(),
+      params.messageTarget,
+      params.value,
+      depositMessage.nonce,
+      params.message
+    );
 
     require(depositMessages[messageHash].expiryTime == 0, "DepositMessageAlreadyExist");
     depositMessages[messageHash] = depositMessage;
@@ -321,7 +327,9 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
       });
   }
 
-  function supportsInterface(bytes4 interfaceId) public view override(AccessControlEnumerableUpgradeable, IERC165) returns (bool) {
+  function supportsInterface(
+    bytes4 interfaceId
+  ) public view override(AccessControlEnumerableUpgradeable, IERC165) returns (bool) {
     return interfaceId == type(IL1Bridge).interfaceId || interfaceId == type(IERC165).interfaceId;
   }
 }

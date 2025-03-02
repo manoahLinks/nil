@@ -91,14 +91,17 @@ abstract contract L1BaseBridge is
       revert ErrorInvalidDefaultAdmin();
     }
 
+    // TODO - check if _counterPartyBridge implements IERC165, IBridge interface
     if (_counterPartyBridge == address(0)) {
       revert ErrorInvalidCounterpartyBridge();
     }
 
+    // TODO - check if counterpartyMessener implements IERC165, IBridgeMessenger interface
     if (_messenger == address(0)) {
       revert ErrorInvalidMessenger();
     }
 
+    // TODO - check if the _nilGasPriceOracle implements IERC165 interface
     if (_nilGasPriceOracle == address(0)) {
       revert ErrorInvalidNilGasPriceOracle();
     }

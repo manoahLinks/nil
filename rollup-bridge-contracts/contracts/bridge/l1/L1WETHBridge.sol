@@ -56,7 +56,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
     address _counterPartyWETHBridge,
     address _messenger,
     address _nilGasPriceOracle
-  ) external initializer {
+  ) public initializer {
     // Validate input parameters
     if (_owner == address(0)) {
       revert ErrorInvalidOwner();

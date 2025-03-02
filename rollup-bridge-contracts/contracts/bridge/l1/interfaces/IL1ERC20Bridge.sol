@@ -8,27 +8,11 @@ interface IL1ERC20Bridge is IL1Bridge {
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @dev Invalid owner address.
-  error ErrorInvalidOwner();
-
-  /// @dev Invalid default admin address.
-  error ErrorInvalidDefaultAdmin();
-
   error ErrorInvalidTokenAddress();
 
   error ErrorWETHTokenNotSupportedOnERC20Bridge();
 
-  error ErrorInvalidL2DepositRecipient();
-
-  error ErrorInvalidL2FeeRefundRecipient();
-
-  error ErrorInvalidNilGasLimit();
-
-  error ErrorInsufficientValueForFeeCredit();
-
   error ErrorInvalidL2Token();
-
-  error ErrorEmptyDeposit();
 
   error ErrorTokenNotSupported();
 
@@ -37,10 +21,6 @@ interface IL1ERC20Bridge is IL1Bridge {
   error ErrorInvalidCounterpartyERC20Bridge();
 
   error ErrorInvalidWethToken();
-
-  error ErrorInvalidMessenger();
-
-  error ErrorInvalidNilGasPriceOracle();
 
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
@@ -59,9 +39,21 @@ interface IL1ERC20Bridge is IL1Bridge {
   /// @param to The address of recipient in nil-chain.
   /// @param amount The amount of token will be deposited from layer-1 to nil-chain.
   /// @param data The optional calldata passed to recipient in nil-chain.
-  event DepositERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data);
+  event DepositERC20(
+    address indexed l1Token,
+    address indexed l2Token,
+    address indexed from,
+    address to,
+    uint256 amount,
+    bytes data
+  );
 
-  event DepositCancelled(bytes32 indexed messageHash, address indexed l1Token, address indexed cancelledDepositRecipient, uint256 amount);
+  event DepositCancelled(
+    bytes32 indexed messageHash,
+    address indexed l1Token,
+    address indexed cancelledDepositRecipient,
+    uint256 amount
+  );
 
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC CONSTANT FUNCTIONS   

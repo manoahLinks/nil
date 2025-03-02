@@ -13,19 +13,14 @@ import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
+import { L1BaseBridge } from "./L1BaseBridge.sol";
 
 /// @title L1ETHBridge
 /// @notice The `L1ETHBridge` contract for ETH bridging from L1.
-contract L1ETHBridge is OwnableUpgradeable, PausableUpgradeable, NilAccessControl, ReentrancyGuardUpgradeable, IL1ETHBridge {
+contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
   /*//////////////////////////////////////////////////////////////////////////
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
-
-  /// @dev Invalid owner address.
-  error ErrorInvalidOwner();
-
-  /// @dev Invalid default admin address.
-  error ErrorInvalidDefaultAdmin();
 
   /// @dev Failed to refund ETH for the depositMessage
   error ErrorEthRefundFailed(bytes32 messageHash);
@@ -33,34 +28,15 @@ contract L1ETHBridge is OwnableUpgradeable, PausableUpgradeable, NilAccessContro
   /// @dev Error due to Zero eth-deposit
   error ErrorZeroEthDeposit();
 
-  /// @dev Error due to invalid l2 feeRefund recipient address
-  error ErrorInvalidL2FeeRefundRecipient();
-
   /// @dev Error due to invalid l2 recipient address
   error ErrorInvalidL2Recipient();
 
   /// @dev Error due to invalid L2 GasLimit
   error ErrorInvalidL2GasLimit();
 
-  error ErrorInsufficientValueForFeeCredit();
-
-  error ErrorInvalidNilGasPriceOracle();
-
   /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
-
-  /// @inheritdoc IL1Bridge
-  address public override router;
-
-  /// @inheritdoc IL1Bridge
-  address public override counterpartyBridge;
-
-  /// @inheritdoc IL1Bridge
-  address public override messenger;
-
-  /// @inheritdoc IL1Bridge
-  address public override nilGasPriceOracle;
 
   /// @notice address of ETH token on l2
   /// @dev ETH on L2 is an ERC20Token
@@ -88,7 +64,7 @@ contract L1ETHBridge is OwnableUpgradeable, PausableUpgradeable, NilAccessContro
     address _counterPartyETHBridge,
     address _messenger,
     address _nilGasPriceOracle
-  ) external initializer {
+  ) public initializer {
     // Validate input parameters
     if (_owner == address(0)) {
       revert ErrorInvalidOwner();
@@ -101,54 +77,7 @@ contract L1ETHBridge is OwnableUpgradeable, PausableUpgradeable, NilAccessContro
     if (_nilGasPriceOracle == address(0)) {
       revert ErrorInvalidNilGasPriceOracle();
     }
-
-    // Initialize the Ownable contract with the owner address
-    OwnableUpgradeable.__Ownable_init(_owner);
-
-    // Initialize the Pausable contract
-    PausableUpgradeable.__Pausable_init();
-
-    // Initialize the AccessControlEnumerable contract
-    __AccessControlEnumerable_init();
-
-    // Set role admins
-    // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
-    _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-
-    // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
-    // role.
-    _setRoleAdmin(DEFAULT_ADMIN_ROLE, OWNER_ROLE);
-
-    // Grant roles to defaultAdmin and owner
-    // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
-    // highest level of control.
-    // The PROPOSER_ROLE_ADMIN is granted to both the default admin and the owner to allow them to manage proposers.
-    // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
-    _grantRole(OWNER_ROLE, _owner);
-    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-
-    ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
-
-    counterpartyBridge = _counterPartyETHBridge;
-    messenger = _messenger;
-    nilGasPriceOracle = _nilGasPriceOracle;
-  }
-
-  function setRouter(address _router) external override onlyOwner {
-    router = _router;
-  }
-
-  function setMessenger(address _messenger) external override onlyOwner {
-    messenger = _messenger;
-  }
-
-  function setNilGasPriceOracle(address _nilGasPriceOracle) external override onlyOwner {
-    nilGasPriceOracle = _nilGasPriceOracle;
-  }
-
-  modifier onlyRouter() {
-    require(msg.sender == router, "Caller is not the router");
-    _;
+    L1BaseBridge.__L1BaseBridge_init(_owner, _defaultAdmin, _counterPartyETHBridge, _messenger, _nilGasPriceOracle);
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -185,7 +114,9 @@ contract L1ETHBridge is OwnableUpgradeable, PausableUpgradeable, NilAccessContro
     address caller = _msgSender();
 
     // get DepositMessageDetails
-    IL1BridgeMessenger.DepositMessage memory depositMessage = IL1BridgeMessenger(messenger).getDepositMessage(messageHash);
+    IL1BridgeMessenger.DepositMessage memory depositMessage = IL1BridgeMessenger(messenger).getDepositMessage(
+      messageHash
+    );
 
     // Decode the message to extract the token address and the original sender (_from)
     (, , address depositorAddress, , uint256 depositAmount, ) = abi.decode(
@@ -286,30 +217,5 @@ contract L1ETHBridge is OwnableUpgradeable, PausableUpgradeable, NilAccessContro
     );
 
     emit DepositETH(l2EthAddress, _depositorAddress, _l2DepositRecipient, _depositAmount, _data);
-  }
-
-  /*//////////////////////////////////////////////////////////////////////////
-                             RESTRICTED FUNCTIONS   
-    //////////////////////////////////////////////////////////////////////////*/
-
-  /// @inheritdoc IBridge
-  function setPause(bool statusValue) external onlyOwner {
-    if (statusValue) {
-      _pause();
-    } else {
-      _unpause();
-    }
-  }
-
-  /// @inheritdoc IBridge
-  function transferOwnershipRole(address newOwner) external override onlyOwner {
-    _revokeRole(OWNER_ROLE, owner());
-    super.transferOwnership(newOwner);
-    _grantRole(OWNER_ROLE, newOwner);
-  }
-
-  /// @inheritdoc IERC165
-  function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
-    return interfaceId == type(IL1Bridge).interfaceId || interfaceId == type(IERC165).interfaceId;
   }
 }

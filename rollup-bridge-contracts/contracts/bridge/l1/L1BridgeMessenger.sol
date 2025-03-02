@@ -330,6 +330,6 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
   function supportsInterface(
     bytes4 interfaceId
   ) public view override(AccessControlEnumerableUpgradeable, IERC165) returns (bool) {
-    return interfaceId == type(IL1BridgeMessenger).interfaceId;
+    return interfaceId == type(IL1BridgeMessenger).interfaceId || super.supportsInterface(interfaceId);
   }
 }

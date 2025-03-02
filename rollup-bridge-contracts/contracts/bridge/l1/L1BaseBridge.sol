@@ -9,6 +9,7 @@ import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { IL2Bridge } from "../l2/interfaces/IL2Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
+import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 
 abstract contract L1BaseBridge is
@@ -93,7 +94,7 @@ abstract contract L1BaseBridge is
       revert ErrorInvalidDefaultAdmin();
     }
 
-    // TODO - check if _counterPartyBridge implements IL2Bridge interface
+    //check if _counterPartyBridge implements IL2Bridge interface
     if (
       _counterPartyBridge == address(0) || !IERC165(_counterPartyBridge).supportsInterface(type(IL2Bridge).interfaceId)
     ) {
@@ -105,8 +106,11 @@ abstract contract L1BaseBridge is
       revert ErrorInvalidMessenger();
     }
 
-    // TODO - check if the _nilGasPriceOracle implements IERC165 interface
-    if (_nilGasPriceOracle == address(0)) {
+    // check if the _nilGasPriceOracle implements IERC165 interface
+    if (
+      _nilGasPriceOracle == address(0) ||
+      !IERC165(_nilGasPriceOracle).supportsInterface(type(INilGasPriceOracle).interfaceId)
+    ) {
       revert ErrorInvalidNilGasPriceOracle();
     }
 
@@ -179,6 +183,6 @@ abstract contract L1BaseBridge is
 
   /// @inheritdoc IERC165
   function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
-    return interfaceId == type(IL1Bridge).interfaceId;
+    return interfaceId == type(IL1Bridge).interfaceId || super.supportsInterface(interfaceId);
   }
 }

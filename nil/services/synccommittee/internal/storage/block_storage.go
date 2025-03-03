@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"sync"
 	"time"
 
 	"github.com/NilFoundation/nil/nil/common"
@@ -66,6 +67,7 @@ type BlockStorage struct {
 	commonStorage
 	timer   common.Timer
 	metrics BlockStorageMetrics
+	lock    sync.RWMutex
 }
 
 func NewBlockStorage(
@@ -90,7 +92,11 @@ func (bs *BlockStorage) TryGetProvedStateRoot(ctx context.Context) (*common.Hash
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	bs.lock.RLock()
+	defer func() {
+		tx.Rollback()
+		bs.lock.RUnlock()
+	}()
 
 	return bs.getProvedStateRoot(tx)
 }
@@ -117,7 +123,11 @@ func (bs *BlockStorage) SetProvedStateRoot(ctx context.Context, stateRoot common
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	bs.lock.Lock()
+	defer func() {
+		tx.Rollback()
+		bs.lock.Unlock()
+	}()
 
 	err = tx.Put(stateRootTable, mainShardKey, stateRoot.Bytes())
 	if err != nil {
@@ -132,7 +142,11 @@ func (bs *BlockStorage) TryGetLatestFetched(ctx context.Context) (*scTypes.MainB
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	bs.lock.RLock()
+	defer func() {
+		tx.Rollback()
+		bs.lock.RUnlock()
+	}()
 
 	lastFetched, err := bs.getLatestFetchedMainTx(tx)
 	if err != nil {
@@ -147,7 +161,11 @@ func (bs *BlockStorage) TryGetBlock(ctx context.Context, id scTypes.BlockId) (*j
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	bs.lock.RLock()
+	defer func() {
+		tx.Rollback()
+		bs.lock.RUnlock()
+	}()
 
 	entry, err := bs.getBlockEntry(tx, id, false)
 	if err != nil || entry == nil {
@@ -161,9 +179,12 @@ func (bs *BlockStorage) SetBlockBatch(ctx context.Context, batch *scTypes.BlockB
 		return errors.New("batch cannot be nil")
 	}
 
-	return bs.retryRunner.Do(ctx, func(ctx context.Context) error {
+	bs.lock.Lock()
+	err := bs.retryRunner.Do(ctx, func(ctx context.Context) error {
 		return bs.setBlockBatchImpl(ctx, batch)
 	})
+	bs.lock.Unlock()
+	return err
 }
 
 func (bs *BlockStorage) setBlockBatchImpl(ctx context.Context, batch *scTypes.BlockBatch) error {
@@ -263,7 +284,11 @@ func (bs *BlockStorage) setBlockAsProvedImpl(ctx context.Context, id scTypes.Blo
 	if err != nil {
 		return false, err
 	}
-	defer tx.Rollback()
+	bs.lock.Lock()
+	defer func() {
+		tx.Rollback()
+		bs.lock.Unlock()
+	}()
 
 	entry, err := bs.getBlockEntry(tx, id, true)
 	if err != nil {
@@ -297,7 +322,11 @@ func (bs *BlockStorage) TryGetNextProposalData(ctx context.Context) (*scTypes.Pr
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	bs.lock.RLock()
+	defer func() {
+		tx.Rollback()
+		bs.lock.RUnlock()
+	}()
 
 	currentProvedStateRoot, err := bs.getProvedStateRoot(tx)
 	if err != nil {
@@ -360,9 +389,12 @@ func (bs *BlockStorage) TryGetNextProposalData(ctx context.Context) (*scTypes.Pr
 }
 
 func (bs *BlockStorage) SetBlockAsProposed(ctx context.Context, id scTypes.BlockId) error {
-	return bs.retryRunner.Do(ctx, func(ctx context.Context) error {
+	bs.lock.Lock()
+	err := bs.retryRunner.Do(ctx, func(ctx context.Context) error {
 		return bs.setBlockAsProposedImpl(ctx, id)
 	})
+	bs.lock.Unlock()
+	return err
 }
 
 func (bs *BlockStorage) setBlockAsProposedImpl(ctx context.Context, id scTypes.BlockId) error {
@@ -370,6 +402,7 @@ func (bs *BlockStorage) setBlockAsProposedImpl(ctx context.Context, id scTypes.B
 	if err != nil {
 		return err
 	}
+
 	defer tx.Rollback()
 
 	mainShardEntry, err := bs.getBlockEntry(tx, id, true)
@@ -381,7 +414,7 @@ func (bs *BlockStorage) setBlockAsProposedImpl(ctx context.Context, id scTypes.B
 		return err
 	}
 
-	if err := bs.deleteMainBlockWithChildren(tx, mainShardEntry); err != nil {
+	if err := bs.deleteMainBlockWithChildren(ctx, mainShardEntry); err != nil {
 		return err
 	}
 
@@ -496,9 +529,12 @@ func (bs *BlockStorage) putLatestFetchedBlockTx(tx db.RwTx, shardId types.ShardI
 //
 //  2. Deletes all main and corresponding exec shard blocks starting from the block with hash == firstMainHashToPurge.
 func (bs *BlockStorage) ResetProgressPartial(ctx context.Context, firstMainHashToPurge common.Hash) error {
-	return bs.retryRunner.Do(ctx, func(ctx context.Context) error {
+	bs.lock.Lock()
+	err := bs.retryRunner.Do(ctx, func(ctx context.Context) error {
 		return bs.resetProgressPartialImpl(ctx, firstMainHashToPurge)
 	})
+	bs.lock.Unlock()
+	return err
 }
 
 func (bs *BlockStorage) resetProgressPartialImpl(ctx context.Context, firstMainHashToPurge common.Hash) error {
@@ -523,7 +559,7 @@ func (bs *BlockStorage) resetProgressPartialImpl(ctx context.Context, firstMainH
 			return err
 		}
 
-		if err := bs.deleteMainBlockWithChildren(tx, entry); err != nil {
+		if err := bs.deleteMainBlockWithChildren(ctx, entry); err != nil {
 			return err
 		}
 	}
@@ -586,9 +622,12 @@ func (bs *BlockStorage) getChainSequence(tx db.RoTx, startingId scTypes.BlockId)
 //
 //  2. Deletes all main not yet proved blocks from the storage.
 func (bs *BlockStorage) ResetProgressNotProved(ctx context.Context) error {
-	return bs.retryRunner.Do(ctx, func(ctx context.Context) error {
+	bs.lock.Lock()
+	err := bs.retryRunner.Do(ctx, func(ctx context.Context) error {
 		return bs.resetProgressNotProvenImpl(ctx)
 	})
+	bs.lock.Unlock()
+	return err
 }
 
 func (bs *BlockStorage) resetProgressNotProvenImpl(ctx context.Context) error {
@@ -610,7 +649,7 @@ func (bs *BlockStorage) resetProgressNotProvenImpl(ctx context.Context) error {
 			continue
 		}
 
-		if err := bs.deleteMainBlockWithChildren(tx, entry); err != nil {
+		if err := bs.deleteMainBlockWithChildren(ctx, entry); err != nil {
 			return err
 		}
 	}
@@ -650,11 +689,17 @@ func (bs *BlockStorage) getBlockEntryBytesId(tx db.RoTx, idBytes []byte, require
 	return entry, nil
 }
 
-func (bs *BlockStorage) deleteMainBlockWithChildren(tx db.RwTx, mainShardEntry *blockEntry) error {
+func (bs *BlockStorage) deleteMainBlockWithChildren(ctx context.Context, mainShardEntry *blockEntry) error {
 	childIds, err := scTypes.ChildBlockIds(&mainShardEntry.Block)
 	if err != nil {
 		return err
 	}
+
+	tx, err := bs.database.CreateRwTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
 	for _, childId := range childIds {
 		childEntry, err := bs.getBlockEntry(tx, childId, true)
@@ -670,7 +715,7 @@ func (bs *BlockStorage) deleteMainBlockWithChildren(tx db.RwTx, mainShardEntry *
 		return err
 	}
 
-	return nil
+	return bs.commit(tx)
 }
 
 func (bs *BlockStorage) putBlockTx(tx db.RwTx, entry *blockEntry) error {

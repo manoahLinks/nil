@@ -44,6 +44,7 @@
           uniswap = (pkgs.callPackage ./nix/uniswap.nix { });
           docsaibackend = (pkgs.callPackage ./nix/docsaibackend.nix { });
           l1-contracts = (pkgs.callPackage ./nix/l1-contracts.nix { });
+          rollup-bridge-contracts = (pkgs.callPackage ./nix/rollup-bridge-contracts.nix { });
         };
         checks = rec {
           nil = (pkgs.callPackage ./nix/nil.nix {
@@ -99,6 +100,7 @@
                   mkdir -p ./usr/share/${packages.nilexplorer.name}
                   mkdir -p ./usr/share/${packages.docsaibackend.name}
                   mkdir -p ./usr/share/${packages.l1-contracts.name}
+                  mkdir -p ./usr/share/${packages.rollup-bridge-contracts.name}
 
                   cp -r ${pkg}/bin ./usr/
                   cp -r ${pkg}/share ./usr/
@@ -106,6 +108,7 @@
                   cp -r ${packages.nilexplorer.outPath}/* ./usr/share/${packages.nilexplorer.name}
                   cp -r ${packages.docsaibackend.outPath}/* ./usr/share/${packages.nilexplorer.name}
                   cp -r ${packages.l1-contracts.outPath}/* ./usr/share/${packages.l1-contracts.name}
+                  cp -r ${packages.rollup-bridge-contracts.outPath}/* ./usr/share/${packages.rollup-bridge-contracts.name}
 
                   chmod -R u+rw,g+r,o+r ./usr
                   chmod -R u+rwx,g+rx,o+rx ./usr/bin

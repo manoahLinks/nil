@@ -7,17 +7,40 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
+import { NilAccessControl } from "../../NilAccessControl.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
-import { BaseBridgeMessenger } from "../BaseBridgeMessenger.sol";
 import { Queue } from "../libraries/Queue.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
 
-contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
+contract L1BridgeMessenger is
+  OwnableUpgradeable,
+  PausableUpgradeable,
+  NilAccessControl,
+  ReentrancyGuardUpgradeable,
+  IL1BridgeMessenger
+{
   using Queue for Queue.QueueData;
   using EnumerableSet for EnumerableSet.AddressSet;
+
+  /*//////////////////////////////////////////////////////////////////////////
+                             ERRORS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+  /// @dev Invalid owner address.
+  error ErrorInvalidOwner();
+
+  /// @dev Invalid default admin address.
+  error ErrorInvalidDefaultAdmin();
+
+  error NotEnoughMessagesInQueue();
+
+  /*//////////////////////////////////////////////////////////////////////////
+                             STRUCTS   
+    //////////////////////////////////////////////////////////////////////////*/
 
   struct SendMessageParams {
     DepositType depositType;
@@ -37,18 +60,28 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
   mapping(bytes32 => DepositMessage) public depositMessages;
 
   /// @notice The nonce for deposit messages.
-  uint256 public depositNonce;
+  uint256 public override depositNonce;
 
   /// @notice Queue to store message hashes
   Queue.QueueData private messageQueue;
 
+  /**
+   * @notice Maximum processing time allowed for a deposit to be executed on L2.
+   * @dev This variable is used to determine the maximum time for deposit execution on L2.
+   * The total time for execution is calculated as deposit-time + max-processing-time.
+   */
   uint256 public maxProcessingTime;
 
-  uint256 public cancelTimeDelta;
-
+  /**
+   * @notice Holds the addresses of authorized bridges that can interact to send messages.
+   */
   EnumerableSet.AddressSet private authorizedBridges;
 
+  /// @notice address of the NilRollup contracrt on L1
   address private l1NilRollup;
+
+  /// @notice The address of counterpart BridgeMessenger contract in L1/NilChain.
+  address public counterpartMessenger;
 
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
@@ -71,7 +104,6 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
     address _defaultAdmin,
     address _l1NilRollup,
     uint256 _maxProcessingTime,
-    uint256 _cancelTimeDelta,
     address _counterpartMessenger
   ) public initializer {
     // Validate input parameters
@@ -83,21 +115,53 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
       revert ErrorInvalidDefaultAdmin();
     }
 
-    BaseBridgeMessenger.__BaseBridgeMessenger_init(_owner, _defaultAdmin, _counterpartMessenger);
+    if (_owner == address(0)) {
+      revert ErrorInvalidOwner();
+    }
 
-    depositNonce = 0;
+    if (_defaultAdmin == address(0)) {
+      revert ErrorInvalidDefaultAdmin();
+    }
 
     if (_maxProcessingTime == 0) {
       revert InvalidMaxMessageProcessingTime();
     }
-    maxProcessingTime = _maxProcessingTime;
 
-    if (_cancelTimeDelta == 0) {
-      revert InvalidMessageCancelDeltaTime();
-    }
-    cancelTimeDelta = _cancelTimeDelta;
+    // Initialize the Ownable contract with the owner address
+    OwnableUpgradeable.__Ownable_init(_owner);
+
+    // Initialize the Pausable contract
+    PausableUpgradeable.__Pausable_init();
+
+    // Initialize the AccessControlEnumerable contract
+    __AccessControlEnumerable_init();
+
+    // Set role admins
+    // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
+    _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+
+    // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
+    // role.
+    _setRoleAdmin(DEFAULT_ADMIN_ROLE, OWNER_ROLE);
+
+    // Grant roles to defaultAdmin and owner
+    // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
+    // highest level of control.
+    // The PROPOSER_ROLE_ADMIN is granted to both the default admin and the owner to allow them to manage proposers.
+    // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
+    _grantRole(OWNER_ROLE, _owner);
+    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+
+    ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+
+    maxProcessingTime = _maxProcessingTime;
+    depositNonce = 0;
+    counterpartMessenger = _counterpartMessenger;
     l1NilRollup = _l1NilRollup;
   }
+
+  // make sure only owner can send ether to messenger to avoid possible user fund loss.
+  receive() external payable onlyOwner {}
 
   /*//////////////////////////////////////////////////////////////////////////
                              MODIFIERS  
@@ -113,11 +177,6 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC CONSTANT FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
-
-  /// @inheritdoc IL1BridgeMessenger
-  function getCurrentDepositNonce() public view returns (uint256) {
-    return depositNonce;
-  }
 
   /// @inheritdoc IL1BridgeMessenger
   function getNextDepositNonce() public view returns (uint256) {
@@ -137,6 +196,16 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
   /// @inheritdoc IL1BridgeMessenger
   function getAuthorizedBridges() external view returns (address[] memory) {
     return authorizedBridges.values();
+  }
+
+  function computeMessageHash(
+    address _sender,
+    address _target,
+    uint256 _value,
+    uint256 _messageNonce,
+    bytes memory _message
+  ) public pure returns (bytes32) {
+    return keccak256(_encodeCrossChainCalldata(_sender, _target, _value, _messageNonce, _message));
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -171,6 +240,54 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
       revert BridgeNotAuthorized();
     }
     authorizedBridges.remove(bridge);
+  }
+
+  /// @inheritdoc IBridgeMessenger
+  function setPause(bool _status) external onlyOwner {
+    if (_status) {
+      _pause();
+    } else {
+      _unpause();
+    }
+  }
+
+  /// @inheritdoc IBridgeMessenger
+  function transferOwnershipRole(address newOwner) external override onlyOwner {
+    _revokeRole(OWNER_ROLE, owner());
+    super.transferOwnership(newOwner);
+    _grantRole(OWNER_ROLE, newOwner);
+  }
+
+  /// @dev Internal function to generate the crosschain calldata for a message.
+  /// @param _sender Message sender address.
+  /// @param _target Target contract address.
+  /// @param _value The amount of ETH pass to the target.
+  /// @param _messageNonce Nonce for the provided message.
+  /// @param _message Message to send to the target.
+  /// @return ABI encoded cross domain calldata.
+  function _encodeCrossChainCalldata(
+    address _sender,
+    address _target,
+    uint256 _value,
+    uint256 _messageNonce,
+    bytes memory _message
+  ) internal pure returns (bytes memory) {
+    return
+      abi.encodeWithSignature(
+        "relayMessage(address,address,uint256,uint256,bytes)",
+        _sender,
+        _target,
+        _value,
+        _messageNonce,
+        _message
+      );
+  }
+
+  /// @dev Internal function to check whether the `_target` address is allowed to avoid attack.
+  /// @param _target The address of target address to check.
+  function _validateTargetAddress(address _target) internal view {
+    // @note check more `_target` address to avoid attack in the future when we add more external contracts.
+    require(_target != address(this), "Forbid to call self");
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -240,11 +357,8 @@ contract L1BridgeMessenger is BaseBridgeMessenger, IL1BridgeMessenger {
       revert MessageHashNotInQueue(messageHash);
     }
 
-    // Calculate the expiration time with delta
-    uint256 expirationTimeWithDelta = depositMessage.expiryTime + cancelTimeDelta;
-
     // Check if the current time is greater than the expiration time with delta
-    if (block.timestamp <= expirationTimeWithDelta) {
+    if (block.timestamp <= depositMessage.expiryTime) {
       revert DepositMessageNotExpired(messageHash);
     }
 

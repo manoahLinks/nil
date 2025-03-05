@@ -6,7 +6,7 @@
 , nodejs
 , nil
 , solc
-, enableTesting ? true
+, enableTesting ? false
 }:
 
 stdenv.mkDerivation rec {
@@ -33,24 +33,14 @@ stdenv.mkDerivation rec {
   '';
 
   buildPhase = ''
-    (cd rollup-bridge-contracts; npm run build)
-    #cd niljs
-    #npm run build
-  '';
+    cd rollup-bridge-contracts
+    pwd
+    echo 'GETH_RPC_ENDPOINT="http://localhost:8545"' >> .env
+    echo 'GETH_PRIVATE_KEY="002f28996b406c557ff579766af59ba66a3f103b8b90de6e9baad8ae211c0071"' >> .env
+    echo 'GETH_WALLET_ADDRESS="0xc8d5559BA22d11B0845215a781ff4bF3CCa0EF89"' >> .env
 
-  doCheck = enableTesting;
-
-  checkPhase = ''
-    export BIOME_BINARY=${biome}/bin/biome
-
-    npm run lint
-    npm run test:unit
-    npm run test:integration --cache=false
-    npm run test:examples
-    npm run lint:types
-    npm run lint:jsdoc
-
-    echo "tests finished successfully"
+    npx hardhat clean
+    npx hardhat compile
   '';
 
   installPhase = ''

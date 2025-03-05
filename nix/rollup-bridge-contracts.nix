@@ -6,6 +6,7 @@
 , nodejs
 , nil
 , solc
+, dotenv-cli
 , enableTesting ? false
 }:
 
@@ -35,6 +36,7 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     cd rollup-bridge-contracts
     pwd
+    cp .env.example .env
     #echo 'GETH_RPC_ENDPOINT="http://localhost:8545"' >> .env
     #echo 'GETH_PRIVATE_KEY="002f28996b406c557ff579766af59ba66a3f103b8b90de6e9baad8ae211c0071"' >> .env
     #echo 'GETH_WALLET_ADDRESS="0xc8d5559BA22d11B0845215a781ff4bF3CCa0EF89"' >> .env
@@ -42,8 +44,8 @@ stdenv.mkDerivation rec {
     export GETH_PRIVATE_KEY=002f28996b406c557ff579766af59ba66a3f103b8b90de6e9baad8ae211c0071
     export GETH_WALLET_ADDRESS=0xc8d5559BA22d11B0845215a781ff4bF3CCa0EF89
 
-    dotenv -e .env -- npx replace-in-file "GETH_PRIVATE_KEY=.*" "GETH_PRIVATE_KEY=$GETH_PRIVATE_KEY" .env
-    dotenv -e .env -- npx replace-in-file "GETH_WALLET_ADDRESS=.*" "GETH_WALLET_ADDRESS=$GETH_WALLET_ADDRESS" .env
+    npx dotenv -e .env -- npx replace-in-file 'GETH_PRIVATE_KEY=""' "GETH_PRIVATE_KEY=$GETH_PRIVATE_KEY" .env
+    npx dotenv -e .env -- npx replace-in-file 'GETH_WALLET_ADDRESS=""' "GETH_WALLET_ADDRESS=$GETH_WALLET_ADDRESS" .env
 
     npx hardhat clean && npx hardhat compile
   '';

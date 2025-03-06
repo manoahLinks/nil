@@ -13,7 +13,13 @@
 stdenv.mkDerivation rec {
   name = "rollup-bridge-contracts";
   pname = "rollup-bridge-contracts";
-  src = lib.sourceByRegex ./.. [ "package.json" "package-lock.json" "^niljs(/.*)?$" "^rollup-bridge-contracts(/.*)?$" "biome.json" ];
+  src = lib.sourceByRegex ./.. [
+  "package.json"
+  "package-lock.json"
+  "^niljs(/.*)?$"
+  "^rollup-bridge-contracts(/.*)?$"
+  "biome.json"
+  ];
 
   npmDeps = (callPackage ./npmdeps.nix { });
 

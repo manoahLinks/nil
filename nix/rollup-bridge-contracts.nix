@@ -21,13 +21,20 @@ stdenv.mkDerivation rec {
   "biome.json"
   ];
 
+  soljson26 = builtins.fetchurl {
+    url = "https://binaries.soliditylang.org/wasm/soljson-v0.8.26+commit.8a97fa7a.js";
+    sha256 = "1mhww44ni55yfcyn4hjql2hwnvag40p78kac7jjw2g2jdwwyb1fv";
+  };
+
   npmDeps = (callPackage ./npmdeps.nix { });
+
+  NODE_PATH = "$npmDeps";
 
   nativeBuildInputs = [
     nodejs
     npmHooks.npmConfigHook
-    solc
-  ];
+    biome
+  ] ++ (if enableTesting then [ nil ] else [ ]);
 
   dontConfigure = true;
 

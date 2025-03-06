@@ -15,6 +15,7 @@ import { type Abi, decodeFunctionResult, encodeFunctionData } from "viem";
 import * as dotenv from "dotenv";
 import { task } from "hardhat/config";
 import * as path from 'path';
+
 const GlobalLedger = require("../artifacts/contracts/CollateralManager.sol/GlobalLedger.json");
 const InterestManager = require("../artifacts/contracts/InterestManager.sol/InterestManager.json");
 const LendingPool = require("../artifacts/contracts/LendingPool.sol/LendingPool.json");
@@ -52,43 +53,79 @@ const service = new CometaService({
 const pathOracle = "../lending-protocol/contracts/Oracle.sol";
 const pathNil = "../lending-protocol/node_modules/@nilfoundation/smart-contracts/contracts/Nil.sol";
 const pathNilTokenBase = "../lending-protocol/node_modules/@nilfoundation/smart-contracts/contracts/NilTokenBase.sol";
+const faucetPath = "../lending-protocol/node_modules/@nilfoundation/smart-contracts/contracts/Faucet.sol";
+const smartAccountPath = "../lending-protocol/node_modules/@nilfoundation/smart-contracts/contracts/SmartAccount.sol";
+
 
 const resolvedOraclePath = path.resolve(pathOracle);
 const resolvedNilPath = path.resolve(pathNil);
 const resolvedNilTokenBasePath = path.resolve(pathNilTokenBase);
+const resolvedFauctPath = path.resolve(faucetPath);
+const resolvedSmartAccountPath = path.resolve(smartAccountPath);
 
-console.log(resolvedOraclePath);
-console.log(resolvedNilPath);
-console.log(resolvedNilTokenBasePath);
+const oracleContract = fs.readFileSync(resolvedOraclePath, 'utf8')
+const nilContract = fs.readFileSync(resolvedNilPath, 'utf8')
+const nilTokenBaseContract = fs.readFileSync(resolvedNilTokenBasePath, 'utf8')
+const faucetContract = fs.readFileSync(resolvedFauctPath, 'utf8')
+const SmartAccountSol = fs.readFileSync(resolvedSmartAccountPath, 'utf8')
 
-console.log('Oracle.sol content: ', fs.readFileSync(resolvedOraclePath, 'utf8'));
-console.log('Nil.sol content: ', fs.readFileSync(resolvedNilPath, 'utf8'));
-console.log('NilTokenBase.sol content: ', fs.readFileSync(resolvedNilTokenBasePath, 'utf8'));
+console.log('Oracle.sol content: ', oracleContract);
 
-  const compileInput = `{
-    "contractName": "Oracle.sol:Oracle",
-    "compilerVersion": "0.8.28",
-    "settings": {
-      "evmVersion": "shanghai",
-      "optimizer": {
-        "enabled": false,
-        "runs": 200
-      }
-    },
-    "sources": {
+  const compileInput = {
+    language: "Solidity",
+    contractName: "Oracle.sol:Oracle",
+    compilerVersion: "0.8.28",
+    sources: {
       "Oracle.sol": {
-        "urls": ["${resolvedOraclePath}"]
+        content: oracleContract,
       },
-      "@nilfoundation/smart-contracts/Nil.sol": {
-        "urls": ["${resolvedNilPath}"]
+      "Faucet.sol": {
+        content: faucetContract,
       },
-      "@nilfoundation/smart-contracts/NilTokenBase.sol": {
-        "urls": ["${resolvedNilTokenBasePath}"]
-      }
-    }
-  }`;
+      "@nilfoundation/smart-contracts/contracts/Faucet.sol": {
+        content: faucetContract,
+      },
+      "NilTokenBase.sol": {
+        content: nilTokenBaseContract,
+      },
+      "@nilfoundation/smart-contracts/contracts/NilTokenBase.sol": {
+        content: nilTokenBaseContract,
+      },
+      "Nil.sol": {
+        content: nilContract,
+      },
+      "@nilfoundation/smart-contracts/contracts/Nil.sol": {
+        content: nilContract,
+      },
+      "SmartAccount.sol": {
+        content: SmartAccountSol,
+      },
+      "@nilfoundation/smart-contracts/contracts/SmartAccount.sol": {
+        content: SmartAccountSol,
+      },
+    },
+    settings: {
+      metadata: {
+        appendCBOR: false,
+        bytecodeHash: "none",
+      },
+      debug: {
+        debugInfo: ["location"],
+      },
+      outputSelection: {
+        "*": {
+          "*": ["*"],
+        },
+      },
+      evmVersion: "cancun",
+      optimizer: {
+        enabled: false,
+        runs: 200,
+      },
+    },
+  };
 
-const compileOutput = await service.compileContract(compileInput);
+const compileOutput = await service.compileContract(JSON.stringify(compileInput));
 console.log(compileOutput);
 
   // Deploying a new smart account for the deployer

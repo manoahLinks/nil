@@ -20,7 +20,15 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     nodejs
     npmHooks.npmConfigHook
+    solc
   ];
+
+  dontConfigure = true;
+
+  preUnpack = ''
+    echo "Setting UV_USE_IO_URING=0 to work around the io_uring kernel bug"
+    export UV_USE_IO_URING=0
+  '';
 
   buildPhase = ''
     cd rollup-bridge-contracts

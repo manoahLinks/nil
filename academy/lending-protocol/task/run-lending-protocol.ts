@@ -9,15 +9,16 @@ import {
   CometaService
 } from "@nilfoundation/niljs";
 
+const fs = require('fs');
 import { type Abi, decodeFunctionResult, encodeFunctionData } from "viem";
 
 import * as dotenv from "dotenv";
 import { task } from "hardhat/config";
+import * as path from 'path';
 const GlobalLedger = require("../artifacts/contracts/CollateralManager.sol/GlobalLedger.json");
 const InterestManager = require("../artifacts/contracts/InterestManager.sol/InterestManager.json");
 const LendingPool = require("../artifacts/contracts/LendingPool.sol/LendingPool.json");
 const Oracle = require("../artifacts/contracts/Oracle.sol/Oracle.json");
-const OracleContract = require("../contracts/Oracle.sol");
 
 dotenv.config();
 
@@ -48,6 +49,21 @@ const service = new CometaService({
   }),
 });
 
+const pathOracle = "../lending-protocol/contracts/Oracle.sol";
+const pathNil = "../lending-protocol/node_modules/@nilfoundation/smart-contracts/contracts/Nil.sol";
+const pathNilTokenBase = "../lending-protocol/node_modules/@nilfoundation/smart-contracts/contracts/NilTokenBase.sol";
+
+const resolvedOraclePath = path.resolve(pathOracle);
+const resolvedNilPath = path.resolve(pathNil);
+const resolvedNilTokenBasePath = path.resolve(pathNilTokenBase);
+
+console.log(resolvedOraclePath);
+console.log(resolvedNilPath);
+console.log(resolvedNilTokenBasePath);
+
+console.log('Oracle.sol content: ', fs.readFileSync(resolvedOraclePath, 'utf8'));
+console.log('Nil.sol content: ', fs.readFileSync(resolvedNilPath, 'utf8'));
+console.log('NilTokenBase.sol content: ', fs.readFileSync(resolvedNilTokenBasePath, 'utf8'));
 
   const compileInput = `{
     "contractName": "Oracle.sol:Oracle",
@@ -61,13 +77,13 @@ const service = new CometaService({
     },
     "sources": {
       "Oracle.sol": {
-        "urls": ["../contracts/Oracle.sol"]
+        "urls": ["${resolvedOraclePath}"]
       },
       "@nilfoundation/smart-contracts/Nil.sol": {
-        "urls": ["./node_modules/@nilfoundation/smart-contracts/contracts/Nil.sol"]
+        "urls": ["${resolvedNilPath}"]
       },
       "@nilfoundation/smart-contracts/NilTokenBase.sol": {
-        "urls": ["./node_modules/@nilfoundation/smart-contracts/contracts/NilTokenBase.sol"]
+        "urls": ["${resolvedNilTokenBasePath}"]
       }
     }
   }`;

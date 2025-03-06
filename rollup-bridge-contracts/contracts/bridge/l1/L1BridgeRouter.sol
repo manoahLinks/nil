@@ -362,6 +362,23 @@ contract L1BridgeRouter is
         }
     }
 
+    /// @inheritdoc IL1BridgeRouter
+    function claimFailedDeposit(bytes32 messageHash, bytes32[] memory claimProof) external override {
+        // Get the deposit message from the messenger
+        IL1BridgeMessenger.DepositType depositType = l1BridgeMessenger.getDepositType(messageHash);
+
+        // Route the cancellation request based on the deposit type
+        if (depositType == IL1BridgeMessenger.DepositType.ERC20) {
+            IL1ERC20Bridge(l1ERC20Bridge).claimFailedDeposit(messageHash, claimProof);
+        } else if (depositType == IL1BridgeMessenger.DepositType.ETH) {
+            IL1ETHBridge(l1ERC20Bridge).claimFailedDeposit(messageHash, claimProof);
+        } else if (depositType == IL1BridgeMessenger.DepositType.WETH) {
+            IL1WETHBridge(l1WETHBridge).claimFailedDeposit(messageHash, claimProof);
+        } else {
+            revert ErrorInvalidDepositType();
+        }
+    }
+
     /*//////////////////////////////////////////////////////////////////////////
                            RESTRICTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/

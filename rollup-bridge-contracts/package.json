@@ -41,7 +41,7 @@
     "dotenv": "^16.4.5",
     "ethers": "^6.13.4",
     "hardhat-deploy": "^0.14.0",
-    "solady": "^0.1.7",
+    "solady": "^0.1.10",
     "yargs": "^17.7.2"
   }
 }

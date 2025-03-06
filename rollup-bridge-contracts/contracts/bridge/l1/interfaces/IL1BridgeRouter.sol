@@ -225,6 +225,8 @@ interface IL1BridgeRouter {
 
   function cancelDeposit(bytes32 messageHash) external payable;
 
+  function claimFailedDeposit(bytes32 messageHash, bytes32[] memory claimProof) external;
+
   /**
    * @notice Pauses or unpauses the contract.
    * @dev This function allows the owner to pause or unpause the contract.

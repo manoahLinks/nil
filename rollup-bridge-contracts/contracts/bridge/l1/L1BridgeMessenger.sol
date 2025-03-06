@@ -6,12 +6,14 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
+import { INilRollup } from "../../interfaces/INilRollup.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 import { Queue } from "../libraries/Queue.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
@@ -37,6 +39,8 @@ contract L1BridgeMessenger is
   error ErrorInvalidDefaultAdmin();
 
   error NotEnoughMessagesInQueue();
+
+  error ErrorInvalidClaimProof();
 
   /*//////////////////////////////////////////////////////////////////////////
                              STRUCTS   
@@ -379,15 +383,42 @@ contract L1BridgeMessenger is
     }
 
     // Check queue size and revert if messageCount > queue size
-    uint256 queueSize = messageQueue.getSize();
-    if (messageCount > queueSize) {
+    if (messageCount > messageQueue.getSize()) {
       revert NotEnoughMessagesInQueue();
     }
 
-    // check queue Size and revert if the messageCount > QueueSize
-    // Pop messages from the queue
     bytes32[] memory poppedMessages = messageQueue.popFrontBatch(messageCount);
+
+    if (poppedMessages.length != messageCount) {
+      revert NotEnoughMessagesInQueue();
+    }
+
     return poppedMessages;
+  }
+
+  /// @inheritdoc IL1BridgeMessenger
+  function claimFailedDeposit(bytes32 messageHash, bytes32[] memory claimProof) public override {
+    DepositMessage storage depositMessage = depositMessages[messageHash];
+    if (depositMessage.expiryTime == 0) {
+      revert DepositMessageDoesNotExist(messageHash);
+    }
+
+    // Check if the deposit message is already claimed
+    if (depositMessage.isClaimed) {
+      revert DepositMessageAlreadyClaimed();
+    }
+
+    // Check if the message hash is not in the queue
+    if (messageQueue.contains(messageHash)) {
+      revert DepositMessageStillInQueue();
+    }
+
+    bytes32 l2Tol1Root = INilRollup(l1NilRollup).getCurrentL2ToL1Root();
+    if (MerkleProof.verify(claimProof, l2Tol1Root, messageHash)) {
+      revert ErrorInvalidClaimProof();
+    }
+
+    depositMessage.isClaimed = true;
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -433,6 +464,7 @@ contract L1BridgeMessenger is
         gasLimit: params.gasLimit,
         expiryTime: block.timestamp + maxProcessingTime,
         isCancelled: false,
+        isClaimed: false,
         refundAddress: params.refundAddress,
         depositType: params.depositType,
         message: params.message,

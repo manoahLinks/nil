@@ -620,16 +620,25 @@ func (bs *BlockStorage) putLatestFetchedBlockTx(tx db.RwTx, shardId types.ShardI
 //     If the specified block is the first block in the chain, the new latest fetched value will be nil.
 //
 //  2. Deletes all main and corresponding exec shard blocks starting from the block with hash == firstMainHashToPurge.
-func (bs *BlockStorage) ResetProgressPartial(ctx context.Context, firstMainHashToPurge common.Hash) error {
-	return bs.retryRunner.Do(ctx, func(ctx context.Context) error {
-		return bs.resetProgressPartialImpl(ctx, firstMainHashToPurge)
+func (bs *BlockStorage) ResetProgressPartial(
+	ctx context.Context,
+	firstMainHashToPurge common.Hash,
+) (purgedBatches []scTypes.BatchId, err error) {
+	err = bs.retryRunner.Do(ctx, func(ctx context.Context) error {
+		var err error
+		purgedBatches, err = bs.resetProgressPartialImpl(ctx, firstMainHashToPurge)
+		return err
 	})
+	return
 }
 
-func (bs *BlockStorage) resetProgressPartialImpl(ctx context.Context, firstMainHashToPurge common.Hash) error {
+func (bs *BlockStorage) resetProgressPartialImpl(
+	ctx context.Context,
+	firstMainHashToPurge common.Hash,
+) (purgedBatches []scTypes.BatchId, err error) {
 	tx, err := bs.database.CreateRwTx(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback()
 
@@ -637,23 +646,29 @@ func (bs *BlockStorage) resetProgressPartialImpl(ctx context.Context, firstMainH
 
 	startingEntry, err := bs.getBlockEntry(tx, startingId, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := bs.resetToParent(tx, startingEntry); err != nil {
-		return err
+		return nil, err
 	}
 
 	for entry, err := range bs.getChainSequence(tx, startingId) {
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if err := bs.deleteMainBlockWithChildren(tx, entry); err != nil {
-			return err
+			return nil, err
 		}
+
+		purgedBatches = append(purgedBatches, entry.BatchId)
 	}
 
-	return bs.commit(tx)
+	if err := bs.commit(tx); err != nil {
+		return nil, err
+	}
+
+	return purgedBatches, nil
 }
 
 func (bs *BlockStorage) resetToParent(tx db.RwTx, entry *blockEntry) error {
@@ -716,11 +731,11 @@ func (bs *BlockStorage) getChainSequence(tx db.RoTx, startingId scTypes.BlockId)
 //  2. Deletes all main not yet proved blocks from the storage.
 func (bs *BlockStorage) ResetProgressNotProved(ctx context.Context) error {
 	return bs.retryRunner.Do(ctx, func(ctx context.Context) error {
-		return bs.resetProgressNotProvenImpl(ctx)
+		return bs.resetProgressNotProvedImpl(ctx)
 	})
 }
 
-func (bs *BlockStorage) resetProgressNotProvenImpl(ctx context.Context) error {
+func (bs *BlockStorage) resetProgressNotProvedImpl(ctx context.Context) error {
 	tx, err := bs.database.CreateRwTx(ctx)
 	if err != nil {
 		return err

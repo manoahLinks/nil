@@ -104,8 +104,20 @@ func NewTaskIdSet() TaskIdSet {
 	return make(TaskIdSet)
 }
 
-func (s TaskIdSet) Put(id TaskId) {
+func (s TaskIdSet) Put(id TaskId) bool {
+	if s[id] {
+		return false
+	}
 	s[id] = true
+	return true
+}
+
+func (s TaskIdSet) Delete(id TaskId) bool {
+	if !s[id] {
+		return false
+	}
+	delete(s, id)
+	return true
 }
 
 func (s TaskIdSet) Values() iter.Seq[TaskId] {
@@ -163,15 +175,14 @@ func (s *TaskIdSet) UnmarshalBinary(data []byte) error {
 
 // Task contains all the necessary data for either Prover or ProofProvider to perform computation
 type Task struct {
-	Id            TaskId            `json:"id"`
-	BatchId       BatchId           `json:"batchId"`
-	ParentBatchId *BatchId          `json:"parentBatchId"`
-	ShardId       types.ShardId     `json:"shardId"`
-	BlockNum      types.BlockNumber `json:"blockNum"`
-	BlockHash     common.Hash       `json:"blockHash"`
-	TaskType      TaskType          `json:"taskType"`
-	CircuitType   CircuitType       `json:"circuitType"`
-	ParentTaskId  *TaskId           `json:"parentTaskId"`
+	Id           TaskId            `json:"id"`
+	BatchId      BatchId           `json:"batchId"`
+	ShardId      types.ShardId     `json:"shardId"`
+	BlockNum     types.BlockNumber `json:"blockNum"`
+	BlockHash    common.Hash       `json:"blockHash"`
+	TaskType     TaskType          `json:"taskType"`
+	CircuitType  CircuitType       `json:"circuitType"`
+	ParentTaskId *TaskId           `json:"parentTaskId"`
 
 	// DependencyResults tracks the set of task results on which current task depends
 	DependencyResults map[TaskId]TaskResultDetails `json:"dependencyResults"`
@@ -205,6 +216,22 @@ type TaskEntry struct {
 
 	// RetryCount specifies the number of times the task execution has been retried
 	RetryCount int
+}
+
+// CancelledTask represents a task that has been cancelled and retains references to its ID and previous executor.
+type CancelledTask struct {
+	// Id is the unique identifier of the cancelled task.
+	Id TaskId
+
+	// PreviousExecutor identifies the task executor handling the task before cancellation.
+	PreviousExecutor TaskExecutorId
+}
+
+func NewCancelledTask(entry *TaskEntry) *CancelledTask {
+	return &CancelledTask{
+		Id:               entry.Task.Id,
+		PreviousExecutor: entry.Owner,
+	}
 }
 
 // AddDependency adds a dependency to the current task entry and updates the dependents and pending dependencies.
@@ -343,18 +370,16 @@ func (t *Task) AsNewChildEntry(currentTime time.Time) *TaskEntry {
 
 func NewAggregateProofsTaskEntry(
 	batchId BatchId,
-	parentBatchId *BatchId,
 	mainShardBlock *jsonrpc.RPCBlock,
 	currentTime time.Time,
 ) *TaskEntry {
 	task := Task{
-		Id:            NewTaskId(),
-		BatchId:       batchId,
-		ParentBatchId: parentBatchId,
-		ShardId:       mainShardBlock.ShardId,
-		BlockNum:      mainShardBlock.Number,
-		BlockHash:     mainShardBlock.Hash,
-		TaskType:      AggregateProofs,
+		Id:        NewTaskId(),
+		BatchId:   batchId,
+		ShardId:   mainShardBlock.ShardId,
+		BlockNum:  mainShardBlock.Number,
+		BlockHash: mainShardBlock.Hash,
+		TaskType:  AggregateProofs,
 	}
 	return &TaskEntry{
 		Task:    task,
@@ -365,7 +390,6 @@ func NewAggregateProofsTaskEntry(
 
 func NewBlockProofTaskEntry(
 	batchId BatchId,
-	parentBatchId *BatchId,
 	aggregateProofsTask *TaskEntry,
 	execShardBlock *jsonrpc.RPCBlock,
 	currentTime time.Time,
@@ -381,14 +405,13 @@ func NewBlockProofTaskEntry(
 	}
 
 	task := Task{
-		Id:            NewTaskId(),
-		BatchId:       batchId,
-		ParentBatchId: parentBatchId,
-		ShardId:       execShardBlock.ShardId,
-		BlockNum:      execShardBlock.Number,
-		BlockHash:     execShardBlock.Hash,
-		TaskType:      ProofBlock,
-		ParentTaskId:  &aggregateProofsTask.Task.Id,
+		Id:           NewTaskId(),
+		BatchId:      batchId,
+		ShardId:      execShardBlock.ShardId,
+		BlockNum:     execShardBlock.Number,
+		BlockHash:    execShardBlock.Hash,
+		TaskType:     ProofBlock,
+		ParentTaskId: &aggregateProofsTask.Task.Id,
 	}
 	blockProofEntry := &TaskEntry{
 		Task:    task,
@@ -432,14 +455,13 @@ func NewMergeProofTaskEntry(providerTask *Task, currentTime time.Time) *TaskEntr
 
 func newTaskOfType(providerTask *Task, taskType TaskType, circuitType CircuitType) Task {
 	return Task{
-		Id:            NewTaskId(),
-		BatchId:       providerTask.BatchId,
-		ParentBatchId: providerTask.ParentBatchId,
-		ShardId:       providerTask.ShardId,
-		BlockNum:      providerTask.BlockNum,
-		BlockHash:     providerTask.BlockHash,
-		TaskType:      taskType,
-		CircuitType:   circuitType,
+		Id:          NewTaskId(),
+		BatchId:     providerTask.BatchId,
+		ShardId:     providerTask.ShardId,
+		BlockNum:    providerTask.BlockNum,
+		BlockHash:   providerTask.BlockHash,
+		TaskType:    taskType,
+		CircuitType: circuitType,
 	}
 }
 

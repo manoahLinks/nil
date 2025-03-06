@@ -465,8 +465,9 @@ func (s *BlockStorageTestSuite) Test_ResetProgressPartial_Block_Does_Not_Exists(
 	s.Require().NoError(err)
 
 	nonExistentBlockHash := testaide.RandomHash()
-	err = s.bs.ResetProgressPartial(s.ctx, nonExistentBlockHash)
+	purgedBatches, err := s.bs.ResetProgressPartial(s.ctx, nonExistentBlockHash)
 	s.Require().ErrorIs(err, scTypes.ErrBlockNotFound)
+	s.Require().Empty(purgedBatches)
 
 	for _, batch := range batches {
 		s.requireBatch(batch, false)
@@ -502,7 +503,7 @@ func (s *BlockStorageTestSuite) Test_ResetProgressPartial() {
 	}
 }
 
-func (s *BlockStorageTestSuite) testResetProgressPartial(passedHashIdx int) {
+func (s *BlockStorageTestSuite) testResetProgressPartial(firstBatchToPurgeIdx int) {
 	s.T().Helper()
 
 	batches := testaide.NewBatchesSequence(resetTestBatchesCount)
@@ -512,20 +513,24 @@ func (s *BlockStorageTestSuite) testResetProgressPartial(passedHashIdx int) {
 		s.Require().NoError(err)
 	}
 
-	firstMainHashToPurge := batches[passedHashIdx].MainShardBlock.Hash
-	err := s.bs.ResetProgressPartial(s.ctx, firstMainHashToPurge)
+	firstMainHashToPurge := batches[firstBatchToPurgeIdx].MainShardBlock.Hash
+	purgedBatches, err := s.bs.ResetProgressPartial(s.ctx, firstMainHashToPurge)
 	s.Require().NoError(err)
+	s.Require().Len(purgedBatches, len(batches)-firstBatchToPurgeIdx)
+	for i, batch := range batches[firstBatchToPurgeIdx:] {
+		s.Require().Equal(batch.Id, purgedBatches[i])
+	}
 
 	for i, batch := range batches {
-		shouldBePurged := i >= passedHashIdx
+		shouldBePurged := i >= firstBatchToPurgeIdx
 		s.requireBatch(batch, shouldBePurged)
 	}
 
 	var expectedLatestFetched *scTypes.MainBlockRef
-	if passedHashIdx == 0 {
+	if firstBatchToPurgeIdx == 0 {
 		expectedLatestFetched = nil
 	} else {
-		expectedLatestFetched, _ = scTypes.NewBlockRef(batches[passedHashIdx-1].MainShardBlock)
+		expectedLatestFetched, _ = scTypes.NewBlockRef(batches[firstBatchToPurgeIdx-1].MainShardBlock)
 	}
 
 	actualLatestFetched, err := s.bs.TryGetLatestFetched(s.ctx)
@@ -534,7 +539,7 @@ func (s *BlockStorageTestSuite) testResetProgressPartial(passedHashIdx int) {
 
 	actualLatestBatchId, err := s.bs.TryGetLatestBatchId(s.ctx)
 	s.Require().NoError(err)
-	s.Require().Equal(batches[passedHashIdx].ParentId, actualLatestBatchId)
+	s.Require().Equal(batches[firstBatchToPurgeIdx].ParentId, actualLatestBatchId)
 }
 
 func (s *BlockStorageTestSuite) Test_ResetProgressNonProved() {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/api"
 	"github.com/NilFoundation/nil/nil/services/synccommittee/internal/log"
@@ -17,7 +16,7 @@ type ProvedBlockSetter interface {
 }
 
 type StateResetLauncher interface {
-	LaunchPartialResetWithSuspension(ctx context.Context, failedMainBlockHash common.Hash) error
+	LaunchPartialResetWithSuspension(ctx context.Context, failedBatchId types.BatchId) error
 }
 
 type taskStateChangeHandler struct {
@@ -53,7 +52,7 @@ func (h *taskStateChangeHandler) OnTaskTerminated(ctx context.Context, task *typ
 	default:
 		log.NewTaskResultEvent(h.logger, zerolog.WarnLevel, result).
 			Msg("task execution failed with critical error, state will be reset")
-		return h.stateResetLauncher.LaunchPartialResetWithSuspension(ctx, task.BlockHash)
+		return h.stateResetLauncher.LaunchPartialResetWithSuspension(ctx, task.BatchId)
 	}
 }
 

@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"iter"
 	"time"
 
 	"github.com/NilFoundation/nil/nil/common"
@@ -24,9 +23,9 @@ const (
 	// Key: scTypes.TaskId (task's own id), Value: scTypes.TaskEntry.
 	taskEntriesTable db.TableName = "task_entries"
 
-	// blockParentIdxTable is used for indexing tasks by their parent batch ids.
-	// Key: scTypes.BatchId (task's parent batch id), Value: scTypes.TaskIdSet (task identifiers);
-	taskParentBatchIdxTable db.TableName = "task_parent_batch_idx"
+	// taskBatchIdxTable is used for indexing tasks by their batch ids.
+	// Key: scTypes.BatchId (task's batch id), Value: scTypes.TaskIdSet (task identifiers);
+	taskBatchIdxTable db.TableName = "task_parent_batch_idx"
 )
 
 const (
@@ -311,13 +310,6 @@ func (st *TaskStorage) processTaskResultImpl(ctx context.Context, res *types.Tas
 		return nil
 	}
 
-	if res.HasCriticalError() {
-		err := st.cancelNextBatchesTasks(tx, entry.Task.BatchId, res.Sender)
-		if err != nil {
-			return fmt.Errorf("failed to cancel tasks starting from batchId=%s: %w", entry.Task.BatchId, err)
-		}
-	}
-
 	if err := st.terminateTaskTx(tx, entry, res); err != nil {
 		return err
 	}
@@ -356,62 +348,9 @@ func (st *TaskStorage) terminateTaskTx(tx db.RwTx, entry *types.TaskEntry, res *
 	return nil
 }
 
-func (st *TaskStorage) cancelNextBatchesTasks(
-	tx db.RwTx,
-	batchId types.BatchId,
-	failedExecutor types.TaskExecutorId,
-) error {
-	for entry, err := range st.getBatchTasksSeqTx(tx, batchId) {
-		if err != nil {
-			return err
-		}
-		if err := st.cancelTaskTx(tx, entry, failedExecutor); err != nil {
-			return fmt.Errorf("failed to cancel task with id=%s: %w", entry.Task.Id, err)
-		}
-	}
-	return nil
-}
-
 func (st *TaskStorage) cancelTaskTx(tx db.RwTx, entry *types.TaskEntry, initiator types.TaskExecutorId) error {
 	result := types.NewTaskCancelledResult(entry.Task.Id, initiator)
 	return st.terminateTaskTx(tx, entry, result)
-}
-
-// getBatchTasksSeqTx traverses tasks tree in BFS using parentBatchId as a starting point.
-// It uses taskParentBatchIdxTable to retrieve parent-child connections between tasks.
-func (st *TaskStorage) getBatchTasksSeqTx(tx db.RoTx, parentBatchId types.BatchId) iter.Seq2[*types.TaskEntry, error] {
-	seen := make(map[types.BatchId]bool)
-
-	return func(yield func(*types.TaskEntry, error) bool) {
-		bfsQueue := []types.BatchId{parentBatchId}
-
-		for len(bfsQueue) > 0 {
-			nextParentId := bfsQueue[0]
-			bfsQueue = bfsQueue[1:]
-			seen[nextParentId] = true
-
-			taskIds, err := st.getTaskIdsFromIndexTx(tx, nextParentId)
-			if err != nil {
-				yield(nil, fmt.Errorf("failed to get parent idx entry, parentId=%s: %w", nextParentId, err))
-				return
-			}
-
-			for taskId := range taskIds.Values() {
-				taskEntry, err := st.getTaskEntry(tx, taskId, true)
-				if err != nil {
-					yield(nil, err)
-					return
-				}
-				if !yield(taskEntry, nil) {
-					return
-				}
-
-				if !seen[taskEntry.Task.BatchId] {
-					bfsQueue = append(bfsQueue, taskEntry.Task.BatchId)
-				}
-			}
-		}
-	}
 }
 
 func (st *TaskStorage) updateDependentsTx(
@@ -527,6 +466,35 @@ func (st *TaskStorage) rescheduleTaskTx(
 	return nil
 }
 
+func (st *TaskStorage) CancelTasksByBatchId(ctx context.Context, batchId types.BatchId) ([]types.CancelledTask, error) {
+	var tasks []types.CancelledTask
+	err := st.retryRunner.Do(ctx, func(ctx context.Context) error {
+		var err error
+		tasks, err = st.cancelTasksByBatchIdImpl(ctx, batchId)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
+func (st *TaskStorage) cancelTasksByBatchIdImpl(ctx context.Context, batchId types.BatchId) ([]types.CancelledTask, error) {
+	// TODO: Cancellation
+	panic("implement me!")
+}
+
+func (st *TaskStorage) CancelAllTasks(ctx context.Context) error {
+	return st.retryRunner.Do(ctx, func(ctx context.Context) error {
+		return st.cancelAllTasksImpl(ctx)
+	})
+}
+
+func (st *TaskStorage) cancelAllTasksImpl(ctx context.Context) error {
+	// TODO: Cancellation
+	panic("implement me!")
+}
+
 func (*TaskStorage) iterateOverTaskEntries(
 	tx db.RoTx,
 	action func(entry *types.TaskEntry) (shouldContinue bool, err error),
@@ -618,67 +586,65 @@ func (st *TaskStorage) deleteTaskTx(tx db.RwTx, entry *types.TaskEntry) error {
 }
 
 func (st *TaskStorage) putToBatchIndexTx(tx db.RwTx, entry *types.TaskEntry) error {
-	if entry.Task.ParentBatchId == nil {
-		return nil
-	}
-
-	taskIds, err := st.getTaskIdsFromIndexTx(tx, *entry.Task.ParentBatchId)
+	taskIds, err := st.getTaskIdsFromIndexTx(tx, entry.Task.BatchId)
 	if err != nil {
 		return err
 	}
 
-	taskIds.Put(entry.Task.Id)
+	if !taskIds.Put(entry.Task.Id) {
+		// Index entry already contains the given TaskId, skipping
+		return nil
+	}
 
-	return st.putTaskIdsToIndexTx(tx, *entry.Task.ParentBatchId, taskIds)
+	return st.putTaskIdsToIndexTx(tx, entry.Task.BatchId, taskIds)
 }
 
 func (st *TaskStorage) deleteFromBatchIndexTx(tx db.RwTx, entry *types.TaskEntry) error {
-	if entry.Task.ParentBatchId == nil {
-		return nil
-	}
-
-	taskIds, err := st.getTaskIdsFromIndexTx(tx, *entry.Task.ParentBatchId)
+	taskIds, err := st.getTaskIdsFromIndexTx(tx, entry.Task.BatchId)
 	if err != nil {
 		return err
 	}
 
-	delete(taskIds, entry.Task.Id)
+	if !taskIds.Delete(entry.Task.Id) {
+		// Index entry does not contain the given TaskId, skipping
+		return nil
+	}
 
 	if len(taskIds) > 0 {
-		return st.putTaskIdsToIndexTx(tx, *entry.Task.ParentBatchId, taskIds)
+		return st.putTaskIdsToIndexTx(tx, entry.Task.BatchId, taskIds)
 	}
 
-	parentBatchIdBytes := entry.Task.ParentBatchId.Bytes()
-	if err := tx.Delete(taskParentBatchIdxTable, parentBatchIdBytes); err != nil {
-		return fmt.Errorf("failed to delete idx entry, key %s: %w", entry.Task.ParentBatchId, err)
+	parentBatchIdBytes := entry.Task.BatchId.Bytes()
+	if err := tx.Delete(taskBatchIdxTable, parentBatchIdBytes); err != nil {
+		return fmt.Errorf("failed to delete idx entry, key %s: %w", entry.Task.BatchId, err)
 	}
 
 	return nil
 }
 
-func (st *TaskStorage) putTaskIdsToIndexTx(tx db.RwTx, parentBatchId types.BatchId, taskIds types.TaskIdSet) error {
+func (st *TaskStorage) putTaskIdsToIndexTx(tx db.RwTx, batchId types.BatchId, taskIds types.TaskIdSet) error {
 	newSetBytes, err := taskIds.MarshalBinary()
 	if err != nil {
-		return fmt.Errorf("failed to marshal parent idx entry, key=%s: %w", parentBatchId, err)
+		return fmt.Errorf("failed to marshal parent idx entry, key=%s: %w", batchId, err)
 	}
 
-	parentBatchIdBytes := parentBatchId.Bytes()
-	if err := tx.Put(taskParentBatchIdxTable, parentBatchIdBytes, newSetBytes); err != nil {
-		return fmt.Errorf("failed to put idx entry, key %s: %w", parentBatchId, err)
+	batchIdBytes := batchId.Bytes()
+	if err := tx.Put(taskBatchIdxTable, batchIdBytes, newSetBytes); err != nil {
+		return fmt.Errorf("failed to put idx entry, key %s: %w", batchId, err)
 	}
 	return nil
 }
 
-func (st *TaskStorage) getTaskIdsFromIndexTx(tx db.RoTx, parentBatchId types.BatchId) (types.TaskIdSet, error) {
-	parentBatchIdBytes := parentBatchId.Bytes()
+func (st *TaskStorage) getTaskIdsFromIndexTx(tx db.RoTx, batchId types.BatchId) (types.TaskIdSet, error) {
+	batchIdBytes := batchId.Bytes()
 
-	setBytes, err := tx.Get(taskParentBatchIdxTable, parentBatchIdBytes)
+	setBytes, err := tx.Get(taskBatchIdxTable, batchIdBytes)
 	if err != nil && !errors.Is(err, db.ErrKeyNotFound) {
-		return nil, fmt.Errorf("failed to get parent idx entry, parentId=%s: %w", parentBatchId, err)
+		return nil, fmt.Errorf("failed to get parent idx entry, parentId=%s: %w", batchId, err)
 	}
 	var taskIds types.TaskIdSet
 	if err := taskIds.UnmarshalBinary(setBytes); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal parent idx entry, parentId=%s: %w", parentBatchId, err)
+		return nil, fmt.Errorf("failed to unmarshal parent idx entry, parentId=%s: %w", batchId, err)
 	}
 	return taskIds, nil
 }

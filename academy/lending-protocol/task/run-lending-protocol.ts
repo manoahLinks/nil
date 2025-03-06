@@ -6,16 +6,19 @@ import {
   generateSmartAccount,
   getContract,
   waitTillCompleted,
+  CometaService
 } from "@nilfoundation/niljs";
 
 import { type Abi, decodeFunctionResult, encodeFunctionData } from "viem";
 
 import * as dotenv from "dotenv";
 import { task } from "hardhat/config";
-import * as GlobalLedger from "../artifacts/contracts/CollateralManager.sol/GlobalLedger.json";
-import * as InterestManager from "../artifacts/contracts/InterestManager.sol/InterestManager.json";
-import * as LendingPool from "../artifacts/contracts/LendingPool.sol/LendingPool.json";
-import * as Oracle from "../artifacts/contracts/Oracle.sol/Oracle.json";
+const GlobalLedger = require("../artifacts/contracts/CollateralManager.sol/GlobalLedger.json");
+const InterestManager = require("../artifacts/contracts/InterestManager.sol/InterestManager.json");
+const LendingPool = require("../artifacts/contracts/LendingPool.sol/LendingPool.json");
+const Oracle = require("../artifacts/contracts/Oracle.sol/Oracle.json");
+const OracleContract = require("../contracts/Oracle.sol");
+
 dotenv.config();
 
 task(
@@ -37,6 +40,40 @@ task(
   });
 
   console.log("Faucet client created");
+
+
+const service = new CometaService({
+  transport: new HttpTransport({
+    endpoint: process.env.NIL_RPC_ENDPOINT as string,
+  }),
+});
+
+
+  const compileInput = `{
+    "contractName": "Oracle.sol:Oracle",
+    "compilerVersion": "0.8.28",
+    "settings": {
+      "evmVersion": "shanghai",
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      }
+    },
+    "sources": {
+      "Oracle.sol": {
+        "urls": ["../contracts/Oracle.sol"]
+      },
+      "@nilfoundation/smart-contracts/Nil.sol": {
+        "urls": ["./node_modules/@nilfoundation/smart-contracts/contracts/Nil.sol"]
+      },
+      "@nilfoundation/smart-contracts/NilTokenBase.sol": {
+        "urls": ["./node_modules/@nilfoundation/smart-contracts/contracts/NilTokenBase.sol"]
+      }
+    }
+  }`;
+
+const compileOutput = await service.compileContract(compileInput);
+console.log(compileOutput);
 
   // Deploying a new smart account for the deployer
   console.log("Deploying Wallet");
@@ -77,6 +114,8 @@ task(
     `Interest Manager deployed at ${deployInterestManager} with hash ${deployInterestManagerHash} on shard 2`,
   );
 
+
+
   // Deploy GlobalLedger contract on shard 3
   const { address: deployGlobalLedger, hash: deployGlobalLedgerHash } =
     await deployerWallet.deployContract({
@@ -98,7 +137,7 @@ task(
       shardId: 4,
       args: [],
       bytecode: Oracle.bytecode as `0x${string}`,
-      abi: Oracle.abi as Abi,
+      abi: Oracle.abi as unknown as Abi,
       salt: BigInt(Math.floor(Math.random() * 10000)),
     });
 
@@ -107,6 +146,10 @@ task(
     `Oracle deployed at ${deployOracle} with hash ${deployOracleHash} on shard 4`,
   );
 
+  // const register = service.registerContractData(compileOutput, deployOracle);
+
+
+  // console.log(`Oracle contract registered at ${register}`);
   // Deploy LendingPool contract on shard 1, linking all other contracts
   const { address: deployLendingPool, hash: deployLendingPoolHash } =
     await deployerWallet.deployContract({
@@ -272,6 +315,9 @@ task(
     functionName: "getPrice",
     data: ethPriceRequest.data,
   });
+
+  console.log(`Price of USDT is ${usdtPrice}`);
+  console.log(`Price of ETH is ${ethPrice}`);
 
   // Perform a deposit of USDT by account1 into the LendingPool
   const depositUSDT = {

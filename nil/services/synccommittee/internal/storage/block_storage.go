@@ -24,6 +24,10 @@ const (
 	// Key: scTypes.BlockId (block's own id), Value: blockEntry.
 	blocksTable db.TableName = "blocks"
 
+	// batchesTable stores blocks batches produced by the Sync Committee.
+	// Key: scTypes.BatchId, Value: batchEntry.
+	batchesTable db.TableName = "batches"
+
 	// blockParentIdxTable is used for indexing blocks by their parent ids.
 	// Key: scTypes.BlockId (block's parent id), Value: scTypes.BlockId (block's own id);
 	blockParentIdxTable db.TableName = "blocks_parent_hash_idx"
@@ -44,12 +48,35 @@ const (
 	// Key: mainShardKey, Value: common.Hash.
 	nextToProposeTable db.TableName = "next_to_propose_parent_hash"
 
-	// storedBlocksCountTable stores the count of blocks that have been persisted in the database.
+	// storedBatchesCountTable stores the count of batches that have been persisted in the database.
 	// Key: mainShardKey, Value: uint32.
-	storedBlocksCountTable db.TableName = "stored_blocks_count"
+	storedBatchesCountTable db.TableName = "stored_batches_count"
 )
 
 var mainShardKey = makeShardKey(types.MainShardId)
+
+type batchEntry struct {
+	Id        scTypes.BatchId   `json:"batchId"`
+	ParentId  *scTypes.BatchId  `json:"parentBatchId,omitempty"`
+	CreatedAt time.Time         `json:"fetchedAt"`
+	IsProved  bool              `json:"isProved,omitempty"`
+	BlockIds  []scTypes.BlockId `json:"blockIds"`
+}
+
+func newBatchEntry(batch *scTypes.BlockBatch, createdAt time.Time) *batchEntry {
+	blockIds := make([]scTypes.BlockId, 0, batch.BlocksCount())
+	blockIds = append(blockIds, scTypes.IdFromBlock(batch.MainShardBlock))
+	for _, childBlock := range batch.ChildBlocks {
+		blockIds = append(blockIds, scTypes.IdFromBlock(childBlock))
+	}
+
+	return &batchEntry{
+		Id:        batch.Id,
+		ParentId:  batch.ParentId,
+		BlockIds:  blockIds,
+		CreatedAt: createdAt,
+	}
+}
 
 type blockEntry struct {
 	Block         jsonrpc.RPCBlock `json:"block"`
@@ -69,10 +96,11 @@ func newBlockEntry(block *jsonrpc.RPCBlock, containingBatch *scTypes.BlockBatch,
 }
 
 type BlockStorageMetrics interface {
-	RecordMainBlockProved(ctx context.Context)
+	RecordBatchProved(ctx context.Context)
 }
 
 type BlockStorageConfig struct {
+	// CapacityLimit defines the maximum capacity limit in terms of stored batches.
 	CapacityLimit uint32
 }
 
@@ -261,11 +289,17 @@ func (bs *BlockStorage) setBlockBatchImpl(ctx context.Context, batch *scTypes.Bl
 	}
 	defer tx.Rollback()
 
-	if err := bs.addStoredCountTx(tx, int32(batch.BlocksCount())); err != nil {
+	if err := bs.addStoredCountTx(tx, 1); err != nil {
 		return err
 	}
 
 	currentTime := bs.timer.NowTime()
+
+	entry := newBatchEntry(batch, currentTime)
+	if err = bs.putBatchTx(tx, entry); err != nil {
+		return err
+	}
+
 	mainEntry := newBlockEntry(batch.MainShardBlock, batch, currentTime)
 	if err := bs.putBlockTx(tx, mainEntry); err != nil {
 		return err
@@ -372,41 +406,36 @@ func (bs *BlockStorage) setProposeParentHash(tx db.RwTx, block *jsonrpc.RPCBlock
 	return bs.setParentOfNextToPropose(tx, block.ParentHash)
 }
 
-func (bs *BlockStorage) SetBlockAsProved(ctx context.Context, id scTypes.BlockId) error {
-	wasSet, err := bs.setBlockAsProvedImpl(ctx, id)
+func (bs *BlockStorage) SetBatchAsProved(ctx context.Context, batchId scTypes.BatchId) error {
+	wasSet, err := bs.setBatchAsProvedImpl(ctx, batchId)
 	if err != nil {
 		return err
 	}
 	if wasSet {
-		bs.metrics.RecordMainBlockProved(ctx)
+		bs.metrics.RecordBatchProved(ctx)
 	}
 	return nil
 }
 
-func (bs *BlockStorage) setBlockAsProvedImpl(ctx context.Context, id scTypes.BlockId) (wasSet bool, err error) {
+func (bs *BlockStorage) setBatchAsProvedImpl(ctx context.Context, batchId scTypes.BatchId) (wasSet bool, err error) {
 	tx, err := bs.database.CreateRwTx(ctx)
 	if err != nil {
 		return false, err
 	}
 	defer tx.Rollback()
 
-	entry, err := bs.getBlockEntry(tx, id, true)
+	entry, err := bs.getBatchTx(tx, batchId, true)
 	if err != nil {
 		return false, err
 	}
 
 	if entry.IsProved {
-		bs.logger.Debug().Stringer("blockId", id).Msg("block is already marked as proved")
+		bs.logger.Debug().Stringer(logging.FieldBatchId, batchId).Msg("batch is already marked as proved")
 		return false, nil
 	}
 
 	entry.IsProved = true
-	value, err := marshallEntry(entry)
-	if err != nil {
-		return false, err
-	}
-
-	if err := tx.Put(blocksTable, id.Bytes(), value); err != nil {
+	if err := bs.putBatchTx(tx, entry); err != nil {
 		return false, err
 	}
 
@@ -614,19 +643,21 @@ func (bs *BlockStorage) putLatestFetchedBlockTx(tx db.RwTx, shardId types.ShardI
 	return nil
 }
 
-// ResetProgressPartial resets the block storage state starting from the given main block hash:
+// ResetProgressPartial resets the block storage state starting from the batch with given ID:
 //
-//  1. Sets the latest fetched block reference to the parent of the block with hash == firstMainHashToPurge.
+//  1. Picks first main shard block [B] from the batch with the given ID.
+//
+//  2. Sets the latest fetched block reference to the parent of the block [B].
 //     If the specified block is the first block in the chain, the new latest fetched value will be nil.
 //
-//  2. Deletes all main and corresponding exec shard blocks starting from the block with hash == firstMainHashToPurge.
+//  3. Deletes all main and corresponding exec shard blocks starting from the block [B].
 func (bs *BlockStorage) ResetProgressPartial(
 	ctx context.Context,
-	firstMainHashToPurge common.Hash,
+	firstBatchToPurge scTypes.BatchId,
 ) (purgedBatches []scTypes.BatchId, err error) {
 	err = bs.retryRunner.Do(ctx, func(ctx context.Context) error {
 		var err error
-		purgedBatches, err = bs.resetProgressPartialImpl(ctx, firstMainHashToPurge)
+		purgedBatches, err = bs.resetProgressPartialImpl(ctx, firstBatchToPurge)
 		return err
 	})
 	return
@@ -634,7 +665,7 @@ func (bs *BlockStorage) ResetProgressPartial(
 
 func (bs *BlockStorage) resetProgressPartialImpl(
 	ctx context.Context,
-	firstMainHashToPurge common.Hash,
+	firstBatchToPurge scTypes.BatchId,
 ) (purgedBatches []scTypes.BatchId, err error) {
 	tx, err := bs.database.CreateRwTx(ctx)
 	if err != nil {
@@ -642,7 +673,8 @@ func (bs *BlockStorage) resetProgressPartialImpl(
 	}
 	defer tx.Rollback()
 
-	startingId := scTypes.NewBlockId(types.MainShardId, firstMainHashToPurge)
+	// TODO find starting block by batch ID
+	startingId := scTypes.NewBlockId(types.MainShardId, common.EmptyHash)
 
 	startingEntry, err := bs.getBlockEntry(tx, startingId, true)
 	if err != nil {
@@ -786,7 +818,7 @@ func (bs *BlockStorage) getBlockEntryBytesId(tx db.RoTx, idBytes []byte, require
 		return nil, fmt.Errorf("failed to get block with id=%s: %w", hex.EncodeToString(idBytes), err)
 	}
 
-	entry, err := unmarshallEntry(idBytes, value)
+	entry, err := unmarshallEntry[blockEntry](idBytes, value)
 	if err != nil {
 		return nil, err
 	}
@@ -822,10 +854,49 @@ func (bs *BlockStorage) deleteMainBlockWithChildren(tx db.RwTx, mainShardEntry *
 	return nil
 }
 
+func (bs *BlockStorage) putBatchTx(tx db.RwTx, entry *batchEntry) error {
+	value, err := marshallEntry(entry)
+	if err != nil {
+		return fmt.Errorf("%w, id=%s", err, entry.Id)
+	}
+
+	if err := tx.Put(batchesTable, entry.Id.Bytes(), value); err != nil {
+		return fmt.Errorf("failed to put batch with id=%s: %w", entry.Id, err)
+	}
+
+	return nil
+}
+
+func (bs *BlockStorage) getBatchTx(tx db.RoTx, id scTypes.BatchId, required bool) (*batchEntry, error) {
+	return bs.getBatchBytesIdTx(tx, id.Bytes(), required)
+}
+
+func (bs *BlockStorage) getBatchBytesIdTx(tx db.RoTx, idBytes []byte, required bool) (*batchEntry, error) {
+	value, err := tx.Get(batchesTable, idBytes)
+
+	switch {
+	case err == nil:
+		break
+	case errors.Is(err, db.ErrKeyNotFound) && required:
+		return nil, fmt.Errorf("%w, id=%s", scTypes.ErrBatchNotFound, hex.EncodeToString(idBytes))
+	case errors.Is(err, db.ErrKeyNotFound):
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("failed to get batch with id=%s: %w", hex.EncodeToString(idBytes), err)
+	}
+
+	entry, err := unmarshallEntry[batchEntry](idBytes, value)
+	if err != nil {
+		return nil, err
+	}
+
+	return entry, nil
+}
+
 func (bs *BlockStorage) putBlockTx(tx db.RwTx, entry *blockEntry) error {
 	value, err := marshallEntry(entry)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w, hash=%s", err, entry.Block.Hash)
 	}
 
 	blockId := scTypes.IdFromBlock(&entry.Block)
@@ -870,7 +941,7 @@ func (*BlockStorage) storedBlocksIter(tx db.RoTx) iter.Seq2[*blockEntry, error] 
 				yield(nil, err)
 				return
 			}
-			entry, err := unmarshallEntry(key, val)
+			entry, err := unmarshallEntry[blockEntry](key, val)
 			if err != nil {
 				yield(nil, err)
 				return
@@ -884,70 +955,71 @@ func (*BlockStorage) storedBlocksIter(tx db.RoTx) iter.Seq2[*blockEntry, error] 
 }
 
 func (bs *BlockStorage) addStoredCountTx(tx db.RwTx, delta int32) error {
-	currentBlocksCount, err := bs.getBlocksCountTx(tx)
+	currentBatchesCount, err := bs.getBatchesCountTx(tx)
 	if err != nil {
 		return err
 	}
 
-	signed := int32(currentBlocksCount) + delta
+	signed := int32(currentBatchesCount) + delta
 	if signed < 0 {
 		return fmt.Errorf(
-			"blocks count cannot be negative: delta=%d, current blocks count=%d", delta, currentBlocksCount,
+			"batches count cannot be negative: delta=%d, current blocks count=%d", delta, currentBatchesCount,
 		)
 	}
 
-	newBlocksCount := uint32(signed)
-	if newBlocksCount > bs.config.CapacityLimit {
+	newBatchesCount := uint32(signed)
+	if newBatchesCount > bs.config.CapacityLimit {
 		return fmt.Errorf(
 			"%w: delta is %d, current storage size is %d, capacity limit is %d",
-			ErrCapacityLimitReached, delta, currentBlocksCount, bs.config.CapacityLimit,
+			ErrCapacityLimitReached, delta, currentBatchesCount, bs.config.CapacityLimit,
 		)
 	}
 
-	return bs.putBlocksCountTx(tx, newBlocksCount)
+	return bs.putBatchesCountTx(tx, newBatchesCount)
 }
 
-func (bs *BlockStorage) getBlocksCountTx(tx db.RoTx) (uint32, error) {
-	bytes, err := tx.Get(storedBlocksCountTable, mainShardKey)
+func (bs *BlockStorage) getBatchesCountTx(tx db.RoTx) (uint32, error) {
+	bytes, err := tx.Get(storedBatchesCountTable, mainShardKey)
 	switch {
 	case err == nil:
 		break
 	case errors.Is(err, db.ErrKeyNotFound):
 		return 0, nil
 	default:
-		return 0, fmt.Errorf("failed to get blocks count: %w", err)
+		return 0, fmt.Errorf("failed to get batches count: %w", err)
 	}
 
 	count := binary.LittleEndian.Uint32(bytes)
 	return count, nil
 }
 
-func (bs *BlockStorage) putBlocksCountTx(tx db.RwTx, newValue uint32) error {
+func (bs *BlockStorage) putBatchesCountTx(tx db.RwTx, newValue uint32) error {
 	bytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(bytes, newValue)
 
-	err := tx.Put(storedBlocksCountTable, mainShardKey, bytes)
+	err := tx.Put(storedBatchesCountTable, mainShardKey, bytes)
 	if err != nil {
-		return fmt.Errorf("failed to put blocks count: %w (newValue is %d)", err, newValue)
+		return fmt.Errorf("failed to put batches count: %w (newValue is %d)", err, newValue)
 	}
 	return nil
 }
 
-func marshallEntry(entry *blockEntry) ([]byte, error) {
+func marshallEntry[E any](entry *E) ([]byte, error) {
 	bytes, err := json.Marshal(entry)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"%w: failed to encode block with hash %s: %w", ErrSerializationFailed, entry.Block.Hash, err,
+			"%w: failed to marshall entry: %w", ErrSerializationFailed, err,
 		)
 	}
 	return bytes, nil
 }
 
-func unmarshallEntry(key []byte, val []byte) (*blockEntry, error) {
-	entry := &blockEntry{}
+func unmarshallEntry[E any](key []byte, val []byte) (*E, error) {
+	entry := new(E)
+
 	if err := json.Unmarshal(val, entry); err != nil {
 		return nil, fmt.Errorf(
-			"%w: failed to unmarshall block entry with id=%s: %w", ErrSerializationFailed, hex.EncodeToString(key), err,
+			"%w: failed to unmarshall entry with id=%s: %w", ErrSerializationFailed, hex.EncodeToString(key), err,
 		)
 	}
 

@@ -142,7 +142,7 @@ func (s *AggregatorTestSuite) Test_Main_Parent_Hash_Mismatch() {
 	for _, provedBatch := range batches[:2] {
 		err := s.blockStorage.SetBlockBatch(s.ctx, provedBatch)
 		s.Require().NoError(err)
-		err = s.blockStorage.SetBlockAsProved(s.ctx, scTypes.IdFromBlock(provedBatch.MainShardBlock))
+		err = s.blockStorage.SetBatchAsProved(s.ctx, provedBatch.Id)
 		s.Require().NoError(err)
 	}
 

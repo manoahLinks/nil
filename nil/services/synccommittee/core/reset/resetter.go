@@ -4,16 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/common/logging"
 	scTypes "github.com/NilFoundation/nil/nil/services/synccommittee/internal/types"
 	"github.com/rs/zerolog"
 )
 
-type BlockResetter interface {
+type BatchResetter interface {
 	// ResetProgressPartial resets Sync Committee's block processing progress
-	// to a point preceding main shard block with the specified hash.
-	ResetProgressPartial(ctx context.Context, firstMainHashToPurge common.Hash) (purgedBatches []scTypes.BatchId, err error)
+	// to a point preceding batch with the specified ID.
+	ResetProgressPartial(ctx context.Context, firstBatchToPurge scTypes.BatchId) (purgedBatches []scTypes.BatchId, err error)
 
 	// ResetProgressNotProved resets Sync Committee's progress for all not yet proven blocks.
 	ResetProgressNotProved(ctx context.Context) error
@@ -27,16 +26,16 @@ type TaskCanceler interface {
 	CancelAllTasks(ctx context.Context) error
 }
 
-func NewStateResetter(logger zerolog.Logger, blockResetter BlockResetter, taskCanceler TaskCanceler) *StateResetter {
+func NewStateResetter(logger zerolog.Logger, batchResetter BatchResetter, taskCanceler TaskCanceler) *StateResetter {
 	return &StateResetter{
-		blockResetter: blockResetter,
+		batchResetter: batchResetter,
 		taskCanceler:  taskCanceler,
 		logger:        logger,
 	}
 }
 
 type StateResetter struct {
-	blockResetter BlockResetter
+	batchResetter BatchResetter
 	taskCanceler  TaskCanceler
 	logger        zerolog.Logger
 }
@@ -46,13 +45,14 @@ func (r *StateResetter) ResetProgressPartial(ctx context.Context, failedBatchId 
 		Stringer(logging.FieldBatchId, failedBatchId).
 		Msg("Started partial progress reset")
 
-	purgedBatchIds, err := r.blockResetter.ResetProgressPartial(ctx, failedBatchId)
+	purgedBatchIds, err := r.batchResetter.ResetProgressPartial(ctx, failedBatchId)
 	if err != nil {
 		return err
 	}
 
 	for _, batchId := range purgedBatchIds {
-		// Tasks associated with the failed batch should not be cancelled at this point.
+		// Tasks associated with the failed batch should not be cancelled at this point,
+		// they will be marked as failed later
 		if batchId == failedBatchId {
 			continue
 		}
@@ -76,7 +76,7 @@ func (r *StateResetter) ResetProgressPartial(ctx context.Context, failedBatchId 
 func (r *StateResetter) ResetProgressNotProved(ctx context.Context) error {
 	r.logger.Info().Msg("Started not proven progress reset")
 
-	if err := r.blockResetter.ResetProgressNotProved(ctx); err != nil {
+	if err := r.batchResetter.ResetProgressNotProved(ctx); err != nil {
 		return fmt.Errorf("failed to reset progress not proved blocks: %w", err)
 	}
 

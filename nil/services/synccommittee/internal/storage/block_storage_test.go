@@ -111,7 +111,7 @@ func (s *BlockStorageTestSuite) Test_SetBlockBatch_Capacity_Exceeded() {
 	s.Require().ErrorIs(err, ErrCapacityLimitReached)
 }
 
-func (s *BlockStorageTestSuite) Test_SetBlockBatch_Free_Capacity_On_SetBlockAsProposed() {
+func (s *BlockStorageTestSuite) Test_SetBlockBatch_Free_Capacity_On_SetBatchAsProposed() {
 	batches := testaide.NewBatchesSequence(2)
 
 	capacityLimit := batches[0].BlocksCount()
@@ -124,10 +124,10 @@ func (s *BlockStorageTestSuite) Test_SetBlockBatch_Free_Capacity_On_SetBlockAsPr
 	err = storage.SetBlockBatch(s.ctx, batches[1])
 	s.Require().ErrorIs(err, ErrCapacityLimitReached)
 
-	provedMainBlockId := scTypes.IdFromBlock(batches[0].MainShardBlock)
-	err = storage.SetBlockAsProved(s.ctx, provedMainBlockId)
+	provedBatchId := batches[0].Id
+	err = storage.SetBatchAsProved(s.ctx, provedBatchId)
 	s.Require().NoError(err)
-	err = storage.SetBlockAsProposed(s.ctx, provedMainBlockId)
+	err = storage.SetBlockAsProposed(s.ctx, scTypes.IdFromBlock(batches[0].MainShardBlock))
 	s.Require().NoError(err)
 
 	err = storage.SetBlockBatch(s.ctx, batches[1])
@@ -183,29 +183,29 @@ func (s *BlockStorageTestSuite) TestGetLastFetchedBlock() {
 	s.Require().Equal(batch.MainShardBlock.Hash, latestFetched.Hash)
 }
 
-func (s *BlockStorageTestSuite) TestSetBlockAsProved_DoesNotExist() {
-	randomId := testaide.RandomBlockId()
-	err := s.bs.SetBlockAsProved(s.ctx, randomId)
-	s.Require().Errorf(err, "block with id=%s is not found", randomId.String())
+func (s *BlockStorageTestSuite) Test_SetBatchAsProved_Batch_Does_Not_Exist() {
+	randomId := scTypes.NewBatchId()
+	err := s.bs.SetBatchAsProved(s.ctx, randomId)
+	s.Require().ErrorIs(err, scTypes.ErrBatchNotFound)
 }
 
-func (s *BlockStorageTestSuite) TestSetBlockAsProved() {
+func (s *BlockStorageTestSuite) Test_SetBatchAsProved() {
 	batch := testaide.NewBlockBatch(3)
 	err := s.bs.SetBlockBatch(s.ctx, batch)
 	s.Require().NoError(err)
 
-	err = s.bs.SetBlockAsProved(s.ctx, scTypes.IdFromBlock(batch.MainShardBlock))
+	err = s.bs.SetBatchAsProved(s.ctx, batch.Id)
 	s.Require().NoError(err)
 }
 
-func (s *BlockStorageTestSuite) Test_SetBlockAsProved_Multiple_Times() {
+func (s *BlockStorageTestSuite) Test_SetBatchAsProved_Multiple_Times() {
 	batch := testaide.NewBlockBatch(3)
 	mainBlockId := scTypes.IdFromBlock(batch.MainShardBlock)
 	err := s.bs.SetBlockBatch(s.ctx, batch)
 	s.Require().NoError(err)
 
 	for range 3 {
-		err := s.bs.SetBlockAsProved(s.ctx, mainBlockId)
+		err := s.bs.SetBatchAsProved(s.ctx, batch.Id)
 		s.Require().NoError(err)
 	}
 
@@ -296,7 +296,7 @@ func (s *BlockStorageTestSuite) TestSetBlockAsProposed_WithExecutionShardBlocks(
 	err = s.bs.SetBlockBatch(s.ctx, nextBatch)
 	s.Require().NoError(err)
 
-	err = s.bs.SetBlockAsProved(s.ctx, mainBlockId)
+	err = s.bs.SetBatchAsProved(s.ctx, batch.Id)
 	s.Require().NoError(err)
 
 	err = s.bs.SetBlockAsProposed(s.ctx, mainBlockId)
@@ -358,7 +358,7 @@ func (s *BlockStorageTestSuite) TestTryGetNextProposalData_Collect_Transactions(
 	err = s.bs.SetBlockBatch(s.ctx, batch)
 	s.Require().NoError(err)
 
-	err = s.bs.SetBlockAsProved(s.ctx, scTypes.IdFromBlock(batch.MainShardBlock))
+	err = s.bs.SetBatchAsProved(s.ctx, batch.Id)
 	s.Require().NoError(err)
 
 	data, err := s.bs.TryGetNextProposalData(s.ctx)
@@ -384,11 +384,11 @@ func (s *BlockStorageTestSuite) TestTryGetNextProposalData_Concurrently() {
 	waitGroup := sync.WaitGroup{}
 	waitGroup.Add(blocksCount + 1)
 
-	// concurrently set blocks as proved
-	for _, block := range batches {
+	// concurrently set batches as proved
+	for _, batch := range batches {
 		go func() {
-			err := s.bs.SetBlockAsProved(s.ctx, scTypes.IdFromBlock(block.MainShardBlock))
-			s.NoError(err, "failed to set block as proved")
+			err := s.bs.SetBatchAsProved(s.ctx, batch.Id)
+			s.NoError(err, "failed to set batch as proved")
 			waitGroup.Done()
 		}()
 	}
@@ -464,8 +464,8 @@ func (s *BlockStorageTestSuite) Test_ResetProgressPartial_Block_Does_Not_Exists(
 	latestBatchIdBeforeReset, err := s.bs.TryGetLatestBatchId(s.ctx)
 	s.Require().NoError(err)
 
-	nonExistentBlockHash := testaide.RandomHash()
-	purgedBatches, err := s.bs.ResetProgressPartial(s.ctx, nonExistentBlockHash)
+	nonExistentBatchId := scTypes.NewBatchId()
+	purgedBatches, err := s.bs.ResetProgressPartial(s.ctx, nonExistentBatchId)
 	s.Require().ErrorIs(err, scTypes.ErrBlockNotFound)
 	s.Require().Empty(purgedBatches)
 
@@ -513,8 +513,8 @@ func (s *BlockStorageTestSuite) testResetProgressPartial(firstBatchToPurgeIdx in
 		s.Require().NoError(err)
 	}
 
-	firstMainHashToPurge := batches[firstBatchToPurgeIdx].MainShardBlock.Hash
-	purgedBatches, err := s.bs.ResetProgressPartial(s.ctx, firstMainHashToPurge)
+	firstBatchIdToPurge := batches[firstBatchToPurgeIdx].Id
+	purgedBatches, err := s.bs.ResetProgressPartial(s.ctx, firstBatchIdToPurge)
 	s.Require().NoError(err)
 	s.Require().Len(purgedBatches, len(batches)-firstBatchToPurgeIdx)
 	for i, batch := range batches[firstBatchToPurgeIdx:] {
@@ -553,7 +553,7 @@ func (s *BlockStorageTestSuite) Test_ResetProgressNonProved() {
 	const provedBatchesCount = 3
 	provedBatches := batches[:provedBatchesCount]
 	for _, batch := range provedBatches {
-		err := s.bs.SetBlockAsProved(s.ctx, scTypes.IdFromBlock(batch.MainShardBlock))
+		err := s.bs.SetBatchAsProved(s.ctx, batch.Id)
 		s.Require().NoError(err)
 	}
 

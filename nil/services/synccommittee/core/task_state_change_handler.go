@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type ProvedBlockSetter interface {
-	SetBlockAsProved(ctx context.Context, blockId types.BlockId) error
+type ProvedBatchSetter interface {
+	SetBatchAsProved(ctx context.Context, batchId types.BatchId) error
 }
 
 type StateResetLauncher interface {
@@ -20,18 +20,18 @@ type StateResetLauncher interface {
 }
 
 type taskStateChangeHandler struct {
-	blockSetter        ProvedBlockSetter
+	batchSetter        ProvedBatchSetter
 	stateResetLauncher StateResetLauncher
 	logger             zerolog.Logger
 }
 
 func newTaskStateChangeHandler(
-	blockSetter ProvedBlockSetter,
+	batchSetter ProvedBatchSetter,
 	stateResetLauncher StateResetLauncher,
 	logger zerolog.Logger,
 ) api.TaskStateChangeHandler {
 	return &taskStateChangeHandler{
-		blockSetter:        blockSetter,
+		batchSetter:        batchSetter,
 		stateResetLauncher: stateResetLauncher,
 		logger:             logger,
 	}
@@ -67,10 +67,8 @@ func (h *taskStateChangeHandler) onTaskSuccess(ctx context.Context, task *types.
 		Stringer(logging.FieldBatchId, task.BatchId).
 		Msg("Proof batch completed")
 
-	blockId := types.NewBlockId(task.ShardId, task.BlockHash)
-
-	if err := h.blockSetter.SetBlockAsProved(ctx, blockId); err != nil {
-		return fmt.Errorf("failed to set block with id=%s as proved: %w", blockId, err)
+	if err := h.batchSetter.SetBatchAsProved(ctx, task.BatchId); err != nil {
+		return fmt.Errorf("failed to set batch with id=%s as proved: %w", task.BatchId, err)
 	}
 
 	return nil

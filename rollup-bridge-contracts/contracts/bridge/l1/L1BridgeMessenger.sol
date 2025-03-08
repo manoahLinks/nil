@@ -203,13 +203,13 @@ contract L1BridgeMessenger is
   }
 
   function computeMessageHash(
-    address _sender,
-    address _target,
+    address _messageSender,
+    address _messageTarget,
     uint256 _value,
     uint256 _messageNonce,
     bytes memory _message
   ) public pure returns (bytes32) {
-    return keccak256(_encodeCrossChainCalldata(_sender, _target, _value, _messageNonce, _message));
+    return keccak256(abi.encode(_messageSender, _messageTarget, _value, _messageNonce, _message));
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -260,31 +260,6 @@ contract L1BridgeMessenger is
     _revokeRole(OWNER_ROLE, owner());
     super.transferOwnership(newOwner);
     _grantRole(OWNER_ROLE, newOwner);
-  }
-
-  /// @dev Internal function to generate the crosschain calldata for a message.
-  /// @param _sender Message sender address.
-  /// @param _target Target contract address.
-  /// @param _value The amount of ETH pass to the target.
-  /// @param _messageNonce Nonce for the provided message.
-  /// @param _message Message to send to the target.
-  /// @return ABI encoded cross domain calldata.
-  function _encodeCrossChainCalldata(
-    address _sender,
-    address _target,
-    uint256 _value,
-    uint256 _messageNonce,
-    bytes memory _message
-  ) internal pure returns (bytes memory) {
-    return
-      abi.encodeWithSignature(
-        "relayMessage(address,address,uint256,uint256,bytes)",
-        _sender,
-        _target,
-        _value,
-        _messageNonce,
-        _message
-      );
   }
 
   /// @dev Internal function to check whether the `_target` address is allowed to avoid attack.
@@ -414,7 +389,7 @@ contract L1BridgeMessenger is
     }
 
     bytes32 l2Tol1Root = INilRollup(l1NilRollup).getCurrentL2ToL1Root();
-    if (MerkleProof.verify(claimProof, l2Tol1Root, messageHash)) {
+    if (!MerkleProof.verify(claimProof, l2Tol1Root, messageHash)) {
       revert ErrorInvalidClaimProof();
     }
 

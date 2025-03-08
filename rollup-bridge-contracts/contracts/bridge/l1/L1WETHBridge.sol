@@ -103,14 +103,14 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
 
   /// @inheritdoc IL1WETHBridge
   function depositWETH(
-    address l2DepositRecipient,
+    address l2Recipient,
     uint256 depositAmount,
     address l2FeeRefundRecipient,
     uint256 nilGasLimit,
     uint256 userMaxFeePerGas,
     uint256 userMaxPriorityFeePerGas
   ) external payable override {
-    if (l2DepositRecipient == address(0)) {
+    if (l2Recipient == address(0)) {
       revert ErrorInvalidL2DepositRecipient();
     }
 
@@ -127,7 +127,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
     }
 
     _deposit(
-      l2DepositRecipient,
+      l2Recipient,
       depositAmount,
       l2FeeRefundRecipient,
       new bytes(0),
@@ -139,7 +139,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
 
   /// @inheritdoc IL1WETHBridge
   function depositWETHAndCall(
-    address l2DepositRecipient,
+    address l2Recipient,
     uint256 depositAmount,
     address l2FeeRefundRecipient,
     bytes memory data,
@@ -147,7 +147,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
     uint256 userMaxFeePerGas,
     uint256 userMaxPriorityFeePerGas
   ) external payable override {
-    if (l2DepositRecipient == address(0)) {
+    if (l2Recipient == address(0)) {
       revert ErrorInvalidL2DepositRecipient();
     }
 
@@ -164,7 +164,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
     }
 
     _deposit(
-      l2DepositRecipient,
+      l2Recipient,
       depositAmount,
       l2FeeRefundRecipient,
       data,
@@ -273,7 +273,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
   }
 
   /// @dev Internal function to do all the deposit operations.
-  /// @param _l2DepositRecipient The recipient address to recieve the token in L2.
+  /// @param l2Recipient The recipient address to recieve the token in L2.
   /// @param _depositAmount The amount of token to deposit.
   /// @param _data Optional data to forward to recipient's account.
   /// @param _l2FeeRefundRecipient the address of recipient for excess fee refund on L2.
@@ -282,7 +282,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
   /// @param _userMaxPriorityFeePerGas The maximum priority fee per gas unit that the user is willing to pay.
 
   function _deposit(
-    address _l2DepositRecipient,
+    address l2Recipient,
     uint256 _depositAmount,
     address _l2FeeRefundRecipient,
     bytes memory _data,
@@ -310,7 +310,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
       IL2WETHBridge.finalizeDepositWETH,
-      (wethToken, nilWethToken, _depositor, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
+      (wethToken, nilWethToken, _depositor, l2Recipient, _l2FeeRefundRecipient, _depositAmount, _data)
     );
 
     // Send message to L1BridgeMessenger.
@@ -324,6 +324,6 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
       feeCreditData
     );
 
-    emit DepositWETH(wethToken, nilWethToken, _depositor, _l2DepositRecipient, _depositAmount, _data);
+    emit DepositWETH(wethToken, nilWethToken, _depositor, l2Recipient, _depositAmount, _data);
   }
 }

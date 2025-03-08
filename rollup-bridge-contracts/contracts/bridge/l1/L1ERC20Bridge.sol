@@ -201,7 +201,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @dev Internal function to transfer ERC20 token to this contract.
-  /// @param _token The address of token to transfer.
+  /// @param _l1Token The address of token to transfer.
   /// @param _depositAmount The amount of token to transfer.
   /// @param _encodedERC20TransferData The data passed by router or the caller on to bridge.
   /// @dev when depositor calls router, then _encodedERC20TransferData will contain the encoded bytes of
@@ -209,7 +209,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
   /// @dev when depositor calls L1ERC20Bridge, then _encodedERC20TransferData will contain calldata for the l2 target
   /// address
   function _transferERC20In(
-    address _token,
+    address _l1Token,
     uint256 _depositAmount,
     bytes memory _encodedERC20TransferData
   ) internal returns (address, uint256, bytes memory) {
@@ -235,15 +235,15 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       // _depositor will be derived from the routerData as the depositor called on router directly
       // _sender will be router-address and its router's responsibility to pull the ERC20Token from depositor to
       // L1ERC20Bridge
-      _amountPulled = IL1BridgeRouter(router).pullERC20(_depositor, _token, _depositAmount);
+      _amountPulled = IL1BridgeRouter(router).pullERC20(_depositor, _l1Token, _depositAmount);
     } else {
-      uint256 _tokenBalanceBeforePull = ERC20(_token).balanceOf(address(this));
+      uint256 _tokenBalanceBeforePull = ERC20(_l1Token).balanceOf(address(this));
 
       // L1ERC20Bridge to transfer ERC20 Tokens from depositor address to the L1ERC20Bridge
       // L1ERC20Bridge must have sufficient approval of spending on ERC20Token
-      ERC20(_token).safeTransferFrom(_depositor, address(this), _depositAmount);
+      ERC20(_l1Token).safeTransferFrom(_depositor, address(this), _depositAmount);
 
-      _amountPulled = ERC20(_token).balanceOf(address(this)) - _tokenBalanceBeforePull;
+      _amountPulled = ERC20(_l1Token).balanceOf(address(this)) - _tokenBalanceBeforePull;
     }
 
     if (_amountPulled != _depositAmount) {
@@ -254,8 +254,8 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
   }
 
   /// @dev Internal function to do all the deposit operations.
-  /// @param _token The token to deposit.
-  /// @param _l2DepositRecipient The recipient address to recieve the token in L2.
+  /// @param _l1Token The token to deposit.
+  /// @param _l2Recipient The recipient address to recieve the token in L2.
   /// @param _depositAmount The amount of token to deposit.
   /// @param _l2FeeRefundRecipient the address of recipient for excess fee refund on L2.
   /// @param _data Optional data to forward to recipient's account.
@@ -263,8 +263,8 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
   /// @param _userMaxFeePerGas The maximum Fee per gas unit that the user is willing to pay.
   /// @param _userMaxPriorityFeePerGas The maximum priority fee per gas unit that the user is willing to pay.
   function _deposit(
-    address _token,
-    address _l2DepositRecipient,
+    address _l1Token,
+    address _l2Recipient,
     uint256 _depositAmount,
     address _l2FeeRefundRecipient,
     bytes memory _data,
@@ -272,15 +272,15 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     uint256 _userMaxFeePerGas,
     uint256 _userMaxPriorityFeePerGas
   ) internal virtual nonReentrant {
-    if (_token == address(0)) {
+    if (_l1Token == address(0)) {
       revert ErrorInvalidTokenAddress();
     }
 
-    if (_token == wethToken) {
+    if (_l1Token == wethToken) {
       revert ErrorWETHTokenNotSupportedOnERC20Bridge();
     }
 
-    if (_l2DepositRecipient == address(0)) {
+    if (_l2Recipient == address(0)) {
       revert ErrorInvalidL2DepositRecipient();
     }
 
@@ -296,7 +296,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       revert ErrorInvalidNilGasLimit();
     }
 
-    address _l2Token = tokenMapping[_token];
+    address _l2Token = tokenMapping[_l1Token];
 
     //TODO compute l2TokenAddress
     // update the mapping
@@ -306,7 +306,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     }
 
     // Transfer token into Bridge contract
-    (address _depositorAddress, , ) = _transferERC20In(_token, _depositAmount, _data);
+    (address _depositorAddress, , ) = _transferERC20In(_l1Token, _depositAmount, _data);
 
     INilGasPriceOracle.FeeCreditData memory feeCreditData = INilGasPriceOracle(nilGasPriceOracle).computeFeeCredit(
       _nilGasLimit,
@@ -321,7 +321,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
       IL2ERC20Bridge.finalizeDepositERC20,
-      (_token, _l2Token, _depositorAddress, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
+      (_l1Token, _l2Token, _depositorAddress, _l2Recipient, _l2FeeRefundRecipient, _depositAmount, _data)
     );
 
     // Send message to L1BridgeMessenger.
@@ -335,6 +335,6 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       feeCreditData
     );
 
-    emit DepositERC20(_token, _l2Token, _depositorAddress, _l2DepositRecipient, _depositAmount, _data);
+    emit DepositERC20(_l1Token, _l2Token, _depositorAddress, _l2Recipient, _depositAmount, _data);
   }
 }

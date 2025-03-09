@@ -22,6 +22,9 @@ import { L1BaseBridge } from "./L1BaseBridge.sol";
 contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
   using SafeTransferLib for ERC20;
 
+  // Define the function selector for finalizeDepositERC20 as a constant
+  bytes4 public constant FINALIZE_DEPOSIT_ERC20_SELECTOR = IL2ERC20Bridge.finalizeDepositERC20.selector;
+
   /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
@@ -178,10 +181,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     );
 
     // Decode the message to extract the token address and the original sender (_from)
-    (address l1TokenAddress, , , , uint256 l1DepositAmount, ) = abi.decode(
-      depositMessage.message,
-      (address, address, address, address, uint256, bytes)
-    );
+    ERC20DepositMessage memory erc20DepositMessage = decodeERC20DepositMessage(depositMessage.message);
 
     if (depositMessage.depositType != IL1BridgeMessenger.DepositType.ERC20) {
       revert InvalidDepositType();
@@ -191,9 +191,14 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     IL1BridgeMessenger(messenger).claimFailedDeposit(messageHash, claimProof);
 
     // refund the deposit-amount
-    ERC20(l1TokenAddress).safeTransfer(depositMessage.refundAddress, l1DepositAmount);
+    ERC20(erc20DepositMessage.l1Token).safeTransfer(depositMessage.refundAddress, erc20DepositMessage.depositAmount);
 
-    emit DepositClaimed(messageHash, l1TokenAddress, depositMessage.refundAddress, l1DepositAmount);
+    emit DepositClaimed(
+      messageHash,
+      erc20DepositMessage.l1Token,
+      depositMessage.refundAddress,
+      erc20DepositMessage.depositAmount
+    );
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -336,5 +341,48 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     );
 
     emit DepositERC20(_l1Token, _l2Token, _depositorAddress, _l2Recipient, _depositAmount, _data);
+  }
+
+  /// @inheritdoc IL1ERC20Bridge
+  function decodeERC20DepositMessage(bytes memory _message) public pure returns (ERC20DepositMessage memory) {
+    // Validate that the first 4 bytes of the message match the function selector
+    bytes4 selector;
+    assembly {
+      selector := mload(add(_message, 32))
+    }
+    if (selector != FINALIZE_DEPOSIT_ERC20_SELECTOR) {
+      revert ErrorInvalidFinalizeDepositFunctionSelector();
+    }
+
+    // Extract the data part of the message
+    bytes memory messageData;
+    assembly {
+      let dataLength := sub(mload(_message), 4)
+      messageData := mload(0x40)
+      mstore(messageData, dataLength)
+      mstore(0x40, add(messageData, add(dataLength, 32)))
+      mstore(add(messageData, 32), mload(add(_message, 36)))
+    }
+
+    (
+      address l1Token,
+      address l2Token,
+      address depositorAddress,
+      address l2Recipient,
+      address l2FeeRefundRecipient,
+      uint256 depositAmount,
+      bytes memory data
+    ) = abi.decode(messageData, (address, address, address, address, address, uint256, bytes));
+
+    return
+      ERC20DepositMessage({
+        l1Token: l1Token,
+        l2Token: l2Token,
+        depositorAddress: depositorAddress,
+        l2Recipient: l2Recipient,
+        l2FeeRefundRecipient: l2FeeRefundRecipient,
+        depositAmount: depositAmount,
+        recipientCallData: data
+      });
   }
 }

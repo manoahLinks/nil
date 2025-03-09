@@ -2,25 +2,40 @@
 pragma solidity 0.8.28;
 
 import { IL1Bridge } from "./IL1Bridge.sol";
+import { IL2ERC20Bridge } from "../../l2/interfaces/IL2ERC20Bridge.sol";
 
+/// @title IL1ERC20Bridge
+/// @author Nil
+/// @notice Interface for the L1ERC20Bridge to facilitate ERC20-Token deposits from L1 and L2
+/// @notice Interface for the L1ERC20Bridge to finalize the ERC20-Token withdrawals from L2 and L1
 interface IL1ERC20Bridge is IL1Bridge {
   /*//////////////////////////////////////////////////////////////////////////
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
 
+  /// @notice Thrown when the token address is invalid
   error ErrorInvalidTokenAddress();
 
+  /// @notice Thrown when the WETH token is not supported on the ERC20 bridge
   error ErrorWETHTokenNotSupportedOnERC20Bridge();
 
+  /// @notice Thrown when the L2 token address is invalid
   error ErrorInvalidL2Token();
 
+  /// @notice Thrown when the token is not supported
   error ErrorTokenNotSupported();
 
+  /// @notice Thrown when the amount pulled by the bridge is incorrect
   error ErrorIncorrectAmountPulledByBridge();
 
+  /// @notice Thrown when the counterparty ERC20 bridge address is invalid
   error ErrorInvalidCounterpartyERC20Bridge();
 
+  /// @notice Thrown when the WETH token address is invalid
   error ErrorInvalidWethToken();
+
+  /// @notice Thrown when the function selector for finalizing the deposit is invalid
+  error ErrorInvalidFinalizeDepositFunctionSelector();
 
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
@@ -56,12 +71,40 @@ interface IL1ERC20Bridge is IL1Bridge {
   );
 
   /*//////////////////////////////////////////////////////////////////////////
+                             STRUCTS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+  /// @notice Represents the decoded data of an ERC20 deposit message
+  struct ERC20DepositMessage {
+    address l1Token;
+    address l2Token;
+    address depositorAddress;
+    address l2Recipient;
+    /// @notice The address for fees refund - l2FeesComponent for deposit
+    address l2FeeRefundRecipient;
+    /// @notice The amount of tokens to deposit
+    uint256 depositAmount;
+    /// @notice Additional data for the recipient
+    bytes recipientCallData;
+  }
+
+  /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC CONSTANT FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
+  /// @notice Returns the L2 token address corresponding to the given L1 token address
+  /// @param l1TokenAddress The address of the L1 token
+  /// @return The address of the corresponding L2 token
   function getL2TokenAddress(address l1TokenAddress) external view returns (address);
 
+  /// @notice Returns the address of the WETH token
+  /// @return The address of the WETH token
   function wethToken() external view returns (address);
+
+  /// @notice Decodes an encoded ERC20 deposit message
+  /// @param message The encoded message to decode
+  /// @return A struct containing the decoded message data
+  function decodeERC20DepositMessage(bytes memory message) external pure returns (ERC20DepositMessage memory);
 
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATING FUNCTIONS   

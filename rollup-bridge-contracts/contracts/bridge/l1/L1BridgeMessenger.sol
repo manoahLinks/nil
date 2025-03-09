@@ -17,6 +17,7 @@ import { INilRollup } from "../../interfaces/INilRollup.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 import { Queue } from "../libraries/Queue.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
+import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
 
 contract L1BridgeMessenger is
   OwnableUpgradeable,
@@ -142,18 +143,18 @@ contract L1BridgeMessenger is
 
     // Set role admins
     // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
-    _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+    _setRoleAdmin(NilRoleConstants.OWNER_ROLE, NilRoleConstants.OWNER_ROLE);
 
     // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
     // role.
-    _setRoleAdmin(DEFAULT_ADMIN_ROLE, OWNER_ROLE);
+    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilRoleConstants.OWNER_ROLE);
 
     // Grant roles to defaultAdmin and owner
     // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
     // highest level of control.
     // The PROPOSER_ROLE_ADMIN is granted to both the default admin and the owner to allow them to manage proposers.
     // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
-    _grantRole(OWNER_ROLE, _owner);
+    _grantRole(NilRoleConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
 
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
@@ -257,9 +258,9 @@ contract L1BridgeMessenger is
 
   /// @inheritdoc IBridgeMessenger
   function transferOwnershipRole(address newOwner) external override onlyOwner {
-    _revokeRole(OWNER_ROLE, owner());
+    _revokeRole(NilRoleConstants.OWNER_ROLE, owner());
     super.transferOwnership(newOwner);
-    _grantRole(OWNER_ROLE, newOwner);
+    _grantRole(NilRoleConstants.OWNER_ROLE, newOwner);
   }
 
   /// @dev Internal function to check whether the `_target` address is allowed to avoid attack.

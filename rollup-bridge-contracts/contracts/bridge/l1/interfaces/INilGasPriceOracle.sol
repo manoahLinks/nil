@@ -11,6 +11,7 @@ interface INilGasPriceOracle is IERC165 {
   error ErrorInvalidDefaultAdmin();
 
   struct FeeCreditData {
+    uint256 nilGasLimit;
     uint256 maxFeePerGas;
     uint256 maxPriorityFeePerGas;
     uint256 feeCredit;

@@ -136,7 +136,7 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
     IL1BridgeMessenger(messenger).cancelDeposit(messageHash);
 
     // Refund the deposited ETH to the refundAddress
-    (bool success, ) = payable(depositMessage.refundAddress).call{ value: depositAmount }("");
+    (bool success, ) = payable(depositMessage.l1DepositRefundAddress).call{ value: depositAmount }("");
 
     if (!success) {
       revert ErrorEthRefundFailed(messageHash);
@@ -165,13 +165,13 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
     IL1BridgeMessenger(messenger).claimFailedDeposit(messageHash, claimProof);
 
     // Refund the deposited ETH to the refundAddress
-    (bool success, ) = payable(depositMessage.refundAddress).call{ value: l1DepositAmount }("");
+    (bool success, ) = payable(depositMessage.l1DepositRefundAddress).call{ value: l1DepositAmount }("");
 
     if (!success) {
       revert ErrorEthRefundFailed(messageHash);
     }
 
-    emit DepositClaimed(messageHash, address(0), depositMessage.refundAddress, l1DepositAmount);
+    emit DepositClaimed(messageHash, address(0), depositMessage.l1DepositRefundAddress, l1DepositAmount);
   }
 
   /*//////////////////////////////////////////////////////////////////////////

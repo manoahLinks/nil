@@ -169,9 +169,9 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     IL1BridgeMessenger(messenger).cancelDeposit(messageHash);
 
     // refund the deposited ERC20 tokens to the refundAddress
-    ERC20(l1TokenAddress).safeTransfer(depositMessage.refundAddress, l1DepositAmount);
+    ERC20(l1TokenAddress).safeTransfer(depositMessage.l1DepositRefundAddress, l1DepositAmount);
 
-    emit DepositCancelled(messageHash, l1TokenAddress, depositMessage.refundAddress, l1DepositAmount);
+    emit DepositCancelled(messageHash, l1TokenAddress, depositMessage.l1DepositRefundAddress, l1DepositAmount);
   }
 
   /// @inheritdoc IL1Bridge
@@ -191,12 +191,15 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     IL1BridgeMessenger(messenger).claimFailedDeposit(messageHash, claimProof);
 
     // refund the deposit-amount
-    ERC20(erc20DepositMessage.l1Token).safeTransfer(depositMessage.refundAddress, erc20DepositMessage.depositAmount);
+    ERC20(erc20DepositMessage.l1Token).safeTransfer(
+      depositMessage.l1DepositRefundAddress,
+      erc20DepositMessage.depositAmount
+    );
 
     emit DepositClaimed(
       messageHash,
       erc20DepositMessage.l1Token,
-      depositMessage.refundAddress,
+      depositMessage.l1DepositRefundAddress,
       erc20DepositMessage.depositAmount
     );
   }
@@ -260,16 +263,16 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
 
   /// @dev Internal function to do all the deposit operations.
   /// @param _l1Token The token to deposit.
-  /// @param _l2Recipient The recipient address to recieve the token in L2.
+  /// @param _l2DepositRecipient The recipient address to recieve the token in L2.
   /// @param _depositAmount The amount of token to deposit.
-  /// @param _l2FeeRefundRecipient the address of recipient for excess fee refund on L2.
+  /// @param _l2FeeRefundRecipient the address of recipient for excess fee refund.
   /// @param _data Optional data to forward to recipient's account.
   /// @param _nilGasLimit Gas limit required to complete the deposit on L2.
   /// @param _userMaxFeePerGas The maximum Fee per gas unit that the user is willing to pay.
   /// @param _userMaxPriorityFeePerGas The maximum priority fee per gas unit that the user is willing to pay.
   function _deposit(
     address _l1Token,
-    address _l2Recipient,
+    address _l2DepositRecipient,
     uint256 _depositAmount,
     address _l2FeeRefundRecipient,
     bytes memory _data,
@@ -285,7 +288,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       revert ErrorWETHTokenNotSupportedOnERC20Bridge();
     }
 
-    if (_l2Recipient == address(0)) {
+    if (_l2DepositRecipient == address(0)) {
       revert ErrorInvalidL2DepositRecipient();
     }
 
@@ -304,6 +307,8 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     address _l2Token = tokenMapping[_l1Token];
 
     //TODO compute l2TokenAddress
+    //shardId, bytecode, salt, , ... -> l2TokenAddress
+
     // update the mapping
 
     if (_l2Token == address(0)) {
@@ -323,10 +328,13 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       revert ErrorInsufficientValueForFeeCredit();
     }
 
+    // should we refund excess msg.value back to user?
+    // is the fees locked is refunded during
+
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
       IL2ERC20Bridge.finalizeDepositERC20,
-      (_l1Token, _l2Token, _depositorAddress, _l2Recipient, _l2FeeRefundRecipient, _depositAmount, _data)
+      (_l1Token, _l2Token, _depositorAddress, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
     );
 
     // Send message to L1BridgeMessenger.
@@ -340,7 +348,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       feeCreditData
     );
 
-    emit DepositERC20(_l1Token, _l2Token, _depositorAddress, _l2Recipient, _depositAmount, _data);
+    emit DepositERC20(_l1Token, _l2Token, _depositorAddress, _l2DepositRecipient, _depositAmount, _data);
   }
 
   /// @inheritdoc IL1ERC20Bridge

@@ -52,8 +52,9 @@ contract L1BridgeMessenger is
     address messageTarget;
     uint256 value;
     bytes message;
-    uint256 gasLimit;
-    address refundAddress;
+    uint256 nilGasLimit;
+    address l1DepositRefundAddress;
+    address l2FeeRefundAddress;
     INilGasPriceOracle.FeeCreditData feeCreditData;
   }
 
@@ -280,7 +281,8 @@ contract L1BridgeMessenger is
     address messageTarget,
     uint256 value,
     bytes memory message,
-    uint256 gasLimit,
+    uint256 nilGasLimit,
+    address l2FeeRefundAddress,
     INilGasPriceOracle.FeeCreditData memory feeCreditData
   ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
     _sendMessage(
@@ -289,8 +291,9 @@ contract L1BridgeMessenger is
         messageTarget: messageTarget,
         value: value,
         message: message,
-        gasLimit: gasLimit,
-        refundAddress: _msgSender(),
+        nilGasLimit: nilGasLimit,
+        l1DepositRefundAddress: _msgSender(),
+        l2FeeRefundAddress: l2FeeRefundAddress,
         feeCreditData: feeCreditData
       })
     );
@@ -302,8 +305,9 @@ contract L1BridgeMessenger is
     address messageTarget,
     uint256 value,
     bytes calldata message,
-    uint256 gasLimit,
-    address refundAddress,
+    uint256 nilGasLimit,
+    address l1DepositRefundAddress,
+    address l2FeeRefundAddress,
     INilGasPriceOracle.FeeCreditData memory feeCreditData
   ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
     _sendMessage(
@@ -312,8 +316,9 @@ contract L1BridgeMessenger is
         messageTarget: messageTarget,
         value: value,
         message: message,
-        gasLimit: gasLimit,
-        refundAddress: refundAddress,
+        nilGasLimit: nilGasLimit,
+        l1DepositRefundAddress: l1DepositRefundAddress,
+        l2FeeRefundAddress: l2FeeRefundAddress,
         feeCreditData: feeCreditData
       })
     );
@@ -341,6 +346,8 @@ contract L1BridgeMessenger is
     if (block.timestamp <= depositMessage.expiryTime) {
       revert DepositMessageNotExpired(messageHash);
     }
+
+    // TODO - checks on finalisation of batch (potential attack vector)
 
     // Mark the deposit message as canceled
     depositMessage.isCancelled = true;
@@ -420,12 +427,12 @@ contract L1BridgeMessenger is
       params.messageTarget,
       params.value,
       depositMessage.nonce,
-      depositMessage.gasLimit,
       params.message,
       messageHash,
       params.depositType,
-      params.refundAddress,
       block.timestamp,
+      params.l1DepositRefundAddress,
+      params.l2FeeRefundAddress,
       params.feeCreditData
     );
   }
@@ -437,11 +444,10 @@ contract L1BridgeMessenger is
         target: params.messageTarget,
         value: params.value,
         nonce: depositNonce++,
-        gasLimit: params.gasLimit,
         expiryTime: block.timestamp + maxProcessingTime,
         isCancelled: false,
         isClaimed: false,
-        refundAddress: params.refundAddress,
+        l1DepositRefundAddress: params.l1DepositRefundAddress,
         depositType: params.depositType,
         message: params.message,
         feeCreditData: params.feeCreditData

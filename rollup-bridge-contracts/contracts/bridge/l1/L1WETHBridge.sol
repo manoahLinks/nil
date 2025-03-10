@@ -201,9 +201,9 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
     IL1BridgeMessenger(messenger).cancelDeposit(messageHash);
 
     // refund the deposited WETH tokens to the depositor
-    ERC20(wethToken).safeTransfer(depositMessage.refundAddress, l1DepositAmount);
+    ERC20(wethToken).safeTransfer(depositMessage.l1DepositRefundAddress, l1DepositAmount);
 
-    emit DepositCancelled(messageHash, wethToken, depositMessage.refundAddress, l1DepositAmount);
+    emit DepositCancelled(messageHash, wethToken, depositMessage.l1DepositRefundAddress, l1DepositAmount);
   }
 
   /// @inheritdoc IL1Bridge
@@ -223,9 +223,9 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
 
     IL1BridgeMessenger(messenger).claimFailedDeposit(messageHash, claimProof);
 
-    ERC20(wethToken).safeTransfer(depositMessage.refundAddress, l1DepositAmount);
+    ERC20(wethToken).safeTransfer(depositMessage.l1DepositRefundAddress, l1DepositAmount);
 
-    emit DepositClaimed(messageHash, wethToken, depositMessage.refundAddress, l1DepositAmount);
+    emit DepositClaimed(messageHash, wethToken, depositMessage.l1DepositRefundAddress, l1DepositAmount);
   }
 
   /*//////////////////////////////////////////////////////////////////////////

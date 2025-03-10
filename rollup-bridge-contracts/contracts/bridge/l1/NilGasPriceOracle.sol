@@ -141,11 +141,11 @@ contract NilGasPriceOracle is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
   /// @inheritdoc INilGasPriceOracle
   function computeFeeCredit(
-    uint256 gasLimit,
+    uint256 nilGasLimit,
     uint256 userMaxFeePerGas,
     uint256 userMaxPriorityFeePerGas
   ) public view returns (FeeCreditData memory) {
-    if (gasLimit == 0) {
+    if (nilGasLimit == 0) {
       revert ErrorInvalidGasLimitForFeeCredit();
     }
 
@@ -163,9 +163,10 @@ contract NilGasPriceOracle is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
     return
       FeeCreditData({
+        nilGasLimit: nilGasLimit,
         maxFeePerGas: _maxFeePerGas,
         maxPriorityFeePerGas: _maxPriorityFeePerGas,
-        feeCredit: gasLimit * _maxFeePerGas
+        feeCredit: nilGasLimit * _maxFeePerGas
       });
   }
 

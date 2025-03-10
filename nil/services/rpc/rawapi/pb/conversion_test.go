@@ -229,11 +229,11 @@ func TestErrorMap_PackUnpack(t *testing.T) {
 
 	invalidUTF8 := []byte{0xC3, 0x28}
 	key := common.BytesToHash(invalidUTF8)
-	errors := map[common.Hash]string{
+	errorMap := map[common.Hash]string{
 		key: "Error",
 	}
 
-	block := &RawFullBlock{Errors: packErrorMap(errors)}
+	block := &RawFullBlock{Errors: packErrorMap(errorMap)}
 	data, err := proto.Marshal(block)
 	require.NoError(t, err)
 
@@ -241,5 +241,16 @@ func TestErrorMap_PackUnpack(t *testing.T) {
 	require.NoError(t, proto.Unmarshal(data, &unpacked))
 
 	errorsUnpacked := unpackErrorMap(unpacked.Errors)
-	assert.Equal(t, errors, errorsUnpacked)
+	assert.Equal(t, errorMap, errorsUnpacked)
+
+	errorMap = map[common.Hash]string{
+		key:              string(invalidUTF8),
+		common.EmptyHash: "Error2",
+	}
+
+	errors := packErrorMap(errorMap)
+	require.Len(t, errors, 2)
+	val, ok := errors[key.String()]
+	require.True(t, ok)
+	assert.Equal(t, &Error{Message: "<invalid UTF-8 string>"}, val)
 }

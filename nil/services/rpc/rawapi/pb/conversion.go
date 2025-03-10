@@ -3,10 +3,12 @@ package pb
 import (
 	"encoding/binary"
 	"errors"
+	"unicode/utf8"
 
 	"github.com/NilFoundation/nil/nil/common"
 	"github.com/NilFoundation/nil/nil/common/check"
 	"github.com/NilFoundation/nil/nil/common/hexutil"
+	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/common/sszx"
 	"github.com/NilFoundation/nil/nil/internal/db"
 	"github.com/NilFoundation/nil/nil/internal/types"
@@ -14,6 +16,8 @@ import (
 	rpctypes "github.com/NilFoundation/nil/nil/services/rpc/types"
 	"github.com/NilFoundation/nil/nil/services/txnpool"
 )
+
+var Logger = logging.NewLogger("pb_conversion")
 
 // Hash converters
 
@@ -199,6 +203,13 @@ func (e *Error) PackProtoMessage(err error) *Error {
 func packErrorMap(errors map[common.Hash]string) map[string]*Error {
 	result := make(map[string]*Error, len(errors))
 	for key, value := range errors {
+		if !utf8.ValidString(value) {
+			Logger.Error().
+				Stringer("key", key).
+				Hex("value", []byte(value)).
+				Msg("invalid UTF-8 string in error map")
+			value = "<invalid UTF-8 string>"
+		}
 		result[key.String()] = &Error{Message: value}
 	}
 	return result

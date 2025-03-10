@@ -13,6 +13,10 @@ contract Test is NilBase {
 
     constructor() payable {}
 
+    function garbageInRequire(bool f, string memory m) public pure {
+        require(f, m);
+    }
+
     function emitEvent(uint a, uint b) public payable {
         emit testEvent(a, b);
     }

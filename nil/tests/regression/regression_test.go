@@ -116,6 +116,17 @@ func (s *SuiteRegression) TestProposerOutOfGas() {
 	s.Require().Equal("OutOfGasDynamic", receipt.OutReceipts[0].Status)
 }
 
+func (s *SuiteRegression) TestNonStringError() {
+	abi, err := contracts.GetAbi(contracts.NameTest)
+	s.Require().NoError(err)
+
+	data := []byte{0xC3, 0x28}
+	calldata := s.AbiPack(abi, "garbageInRequire", false, string(data))
+	receipt := s.SendExternalTransactionNoCheck(calldata, s.testAddress)
+	s.Require().False(receipt.Success)
+	s.Require().Contains(receipt.ErrorMessage, "ExecutionReverted: Not a UTF-8 string: 0xc328")
+}
+
 func TestRegression(t *testing.T) {
 	t.Parallel()
 

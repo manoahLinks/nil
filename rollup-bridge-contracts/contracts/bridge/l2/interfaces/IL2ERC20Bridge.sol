@@ -51,7 +51,7 @@ interface IL2ERC20Bridge {
   /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
   /// @param depositAmount The amount of the token to deposit.
   /// @param targetCallData Optional data to forward to recipient's account.
-  function finalizeDepositERC20(
+  function finalizeERC20Deposit(
     address l1Token,
     address l2Token,
     address depositor,

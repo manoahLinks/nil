@@ -70,9 +70,8 @@ interface IL1BridgeMessenger is IBridgeMessenger {
   /// @param message The encoded message data.
   /// @param messageHash The hash of the message.
   /// @param depositType The type of the deposit.
-  /// @param depositRefundAddress The address to which funds are credited during finalize-withdrawal, cancel-deposit &
-  /// claim-failed-deposit
-  /// @param expiryTime The expiry time of the message.
+  /// @param messageCreatedAt The time at which message was recorded.
+  /// @param messageExpiryTime The expiry time of the message.
   /// @param l2FeeRefundAddress The recipient address for feeRefund on l2
   /// @param feeCreditData The feeCreditData struct with feeParameters snapshot from GasOracle and feeCredit captured from depositor
   event MessageSent(
@@ -83,8 +82,8 @@ interface IL1BridgeMessenger is IBridgeMessenger {
     bytes message,
     bytes32 messageHash,
     DepositType depositType,
-    uint256 expiryTime,
-    address depositRefundAddress,
+    uint256 messageCreatedAt,
+    uint256 messageExpiryTime,
     address l2FeeRefundAddress,
     INilGasPriceOracle.FeeCreditData feeCreditData
   );

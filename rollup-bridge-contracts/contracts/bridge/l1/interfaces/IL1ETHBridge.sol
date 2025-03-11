@@ -4,13 +4,30 @@ pragma solidity 0.8.28;
 import { IL1Bridge } from "./IL1Bridge.sol";
 
 interface IL1ETHBridge is IL1Bridge {
+  struct ETHDepositMessage {
+    address depositorAddress;
+    address l2DepositRecipient;
+    /// @notice The address for fees refund - l2FeesComponent for deposit
+    address l2FeeRefundRecipient;
+    /// @notice The amount of tokens to deposit
+    uint256 depositAmount;
+    /// @notice Additional data for the recipient
+    bytes recipientCallData;
+  }
+
+  /*//////////////////////////////////////////////////////////////////////////
+                             ERRORS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+  /// @notice Thrown when the function selector for finalizing the deposit is invalid
+  error ErrorInvalidFinalizeDepositFunctionSelector();
+
   /// @notice Emitted upon deposit of ETH from layer-1 to nil-chain.
-  /// @param l2Token The address of the token in nil-chain.
   /// @param depositor The address of sender in layer-1.
   /// @param l2Recipient The address of recipient in nil-chain.
   /// @param amount The amount of token will be deposited from layer-1 to nil-chain.
   /// @param data The optional calldata passed to recipient in nil-chain.
-  event DepositETH(address indexed l2Token, address indexed depositor, address l2Recipient, uint256 amount, bytes data);
+  event DepositETH(address indexed depositor, address l2Recipient, uint256 amount, bytes data);
 
   event DepositCancelled(bytes32 indexed messageHash, address indexed cancelledDepositRecipient, uint256 amount);
 
@@ -19,6 +36,8 @@ interface IL1ETHBridge is IL1Bridge {
     //////////////////////////////////////////////////////////////////////////*/
 
   function l2EthAddress() external view returns (address);
+
+  function decodeETHDepositMessage(bytes memory _message) external pure returns (ETHDepositMessage memory);
 
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATING FUNCTIONS   

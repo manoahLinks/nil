@@ -18,6 +18,9 @@ import { L1BaseBridge } from "./L1BaseBridge.sol";
 /// @title L1ETHBridge
 /// @notice The `L1ETHBridge` contract for ETH bridging from L1.
 contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
+  // Define the function selector for finalizeDepositETH as a constant
+  bytes4 public constant FINALIZE_DEPOSIT_ETH_SELECTOR = IL2ETHBridge.finalizeETHDeposit.selector;
+
   /*//////////////////////////////////////////////////////////////////////////
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
@@ -232,7 +235,7 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
       IL2ETHBridge.finalizeETHDeposit,
-      (l2EthAddress, _depositorAddress, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
+      (_depositorAddress, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
     );
 
     // Send message to L1BridgeMessenger.
@@ -245,6 +248,45 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       feeCreditData
     );
 
-    emit DepositETH(l2EthAddress, _depositorAddress, _l2DepositRecipient, _depositAmount, _data);
+    emit DepositETH(_depositorAddress, _l2DepositRecipient, _depositAmount, _data);
+  }
+
+  /// @inheritdoc IL1ETHBridge
+  function decodeETHDepositMessage(bytes memory _message) public pure override returns (ETHDepositMessage memory) {
+    // Validate that the first 4 bytes of the message match the function selector
+    bytes4 selector;
+    assembly {
+      selector := mload(add(_message, 32))
+    }
+    if (selector != FINALIZE_DEPOSIT_ETH_SELECTOR) {
+      revert ErrorInvalidFinalizeDepositFunctionSelector();
+    }
+
+    // Extract the data part of the message
+    bytes memory messageData;
+    assembly {
+      let dataLength := sub(mload(_message), 4)
+      messageData := mload(0x40)
+      mstore(messageData, dataLength)
+      mstore(0x40, add(messageData, add(dataLength, 32)))
+      mstore(add(messageData, 32), mload(add(_message, 36)))
+    }
+
+    (
+      address depositorAddress,
+      address l2DepositRecipient,
+      address l2FeeRefundRecipient,
+      uint256 depositAmount,
+      bytes memory data
+    ) = abi.decode(messageData, (address, address, address, uint256, bytes));
+
+    return
+      ETHDepositMessage({
+        depositorAddress: depositorAddress,
+        l2DepositRecipient: l2DepositRecipient,
+        l2FeeRefundRecipient: l2FeeRefundRecipient,
+        depositAmount: depositAmount,
+        recipientCallData: data
+      });
   }
 }

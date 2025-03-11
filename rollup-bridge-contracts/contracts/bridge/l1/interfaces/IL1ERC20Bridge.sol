@@ -79,7 +79,7 @@ interface IL1ERC20Bridge is IL1Bridge {
     address l1Token;
     address l2Token;
     address depositorAddress;
-    address l2Recipient;
+    address l2DepositRecipient;
     /// @notice The address for fees refund - l2FeesComponent for deposit
     address l2FeeRefundRecipient;
     /// @notice The amount of tokens to deposit

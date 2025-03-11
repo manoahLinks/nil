@@ -14,7 +14,7 @@ interface IL2WETHBridge {
   /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
   /// @param amount The amount of token withdrawn from L1 to L2.
   /// @param data The optional calldata passed to recipient in L2.
-  event FinalizeDepositERC20(
+  event FinalizedWETHDeposit(
     address indexed l1Token,
     address indexed l2Token,
     address indexed from,
@@ -39,7 +39,7 @@ interface IL2WETHBridge {
   /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
   /// @param amount The amount of the token to deposit.
   /// @param data Optional data to forward to recipient's account.
-  function finalizeDepositWETH(
+  function finalizeWETHDeposit(
     address l1Token,
     address l2Token,
     address from,

@@ -20,6 +20,9 @@ import { L1BaseBridge } from "./L1BaseBridge.sol";
 /// @title L1WETHBridge
 /// @notice The `L1WETHBridge` contract for WETHBridging in L1.
 contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
+  // Define the function selector for finalizeWETHDeposit as a constant
+  bytes4 public constant FINALIZE_WETH_DEPOSIT_SELECTOR = IL2WETHBridge.finalizeWETHDeposit.selector;
+
   using SafeTransferLib for ERC20;
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -103,14 +106,14 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
 
   /// @inheritdoc IL1WETHBridge
   function depositWETH(
-    address l2Recipient,
+    address l2DepositRecipient,
     uint256 depositAmount,
     address l2FeeRefundRecipient,
     uint256 nilGasLimit,
     uint256 userMaxFeePerGas,
     uint256 userMaxPriorityFeePerGas
   ) external payable override {
-    if (l2Recipient == address(0)) {
+    if (l2DepositRecipient == address(0)) {
       revert ErrorInvalidL2DepositRecipient();
     }
 
@@ -127,7 +130,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
     }
 
     _deposit(
-      l2Recipient,
+      l2DepositRecipient,
       depositAmount,
       l2FeeRefundRecipient,
       new bytes(0),
@@ -273,7 +276,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
   }
 
   /// @dev Internal function to do all the deposit operations.
-  /// @param l2Recipient The recipient address to recieve the token in L2.
+  /// @param _l2DepositRecipient The recipient address to recieve the token in L2.
   /// @param _depositAmount The amount of token to deposit.
   /// @param _data Optional data to forward to recipient's account.
   /// @param _l2FeeRefundRecipient the address of recipient for excess fee refund on L2.
@@ -282,7 +285,7 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
   /// @param _userMaxPriorityFeePerGas The maximum priority fee per gas unit that the user is willing to pay.
 
   function _deposit(
-    address l2Recipient,
+    address _l2DepositRecipient,
     uint256 _depositAmount,
     address _l2FeeRefundRecipient,
     bytes memory _data,
@@ -311,8 +314,8 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
 
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
-      IL2WETHBridge.finalizeDepositWETH,
-      (wethToken, nilWethToken, _depositor, l2Recipient, _l2FeeRefundRecipient, _depositAmount, _data)
+      IL2WETHBridge.finalizeWETHDeposit,
+      (wethToken, nilWethToken, _depositor, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
     );
 
     // Send message to L1BridgeMessenger.
@@ -325,6 +328,49 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
       feeCreditData
     );
 
-    emit DepositWETH(wethToken, nilWethToken, _depositor, l2Recipient, _depositAmount, _data);
+    emit DepositWETH(wethToken, nilWethToken, _depositor, _l2DepositRecipient, _depositAmount, _data);
+  }
+
+  /// @inheritdoc IL1WETHBridge
+  function decodeWETHDepositMessage(bytes memory _message) public pure returns (WETHDepositMessage memory) {
+    // Validate that the first 4 bytes of the message match the function selector
+    bytes4 selector;
+    assembly {
+      selector := mload(add(_message, 32))
+    }
+    if (selector != FINALIZE_WETH_DEPOSIT_SELECTOR) {
+      revert ErrorInvalidFinalizeDepositFunctionSelector();
+    }
+
+    // Extract the data part of the message
+    bytes memory messageData;
+    assembly {
+      let dataLength := sub(mload(_message), 4)
+      messageData := mload(0x40)
+      mstore(messageData, dataLength)
+      mstore(0x40, add(messageData, add(dataLength, 32)))
+      mstore(add(messageData, 32), mload(add(_message, 36)))
+    }
+
+    (
+      address l1Token,
+      address l2Token,
+      address depositorAddress,
+      address l2DepositRecipient,
+      address l2FeeRefundRecipient,
+      uint256 depositAmount,
+      bytes memory data
+    ) = abi.decode(messageData, (address, address, address, address, address, uint256, bytes));
+
+    return
+      WETHDepositMessage({
+        l1Token: l1Token,
+        l2Token: l2Token,
+        depositorAddress: depositorAddress,
+        l2DepositRecipient: l2DepositRecipient,
+        l2FeeRefundRecipient: l2FeeRefundRecipient,
+        depositAmount: depositAmount,
+        recipientCallData: data
+      });
   }
 }

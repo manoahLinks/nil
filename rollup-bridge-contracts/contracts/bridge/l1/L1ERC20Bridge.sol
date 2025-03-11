@@ -23,7 +23,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
   using SafeTransferLib for ERC20;
 
   // Define the function selector for finalizeDepositERC20 as a constant
-  bytes4 public constant FINALIZE_DEPOSIT_ERC20_SELECTOR = IL2ERC20Bridge.finalizeDepositERC20.selector;
+  bytes4 public constant FINALIZE_ERC20_DEPOSIT_SELECTOR = IL2ERC20Bridge.finalizeERC20Deposit.selector;
 
   /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
@@ -335,7 +335,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
 
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
-      IL2ERC20Bridge.finalizeDepositERC20,
+      IL2ERC20Bridge.finalizeERC20Deposit,
       (_l1Token, _l2Token, _depositorAddress, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
     );
 
@@ -359,7 +359,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     assembly {
       selector := mload(add(_message, 32))
     }
-    if (selector != FINALIZE_DEPOSIT_ERC20_SELECTOR) {
+    if (selector != FINALIZE_ERC20_DEPOSIT_SELECTOR) {
       revert ErrorInvalidFinalizeDepositFunctionSelector();
     }
 
@@ -377,7 +377,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       address l1Token,
       address l2Token,
       address depositorAddress,
-      address l2Recipient,
+      address l2DepositRecipient,
       address l2FeeRefundRecipient,
       uint256 depositAmount,
       bytes memory data
@@ -388,7 +388,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
         l1Token: l1Token,
         l2Token: l2Token,
         depositorAddress: depositorAddress,
-        l2Recipient: l2Recipient,
+        l2DepositRecipient: l2DepositRecipient,
         l2FeeRefundRecipient: l2FeeRefundRecipient,
         depositAmount: depositAmount,
         recipientCallData: data

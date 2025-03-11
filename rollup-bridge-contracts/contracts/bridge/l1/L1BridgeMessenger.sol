@@ -426,7 +426,7 @@ contract L1BridgeMessenger is
       messageHash,
       params.depositType,
       block.timestamp,
-      params.l1DepositRefundAddress,
+      depositMessage.expiryTime,
       params.l2FeeRefundAddress,
       params.feeCreditData
     );

@@ -307,6 +307,8 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
       revert ErrorInsufficientValueForFeeCredit();
     }
 
+    feeCreditData.nilGasLimit = _nilGasLimit;
+
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
       IL2WETHBridge.finalizeDepositWETH,
@@ -319,7 +321,6 @@ contract L1WETHBridge is L1BaseBridge, IL1WETHBridge {
       counterpartyBridge, // target-contract for the message
       0, // message value
       _message, // message
-      _nilGasLimit, // gasLimit for execution of message on nil-chain
       _depositor,
       feeCreditData
     );

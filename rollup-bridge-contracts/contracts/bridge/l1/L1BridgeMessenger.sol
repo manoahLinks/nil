@@ -52,7 +52,6 @@ contract L1BridgeMessenger is
     address messageTarget;
     uint256 value;
     bytes message;
-    uint256 nilGasLimit;
     address l1DepositRefundAddress;
     address l2FeeRefundAddress;
     INilGasPriceOracle.FeeCreditData feeCreditData;
@@ -281,7 +280,6 @@ contract L1BridgeMessenger is
     address messageTarget,
     uint256 value,
     bytes memory message,
-    uint256 nilGasLimit,
     address l2FeeRefundAddress,
     INilGasPriceOracle.FeeCreditData memory feeCreditData
   ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
@@ -291,7 +289,6 @@ contract L1BridgeMessenger is
         messageTarget: messageTarget,
         value: value,
         message: message,
-        nilGasLimit: nilGasLimit,
         l1DepositRefundAddress: _msgSender(),
         l2FeeRefundAddress: l2FeeRefundAddress,
         feeCreditData: feeCreditData
@@ -305,7 +302,6 @@ contract L1BridgeMessenger is
     address messageTarget,
     uint256 value,
     bytes calldata message,
-    uint256 nilGasLimit,
     address l1DepositRefundAddress,
     address l2FeeRefundAddress,
     INilGasPriceOracle.FeeCreditData memory feeCreditData
@@ -316,7 +312,6 @@ contract L1BridgeMessenger is
         messageTarget: messageTarget,
         value: value,
         message: message,
-        nilGasLimit: nilGasLimit,
         l1DepositRefundAddress: l1DepositRefundAddress,
         l2FeeRefundAddress: l2FeeRefundAddress,
         feeCreditData: feeCreditData

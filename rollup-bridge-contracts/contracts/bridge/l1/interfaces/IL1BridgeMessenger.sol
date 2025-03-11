@@ -161,13 +161,11 @@ interface IL1BridgeMessenger is IBridgeMessenger {
   /// @param message The content of the message.
   /// @param l1DepositRefundAddress The address of recipient for the deposit-cancellation or claim failed deposit
   /// @param l2FeeRefundAddress The address of refundRecipient for Fee on L2
-  /// @param gasLimit Gas limit required to complete the message relay on corresponding chain.
   function sendMessage(
     DepositType depositType,
     address messageTarget,
     uint256 value,
     bytes calldata message,
-    uint256 gasLimit,
     address l1DepositRefundAddress,
     address l2FeeRefundAddress,
     INilGasPriceOracle.FeeCreditData calldata feeCreditData
@@ -178,15 +176,14 @@ interface IL1BridgeMessenger is IBridgeMessenger {
   /// @param messageTarget The address of account who receive the message.
   /// @param value The amount of ether passed when call target contract.
   /// @param message The content of the message.
-  /// @param gasLimit Gas limit required to complete the message relay on corresponding chain.
   /// @param refundAddress The address of account who will receive the refunded fee, funds are credited during
   /// finalize-withdrawal, cancel-deposit, claim-failed-deposit
+  /// @param feeCreditData feeCreditData struct which holds the l2FeeRefundAddress, nilGasLimit, gasFee data from nilGasPriceOracle
   function sendMessage(
     DepositType depositType,
     address messageTarget,
     uint256 value,
     bytes calldata message,
-    uint256 gasLimit,
     address refundAddress,
     INilGasPriceOracle.FeeCreditData calldata feeCreditData
   ) external payable;

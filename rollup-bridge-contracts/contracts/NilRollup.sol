@@ -9,7 +9,6 @@ import { NilAccessControl } from "./NilAccessControl.sol";
 import { NilRoleConstants } from "./libraries/NilRoleConstants.sol";
 import { INilVerifier } from "./interfaces/INilVerifier.sol";
 import { IL1BridgeMessenger } from "./bridge/l1/interfaces/IL1BridgeMessenger.sol";
-import "forge-std/console.sol";
 
 /// @title NilRollup
 /// @notice Manages rollup batches, state updates, and access control for the Nil protocol.

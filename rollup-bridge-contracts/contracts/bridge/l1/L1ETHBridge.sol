@@ -227,6 +227,8 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       revert ErrorInsufficientValueForFeeCredit();
     }
 
+    feeCreditData.nilGasLimit = _nilGasLimit;
+
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
       IL2ETHBridge.finalizeETHDeposit,
@@ -239,7 +241,6 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       counterpartyBridge,
       _depositAmount,
       _message,
-      _nilGasLimit,
       _depositorAddress,
       feeCreditData
     );

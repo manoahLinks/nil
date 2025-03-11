@@ -328,6 +328,8 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       revert ErrorInsufficientValueForFeeCredit();
     }
 
+    feeCreditData.nilGasLimit = _nilGasLimit;
+
     // should we refund excess msg.value back to user?
     // is the fees locked is refunded during
 
@@ -343,7 +345,6 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       counterpartyBridge,
       0,
       _message,
-      _nilGasLimit,
       _depositorAddress,
       feeCreditData
     );

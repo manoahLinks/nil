@@ -42,6 +42,7 @@
     "ethers": "^6.13.4",
     "hardhat-deploy": "^0.14.0",
     "solady": "^0.1.10",
+    "solmate": "^6.8.0",
     "yargs": "^17.7.2"
   }
 }

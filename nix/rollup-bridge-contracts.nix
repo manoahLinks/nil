@@ -76,7 +76,14 @@ stdenv.mkDerivation rec {
     geth_pid=$!
 
     echo "Waiting for go-ethereum to start..."
-    sleep 10 # Give the node time to initialize
+    for i in {1..10}; do
+      if curl --silent --fail http://localhost:8545 > /dev/null; then
+        echo "go-ethereum is up!"
+        break
+      fi
+      echo "Still waiting..."
+      sleep 1
+    done
 
     echo "Deploying contracts..."
     npx hardhat deploy --network geth --tags NilContracts

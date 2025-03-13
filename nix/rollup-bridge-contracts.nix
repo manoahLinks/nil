@@ -5,6 +5,7 @@
 , npmHooks
 , nodejs
 , nil
+, pkgs
 , enableTesting ? false
 }:
 
@@ -25,6 +26,7 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     nodejs
     npmHooks.npmConfigHook
+    pkgs.foundry
   ];
 
   soljson26 = builtins.fetchurl {
@@ -37,11 +39,15 @@ stdenv.mkDerivation rec {
     (cd create-nil-hardhat-project; bash install_soljson.sh ${soljson26})
     export BIOME_BINARY=${biome}/bin/biome
 
+    forge --version
+    cast --version
+    anvil --version
+
     cd rollup-bridge-contracts
     pwd
     cp .env.example .env
 
-    echo "start compiling"
+    echo "Start compiling"
     npx hardhat clean && npx hardhat compile
   '';
 
@@ -51,3 +57,4 @@ stdenv.mkDerivation rec {
     cp .env $out/
   '';
 }
+

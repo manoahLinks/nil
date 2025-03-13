@@ -606,11 +606,12 @@ func createShards(
 			}
 
 			consensus, err := ibft.NewConsensus(&ibft.ConsensusParams{
-				ShardId:    shardId,
-				Db:         database,
-				Validator:  validators[i],
-				NetManager: networkManager,
-				PrivateKey: pKey,
+				ShardId:            shardId,
+				Db:                 database,
+				Validator:          validators[i],
+				NetManager:         networkManager,
+				PrivateKey:         pKey,
+				LogConsensusEvents: cfg.LogConsensusEvents,
 			})
 			if err != nil {
 				return nil, err

@@ -340,7 +340,7 @@ func NewEthAPIRo(ctx context.Context, rawapi rawapi.NodeApi, db db.ReadOnlyDB, p
 		logger:          logging.NewLogger("eth-api"),
 		accessor:        accessor,
 		rawapi:          rawapi,
-		clientEventsLog: logging.NewCHLogger("eth-api", "rpc_requests"),
+		clientEventsLog: logging.NewCHLogger(logging.NewLogger("eth-api").With(), "rpc_requests"),
 	}
 	api.logs = NewLogsAggregator(ctx, db, pollBlocksForLogs)
 	if !logClientEvents {

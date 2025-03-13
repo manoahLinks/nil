@@ -79,16 +79,19 @@ func (i *backendIBFT) setupTransport(ctx context.Context) error {
 						Msg("Failed to unmarshal topic message")
 					continue
 				}
+				var height, round uint64
+				if view := msg.GetView(); view != nil {
+					height = view.Height
+					round = view.Round
+				}
 
-				event := i.logger.Debug().
+				i.messageLog.Log().
 					Hex("addr", msg.From).
 					Stringer(logging.FieldType, msg.Type).
-					Str(logging.FieldTopic, protocol)
-				if view := msg.GetView(); view != nil {
-					event = event.Uint64(logging.FieldHeight, view.Height).
-						Uint64(logging.FieldRound, view.Round)
-				}
-				event.Msg("Validator message received")
+					Str(logging.FieldTopic, protocol).
+					Uint64(logging.FieldHeight, height).
+					Uint64(logging.FieldRound, round).
+					Msg("[message]")
 
 				i.consensus.AddMessage(msg)
 				i.mh.IncReceivedMessages(ctx, msg.Type.String())

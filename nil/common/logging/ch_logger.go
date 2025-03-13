@@ -6,9 +6,9 @@ type CHLogger struct {
 	l zerolog.Logger
 }
 
-func NewCHLogger(component, table string) CHLogger {
+func NewCHLogger(loggerCtx zerolog.Context, table string) CHLogger {
 	return CHLogger{
-		NewLogger(component).With().
+		loggerCtx.
 			Bool("store_to_clickhouse", true).
 			Str("database", "metrics").
 			Str("table", table).

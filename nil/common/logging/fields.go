@@ -55,4 +55,6 @@ const (
 	FieldClientType    = "clientType"
 	FieldClientVersion = "clientVersion"
 	FieldUid           = "uid"
+
+	FieldValidator = "validator"
 )

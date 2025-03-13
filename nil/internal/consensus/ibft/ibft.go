@@ -23,11 +23,12 @@ import (
 const ibftProto = "/ibft/0.2"
 
 type ConsensusParams struct {
-	ShardId    types.ShardId
-	Db         db.DB
-	Validator  validator
-	NetManager *network.Manager
-	PrivateKey bls.PrivateKey
+	ShardId            types.ShardId
+	Db                 db.DB
+	Validator          validator
+	NetManager         *network.Manager
+	PrivateKey         bls.PrivateKey
+	LogConsensusEvents bool
 }
 
 type validator interface {
@@ -47,6 +48,8 @@ type backendIBFT struct {
 	shardId      types.ShardId
 	validator    validator
 	logger       zerolog.Logger
+	messageLog   logging.CHLogger
+	eventLog     logging.CHLogger
 	nm           *network.Manager
 	transport    transport
 	signer       *Signer
@@ -65,6 +68,10 @@ func (i *backendIBFT) unmarshalProposal(raw []byte) (*execution.ProposalSSZ, err
 }
 
 func (i *backendIBFT) BuildProposal(view *protoIBFT.View) []byte {
+	i.eventLog.Log().
+		Uint64(logging.FieldHeight, view.Height).
+		Uint64(logging.FieldRound, view.Round).
+		Msg("[Build proposal]")
 	i.mh.StartBuildProposalMeasurement(i.transportCtx, view.Round)
 	defer i.mh.EndBuildProposalMeasurement(i.transportCtx)
 
@@ -158,6 +165,11 @@ func (i *backendIBFT) InsertProposal(proposal *protoIBFT.Proposal, committedSeal
 		Uint64(logging.FieldRound, proposal.Round).
 		Logger()
 
+	i.eventLog.Log().
+		Uint64(logging.FieldHeight, height).
+		Uint64(logging.FieldRound, proposal.Round).
+		Msg("[Insert proposal]")
+
 	logger.Trace().Msg("Inserting proposal")
 
 	sig, err := i.buildSignature(committedSeals, height, logger)
@@ -201,15 +213,32 @@ func NewConsensus(cfg *ConsensusParams) (*backendIBFT, error) {
 		logger.Error().Err(err).Msg("Failed to create metrics handler")
 		return nil, err
 	}
+	signer := NewSigner(cfg.PrivateKey)
+	eventLog := logging.NewCHLogger(
+		logging.NewLogger("consensus_events").With().
+			Uint32(logging.FieldShardId, uint32(cfg.ShardId)).
+			Hex(logging.FieldValidator, signer.GetPublicKey()),
+		"consensus_events")
+	messageLog := logging.NewCHLogger(
+		logging.NewLogger("consensus_messages").With().
+			Uint32(logging.FieldShardId, uint32(cfg.ShardId)).
+			Hex(logging.FieldValidator, signer.GetPublicKey()),
+		"consensus_messages")
+	if !cfg.LogConsensusEvents {
+		eventLog = eventLog.Disable()
+		messageLog = messageLog.Disable()
+	}
 
 	backend := &backendIBFT{
-		shardId:   cfg.ShardId,
-		validator: cfg.Validator,
-		logger:    logger,
-		nm:        cfg.NetManager,
-		signer:    NewSigner(cfg.PrivateKey),
-		mh:        mh,
-		txFabric:  cfg.Db,
+		shardId:    cfg.ShardId,
+		validator:  cfg.Validator,
+		logger:     logger,
+		eventLog:   eventLog,
+		messageLog: messageLog,
+		nm:         cfg.NetManager,
+		signer:     signer,
+		mh:         mh,
+		txFabric:   cfg.Db,
 	}
 	if backend.consensus, err = core.NewIBFTWithMetrics(l, backend, backend, telattr.ShardId(cfg.ShardId)); err != nil {
 		return nil, err

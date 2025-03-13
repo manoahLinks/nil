@@ -50,6 +50,9 @@ type Config struct {
 	// RPC events log
 	LogClientRpcEvents bool `yaml:"logClientRpcEvents,omitempty"`
 
+	// Consensus events log
+	LogConsensusEvents bool `yaml:"logConsensusEvents,omitempty"`
+
 	// Keys
 	MainKeysPath         string                     `yaml:"mainKeysPath,omitempty"`
 	ValidatorKeysPath    string                     `yaml:"validatorKeysPath,omitempty"`

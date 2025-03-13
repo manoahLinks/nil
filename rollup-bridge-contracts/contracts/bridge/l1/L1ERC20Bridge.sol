@@ -9,7 +9,7 @@ import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 import { IL1ERC20Bridge } from "./interfaces/IL1ERC20Bridge.sol";
-import { IL2ERC20Bridge } from "../l2/interfaces/IL2ERC20Bridge.sol";
+import { IL2EnshrinedTokenBridge } from "../l2/interfaces/IL2EnshrinedTokenBridge.sol";
 import { IL1BridgeRouter } from "./interfaces/IL1BridgeRouter.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
@@ -23,7 +23,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
   using SafeTransferLib for ERC20;
 
   // Define the function selector for finalizeDepositERC20 as a constant
-  bytes4 public constant FINALIZE_ERC20_DEPOSIT_SELECTOR = IL2ERC20Bridge.finalizeERC20Deposit.selector;
+  bytes4 public constant FINALIZE_ERC20_DEPOSIT_SELECTOR = IL2EnshrinedTokenBridge.finalizeERC20Deposit.selector;
 
   /*//////////////////////////////////////////////////////////////////////////
                              STATE-VARIABLES   
@@ -335,7 +335,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
 
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
-      IL2ERC20Bridge.finalizeERC20Deposit,
+      IL2EnshrinedTokenBridge.finalizeERC20Deposit,
       (_l1Token, _l2Token, _depositorAddress, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
     );
 

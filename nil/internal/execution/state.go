@@ -715,7 +715,6 @@ func (es *ExecutionState) CreateContract(addr types.Address) error {
 }
 
 // Contract is regarded as existent if any of these three conditions is met:
-// - the nonce is non-zero
 // - the code is non-empty
 // - the storage is non-empty
 func (es *ExecutionState) ContractExists(address types.Address) (bool, error) {
@@ -727,12 +726,7 @@ func (es *ExecutionState) ContractExists(address types.Address) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	seqno, err := es.GetSeqno(address)
-	if err != nil {
-		return false, err
-	}
-	return seqno != 0 ||
-		(contractHash != common.EmptyHash) || // non-empty code
+	return (contractHash != common.EmptyHash) || // non-empty code
 		(storageRoot != common.EmptyHash), nil // non-empty storage
 }
 

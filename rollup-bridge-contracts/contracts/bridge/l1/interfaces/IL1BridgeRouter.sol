@@ -28,8 +28,6 @@ interface IL1BridgeRouter {
 
   error ErrorInvalidL1ETHBridgeAddress();
 
-  error ErrorInvalidL1WETHBridgeAddress();
-
   error ErrorInvalidL2DepositRecipient();
 
   error ErrorInvalidL2FeeRefundRecipient();
@@ -47,13 +45,6 @@ interface IL1BridgeRouter {
    * @param newL1ETHBridge The new L1ETHBridge address.
    */
   event L1ETHBridgeSet(address indexed oldL1ETHBridge, address indexed newL1ETHBridge);
-
-  /**
-   * @notice Emitted when the L1WETHBridge address is set.
-   * @param oldL1WETHBridge The previous L1WETHBridge address.
-   * @param newL1WETHBridge The new L1WETHBridge address.
-   */
-  event L1WETHBridgeSet(address indexed oldL1WETHBridge, address indexed newL1WETHBridge);
 
   /**
    * @notice Emitted when the L1BridgeMessenger address is set.
@@ -82,22 +73,10 @@ interface IL1BridgeRouter {
   function l1ETHBridge() external view returns (address);
 
   /**
-   * @notice Returns the address of the L1WETHBridge contract.
-   * @return The address of the L1WETHBridge contract.
-   */
-  function l1WETHBridge() external view returns (address);
-
-  /**
    * @notice Returns the address of the L1WETH contract.
    * @return The address of the L1WETH contract.
    */
   function l1WETHAddress() external view returns (address);
-
-  /**
-   * @notice Returns the address of the L2WETH token.
-   * @return The address of the L2WETH token.
-   */
-  function l2WETHTokenAddress() external view returns (address);
 
   /**
    * @notice Sets the address of the L1ERC20Bridge contract.
@@ -112,16 +91,10 @@ interface IL1BridgeRouter {
   function setL1ETHBridge(address newL1ETHBridge) external;
 
   /**
-   * @notice Sets the address of the L1WETHBridge contract.
-   * @param newL1WETHBridge The new address of the L1WETHBridge contract.
-   */
-  function setL1WETHBridge(address newL1WETHBridge) external;
-
-  /**
    * @notice Pulls ERC20 tokens from the sender to the bridge contract.
    * @dev This function can only be called by authorized bridge contracts.
    * @dev All bridge contracts must have reentrancy guard to prevent potential attack through this function.
-   * @dev L1Bridge Contracts - L1ERC20Bridge and L1WETHBridge will call this function to let the router pull the tokens from the depositor to the corresponding bridge address.
+   * @dev L1Bridge Contract - L1ERC20Bridge will call this function to let the router pull the tokens from the depositor to the corresponding bridge address.
    * @dev This function is invoked only when the depositor calls L1BridgeRouter for bridging.
    * @param sender The address of the sender from whom the tokens will be pulled.
    * @param token The address of the ERC20 token to be pulled.
@@ -146,25 +119,6 @@ interface IL1BridgeRouter {
     uint256 nilGasLimit,
     uint256 userMaxFeePerGas,
     uint256 userMaxPriorityFeePerGas
-  ) external payable;
-
-  function depositWETH(
-    address l2DepositRecipient,
-    uint256 depositAmount,
-    address l2FeeRefundRecipient,
-    uint256 nilGasLimit,
-    uint256 userMaxFeePerGas,
-    uint256 userMaxPriorityFeePerGas
-  ) external payable;
-
-  function depositWETHAndCall(
-    address l2DepositRecipient,
-    uint256 depositAmount,
-    address l2FeeRefundRecipient,
-    bytes memory data,
-    uint256 nilGasLimit,
-    uint256 userFeePerGas, // User-defined optional maxFeePerGas
-    uint256 userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
   ) external payable;
 
   /**

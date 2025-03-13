@@ -10,7 +10,6 @@ import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
 import { IL1ERC20Bridge } from "./interfaces/IL1ERC20Bridge.sol";
 import { IL1ETHBridge } from "./interfaces/IL1ETHBridge.sol";
-import {IL1WETHBridge} from "./interfaces/IL1WETHBridge.sol";
 import { IL1BridgeRouter } from "./interfaces/IL1BridgeRouter.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 
@@ -37,14 +36,8 @@ contract L1BridgeRouter is
     /// @notice The address of L1EthBridge
     address public override l1ETHBridge;
 
-    /// @notice The address of L1WETHBridge
-    address public override l1WETHBridge;
-
     /// @notice The address of the L1WETH contract.
     address public override l1WETHAddress;
-
-    /// @notice The address of the L2WETH token.
-    address public override l2WETHTokenAddress;
 
     /// @notice The addess of L1BridgeMessenger
     IL1BridgeMessenger public l1BridgeMessenger;
@@ -87,10 +80,8 @@ contract L1BridgeRouter is
         address _defaultAdmin,
         address _l1ERC20Bridge,
         address _l1ETHBridge,
-        address _l1WETHBridge,
         address _l1BridgeMessenger,
-        address _l1WETHAddress,
-        address _l2WETHTokenAddress
+        address _l1WETHAddress
     )
         public
         initializer
@@ -133,13 +124,10 @@ contract L1BridgeRouter is
 
         l1ERC20Bridge = _l1ERC20Bridge;
         l1ETHBridge = _l1ETHBridge;
-        l1WETHBridge = _l1WETHBridge;
         l1BridgeMessenger = IL1BridgeMessenger(_l1BridgeMessenger);
         l1WETHAddress = _l1WETHAddress;
-        l2WETHTokenAddress = _l2WETHTokenAddress;
         emit L1ERC20BridgeSet(address(0), _l1ERC20Bridge);
         emit L1ETHBridgeSet(address(0), _l1ETHBridge);
-        emit L1WETHBridgeSet(address(0), _l1WETHBridge);
         emit L1BridgeMessengerSet(address(0), address(_l1BridgeMessenger));
     }
 
@@ -161,7 +149,7 @@ contract L1BridgeRouter is
         address _bridgeAddress = _msgSender();
 
         // Validate that the caller is one of the authorized bridges
-        if (_bridgeAddress != address(l1ERC20Bridge) && _bridgeAddress != address(l1WETHBridge)) {
+        if (_bridgeAddress != address(l1ERC20Bridge)) {
             revert ErrorUnauthorizedCaller();
         }
 
@@ -237,61 +225,6 @@ contract L1BridgeRouter is
         l1BridgeInContext = address(0);
     }
 
-
-    /// @inheritdoc IL1BridgeRouter
-    function depositWETH(address l2DepositRecipient, uint256 depositAmount, address l2FeeRefundRecipient, uint256 gasLimit, uint256 userFeePerGas, uint256 userMaxPriorityFeePerGas) external payable override {
-        depositWETHAndCall(l2DepositRecipient, depositAmount, l2FeeRefundRecipient, new bytes(0), gasLimit, userFeePerGas, userMaxPriorityFeePerGas);
-    }
-
-    /// @inheritdoc IL1BridgeRouter
-    function depositWETHAndCall(
-        address l2DepositRecipient,
-        uint256 depositAmount,
-        address l2FeeRefundRecipient,
-        bytes memory data,
-        uint256 nilGasLimit,
-        uint256 userFeePerGas, // User-defined optional maxFeePerGas
-        uint256 userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
-    )
-        public
-        payable
-        override
-        onlyNotInContext
-    {
-        if(l1WETHBridge == address(0)) {
-          revert ErrorInvalidL1WETHBridgeAddress();
-        }
-
-        if(l2DepositRecipient == address(0)) {
-          revert ErrorInvalidL2DepositRecipient();
-        }
-
-        if(depositAmount == 0) {
-          revert ErrorEmptyDeposit();
-        }
-
-        if(l2FeeRefundRecipient == address(0)) {
-          revert ErrorInvalidL2FeeRefundRecipient();
-        }
-
-        if(nilGasLimit == 0) {
-          revert ErrorInvalidNilGasLimit();
-        }
-
-        // enter deposit context
-        l1BridgeInContext = l1WETHBridge;
-
-        // encode msg.sender with _data
-        bytes memory routerData = abi.encode(_msgSender(), data);
-
-        IL1WETHBridge(l1WETHBridge).depositWETHAndCall{ value: msg.value }(
-            l2DepositRecipient, depositAmount, l2FeeRefundRecipient, routerData, nilGasLimit, userFeePerGas, userMaxPriorityFeePerGas
-        );
-
-        // leave deposit context
-        l1BridgeInContext = address(0);
-    }
-
     /// @inheritdoc IL1BridgeRouter
     function depositETH(address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit, uint256 userFeePerGas, uint256 userMaxFeePerGas) external payable override {
         depositETHAndCall(to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit, userFeePerGas, userMaxFeePerGas);
@@ -356,8 +289,6 @@ contract L1BridgeRouter is
             IL1ERC20Bridge(l1ERC20Bridge).cancelDeposit(messageHash);
         } else if (depositType == IL1BridgeMessenger.DepositType.ETH) {
             IL1ETHBridge(l1ERC20Bridge).cancelDeposit(messageHash);
-        } else if (depositType == IL1BridgeMessenger.DepositType.WETH) {
-            IL1WETHBridge(l1WETHBridge).cancelDeposit(messageHash);
         } else {
             revert ErrorInvalidDepositType();
         }
@@ -373,8 +304,6 @@ contract L1BridgeRouter is
             IL1ERC20Bridge(l1ERC20Bridge).claimFailedDeposit(messageHash, claimProof);
         } else if (depositType == IL1BridgeMessenger.DepositType.ETH) {
             IL1ETHBridge(l1ERC20Bridge).claimFailedDeposit(messageHash, claimProof);
-        } else if (depositType == IL1BridgeMessenger.DepositType.WETH) {
-            IL1WETHBridge(l1WETHBridge).claimFailedDeposit(messageHash, claimProof);
         } else {
             revert ErrorInvalidDepositType();
         }
@@ -398,14 +327,6 @@ contract L1BridgeRouter is
       l1ETHBridge = newL1ETHBridge;
 
       emit L1ETHBridgeSet(oldL1ETHBridge, newL1ETHBridge);
-  }
-
-  /// @inheritdoc IL1BridgeRouter
-  function setL1WETHBridge(address newL1WETHBridge) external onlyOwner {
-      address oldL1WETHBridge = l1WETHBridge;
-      l1WETHBridge = newL1WETHBridge;
-
-      emit L1WETHBridgeSet(oldL1WETHBridge, newL1WETHBridge);
   }
 
   /// @inheritdoc IL1BridgeRouter

@@ -30,7 +30,7 @@ abstract contract L1BaseBridge is
   /// @dev Invalid default admin address.
   error ErrorInvalidDefaultAdmin();
 
-  /// @dev Invalid counterparty WETH bridge address.
+  /// @dev Invalid counterparty bridge address.
   error ErrorInvalidCounterpartyBridge();
 
   /// @dev Invalid messenger address.

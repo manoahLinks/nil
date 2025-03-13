@@ -99,7 +99,6 @@ interface IL1BridgeMessenger is IBridgeMessenger {
   /// @notice Enum representing the type of deposit.
   enum DepositType {
     ERC20,
-    WETH,
     ETH
   }
 

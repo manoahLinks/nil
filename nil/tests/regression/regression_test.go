@@ -127,6 +127,45 @@ func (s *SuiteRegression) TestNonStringError() {
 	s.Require().Contains(receipt.ErrorMessage, "ExecutionReverted: Not a UTF-8 string: 0xc328")
 }
 
+// Issue https://github.com/NilFoundation/nil/issues/543
+func (s *SuiteRegression) TestNonRevertedErrDecoding() {
+	abi, err := contracts.GetAbi(contracts.NameTest)
+	s.Require().NoError(err)
+
+	code, err := contracts.GetCode(contracts.NameTest)
+	s.Require().NoError(err)
+
+	payload := types.BuildDeployPayload(code, common.EmptyHash)
+	contractAddr := types.CreateAddress(1, payload)
+
+	txHash, err := s.Client.SendTransactionViaSmartAccount(s.Context, types.MainSmartAccountAddress,
+		nil, types.NewFeePackFromGas(10_000_000), types.NewValueFromUint64(1_000_000_000_000_000), nil, contractAddr, execution.MainPrivateKey)
+	s.Require().NoError(err)
+	receipt := s.WaitForReceipt(txHash)
+	s.Require().True(receipt.AllSuccess())
+
+	// Deploy contract with insufficient gas
+	txHash, addr, err := s.Client.DeployExternal(s.Context, 1, payload, types.NewFeePackFromGas(50_000))
+	s.Require().NoError(err)
+	s.Require().Equal(addr, contractAddr)
+	receipt = s.WaitForReceipt(txHash)
+	s.Require().Equal("OutOfGasStorage", receipt.Status)
+	s.Require().False(receipt.Success)
+
+	// Deploy contract with sufficient gas
+	txHash, addr, err = s.Client.DeployExternal(s.Context, 1, payload, types.NewFeePackFromGas(5_000_000))
+	s.Require().NoError(err)
+	s.Require().Equal(addr, contractAddr)
+	receipt = s.WaitForReceipt(txHash)
+	s.Require().True(receipt.AllSuccess())
+
+	// Check that reverting message is properly propagated
+	calldata := s.AbiPack(abi, "mayRevert", true)
+	receipt = s.SendExternalTransactionNoCheck(calldata, contractAddr)
+	s.Require().False(receipt.Success)
+	s.Require().Equal("ExecutionReverted: Revert is true", receipt.ErrorMessage)
+}
+
 func TestRegression(t *testing.T) {
 	t.Parallel()
 

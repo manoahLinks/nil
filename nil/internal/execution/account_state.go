@@ -163,6 +163,9 @@ func (as *AccountState) GetState(key common.Hash) (common.Hash, error) {
 
 	newVal, err := as.GetCommittedState(key)
 	if err != nil {
+		if errors.Is(err, db.ErrKeyNotFound) {
+			return common.EmptyHash, nil
+		}
 		return common.EmptyHash, err
 	}
 	as.State[key] = newVal
@@ -309,9 +312,6 @@ func (as *AccountState) setState(key common.Hash, value common.Hash) {
 // GetCommittedState retrieves a value from the committed account storage trie.
 func (as *AccountState) GetCommittedState(key common.Hash) (common.Hash, error) {
 	res, err := as.StorageTree.Fetch(key)
-	if errors.Is(err, db.ErrKeyNotFound) {
-		return common.EmptyHash, nil
-	}
 	if err != nil {
 		return common.EmptyHash, err
 	}

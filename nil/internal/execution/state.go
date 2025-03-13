@@ -264,11 +264,11 @@ type StateParams struct {
 	FeeCalculator  FeeCalculator
 }
 
-func fetchShardTxIds(tx db.RoTx, shardId, nShards types.ShardId, root common.Hash) ShardTxCounts {
+func fetchShardTxIds(tx db.RoTx, shardId types.ShardId, nShards types.ShardCount, root common.Hash) ShardTxCounts {
 	txCountTrie := NewDbTxCountTrieReader(tx, shardId)
 	txCountTrie.SetRootHash(root)
 	res := ShardTxCounts{}
-	for i := types.ShardId(0); i < nShards; i++ {
+	for i := types.ShardId(0); i < types.ShardId(nShards); i++ {
 		count, err := txCountTrie.Fetch(i)
 		if err == nil && count != nil {
 			res[i] = *count

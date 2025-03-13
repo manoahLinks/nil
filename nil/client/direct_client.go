@@ -95,7 +95,7 @@ func (c *DirectClient) GetDebugBlocksRange(ctx context.Context, shardId types.Sh
 }
 
 func (c *DirectClient) GetBlocksRange(ctx context.Context, shardId types.ShardId, from, to types.BlockNumber, fullTx bool, batchSize int) ([]*jsonrpc.RPCBlock, error) {
-	panic("Not supported")
+	return c.ethApi.Get
 }
 
 func (c *DirectClient) SendTransaction(ctx context.Context, txn *types.ExternalTransaction) (common.Hash, error) {

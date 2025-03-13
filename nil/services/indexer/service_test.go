@@ -37,7 +37,7 @@ func (s *SuiteServiceTest) SetupTest() {
 		UseBadger: true,
 		DbPath:    s.dbPath,
 	}
-	service, err := NewService(s.ctx, cfg, &s.client)
+	service, err := NewService(s.ctx, cfg, s.client)
 	s.Require().NoError(err)
 	s.service = service
 }
@@ -113,7 +113,7 @@ func (s *SuiteServiceTest) TestGetAddressActions() {
 	}
 
 	// Index the blocks
-	err := s.service.driver.IndexBlocks(s.ctx, blocks)
+	err := s.service.Driver.IndexBlocks(s.ctx, blocks)
 	s.Require().NoError(err)
 
 	// Test cases

@@ -16,6 +16,7 @@ in
       ../explorer_backend/package.json
       ../explorer_frontend/package.json
       ../uniswap/package.json
+      ../rollup-bridge-contracts/package.json
     ];
   };
   hash = "sha256-yGPy5MekgDCVTSFHHb614abM/pTRZKpBiP7+++wPyWA=";

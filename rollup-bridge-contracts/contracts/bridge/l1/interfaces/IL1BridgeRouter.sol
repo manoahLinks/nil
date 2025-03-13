@@ -11,6 +11,8 @@ interface IL1BridgeRouter {
 
   error ErrorUnauthorizedCaller();
 
+  error ErrorWETHTokenNotSupported();
+
   /// @dev Invalid default admin address.
   error ErrorInvalidDefaultAdmin();
 

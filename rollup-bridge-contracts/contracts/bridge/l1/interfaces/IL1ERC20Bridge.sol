@@ -17,7 +17,7 @@ interface IL1ERC20Bridge is IL1Bridge {
   error ErrorInvalidTokenAddress();
 
   /// @notice Thrown when the WETH token is not supported on the ERC20 bridge
-  error ErrorWETHTokenNotSupportedOnERC20Bridge();
+  error ErrorWETHTokenNotSupported();
 
   /// @notice Thrown when the L2 token address is invalid
   error ErrorInvalidL2Token();

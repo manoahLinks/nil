@@ -235,7 +235,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     bytes memory _data = _encodedERC20TransferData;
 
     if (router == _sender) {
-      // as the depositor called depositWETH function via L1BridgeRouter, extract the depositor-address from the
+      // as the depositor called depositERC20 function via L1BridgeRouter, extract the depositor-address from the
       // _data AKA routerData
       // _data is the data to be sent on the target address on nil-chain
       (_depositor, _data) = abi.decode(_encodedERC20TransferData, (address, bytes));
@@ -285,7 +285,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     }
 
     if (_l1Token == wethToken) {
-      revert ErrorWETHTokenNotSupportedOnERC20Bridge();
+      revert ErrorWETHTokenNotSupported();
     }
 
     if (_l2DepositRecipient == address(0)) {

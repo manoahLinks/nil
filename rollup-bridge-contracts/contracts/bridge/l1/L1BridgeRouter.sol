@@ -199,6 +199,10 @@ contract L1BridgeRouter is
           revert ErrorInvalidTokenAddress();
         }
 
+        if (token == l1WETHAddress) {
+            revert ErrorWETHTokenNotSupported();
+        }
+
         if(l1ERC20Bridge == address(0)) {
           revert ErrorInvalidL1ERC20BridgeAddress();
         }

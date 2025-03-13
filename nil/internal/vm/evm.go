@@ -467,6 +467,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash types.Code, gas uint64, v
 		if !errors.Is(err, ErrExecutionReverted) {
 			contract.UseGas(contract.Gas, evm.Config.Tracer, tracing.GasChangeCallFailedExecution)
 		}
+		ret = nil
 	}
 
 	return ret, address, contract.Gas, err

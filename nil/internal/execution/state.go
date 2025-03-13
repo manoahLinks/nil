@@ -1038,12 +1038,14 @@ func (es *ExecutionState) HandleTransaction(ctx context.Context, txn *types.Tran
 	}
 	// We don't need bounce transaction for request, because it will be sent within the response transaction.
 	if res.Error != nil && !responseWasSent {
-		revString := decodeRevertTransaction(res.ReturnData)
-		if revString != "" {
-			if types.IsVmError(res.Error) {
-				res.Error = types.NewVmVerboseError(res.Error.Code(), revString)
-			} else {
-				res.Error = types.NewVerboseError(res.Error.Code(), revString)
+		if res.Error.Code() == types.ErrorExecutionReverted {
+			revString := decodeRevertTransaction(res.ReturnData)
+			if revString != "" {
+				if types.IsVmError(res.Error) {
+					res.Error = types.NewVmVerboseError(res.Error.Code(), revString)
+				} else {
+					res.Error = types.NewVerboseError(res.Error.Code(), revString)
+				}
 			}
 		}
 		if txn.IsBounce() {

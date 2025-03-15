@@ -16,8 +16,8 @@ import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
 /// @title L2BridgeMessenger
 /// @notice The `L2BridgeMessenger` contract can:
 /// 1. send messages from nil-chain to layer 1
-/// 2. entrypoint for the messages relayed from layer-1 to nil-chain
-/// @dev It should be a predeployed contract on nil-shard
+/// 2. receive relayed messages from L1 via relayer
+/// 3. entrypoint for all messages relayed from layer-1 to nil-chain via relayer
 contract L2BridgeMessenger is IL2BridgeMessenger, ReentrancyGuard, AccessControl, Ownable, Pausable {
   using EnumerableSet for EnumerableSet.AddressSet;
 

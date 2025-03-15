@@ -10,13 +10,13 @@ import { IL2Bridge } from "../l2/interfaces/IL2Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
-import { NilAccessControl } from "../../NilAccessControl.sol";
+import { NilAccessControlUpgradeable } from "../../NilAccessControlUpgradeable.sol";
 import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
 
 abstract contract L1BaseBridge is
   OwnableUpgradeable,
   PausableUpgradeable,
-  NilAccessControl,
+  NilAccessControlUpgradeable,
   ReentrancyGuardUpgradeable,
   IL1Bridge
 {

@@ -4,11 +4,15 @@ pragma solidity 0.8.28;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { NilRoleConstants } from "./libraries/NilRoleConstants.sol";
-import { INilAccessControl } from "./interfaces/INilAccessControl.sol";
+import { INilAccessControlUpgradeable } from "./interfaces/INilAccessControlUpgradeable.sol";
 
-/// @title NilAccessControl
-/// @notice See the documentation in {INilAccessControl}.
-abstract contract NilAccessControl is OwnableUpgradeable, AccessControlEnumerableUpgradeable, INilAccessControl {
+/// @title NilAccessControlUpgradeable
+/// @notice See the documentation in {INilAccessControlUpgradeable}.
+abstract contract NilAccessControlUpgradeable is
+  OwnableUpgradeable,
+  AccessControlEnumerableUpgradeable,
+  INilAccessControlUpgradeable
+{
   error ErrorCallerIsNotProposer();
   error ErrorCallerIsNotAdmin();
 
@@ -34,12 +38,12 @@ abstract contract NilAccessControl is OwnableUpgradeable, AccessControlEnumerabl
                            ADMIN MANAGEMENT FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function addAdmin(address account) external override onlyOwner {
     grantRole(DEFAULT_ADMIN_ROLE, account);
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function removeAdmin(address account) external override onlyOwner {
     revokeRole(DEFAULT_ADMIN_ROLE, account);
   }
@@ -48,7 +52,7 @@ abstract contract NilAccessControl is OwnableUpgradeable, AccessControlEnumerabl
                            ROLE MANAGEMENT FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function createNewRole(bytes32 role, bytes32 adminRole) external override onlyRole(DEFAULT_ADMIN_ROLE) {
     _setRoleAdmin(role, adminRole);
   }
@@ -57,17 +61,17 @@ abstract contract NilAccessControl is OwnableUpgradeable, AccessControlEnumerabl
                             ACCESS-CONTROL QUERY FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function grantAccess(bytes32 role, address account) external override {
     grantRole(role, account);
   }
 
-  //// @inheritdoc INilAccessControl
+  //// @inheritdoc INilAccessControlUpgradeable
   function revokeAccess(bytes32 role, address account) external override {
     revokeRole(role, account);
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function renounceAccess(bytes32 role) external override {
     renounceRole(role, msg.sender);
   }
@@ -76,12 +80,12 @@ abstract contract NilAccessControl is OwnableUpgradeable, AccessControlEnumerabl
                             PROPOSER ADMIN FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function grantProposerAdminRole(address account) external override {
     grantRole(NilRoleConstants.PROPOSER_ROLE_ADMIN, account);
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function revokeProposerAdminRole(address account) external override {
     revokeRole(NilRoleConstants.PROPOSER_ROLE_ADMIN, account);
   }
@@ -90,12 +94,12 @@ abstract contract NilAccessControl is OwnableUpgradeable, AccessControlEnumerabl
                             PROPOSER ACCESS CONTROL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function grantProposerAccess(address account) external override {
     grantRole(NilRoleConstants.PROPOSER_ROLE, account);
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function revokeProposerAccess(address account) external override {
     revokeRole(NilRoleConstants.PROPOSER_ROLE, account);
   }
@@ -104,17 +108,17 @@ abstract contract NilAccessControl is OwnableUpgradeable, AccessControlEnumerabl
                             ACCESS-CONTROL LISTING FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function getAllProposers() external view override returns (address[] memory) {
     return getRoleMembers(NilRoleConstants.PROPOSER_ROLE);
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function getAllAdmins() external view override returns (address[] memory) {
     return getRoleMembers(DEFAULT_ADMIN_ROLE);
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function getOwner() public view override returns (address) {
     address[] memory owners = getRoleMembers(NilRoleConstants.OWNER_ROLE);
 
@@ -125,17 +129,17 @@ abstract contract NilAccessControl is OwnableUpgradeable, AccessControlEnumerabl
     return owners[0];
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function isAnOwner(address ownerArg) external view override returns (bool) {
     return ownerArg == getOwner();
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function isAProposer(address proposerArg) external view override returns (bool) {
     return hasRole(NilRoleConstants.PROPOSER_ROLE, proposerArg);
   }
 
-  /// @inheritdoc INilAccessControl
+  /// @inheritdoc INilAccessControlUpgradeable
   function isAnAdmin(address adminArg) external view override returns (bool) {
     return hasRole(DEFAULT_ADMIN_ROLE, adminArg);
   }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import { INilAccessControl } from "./INilAccessControl.sol";
+import { INilAccessControlUpgradeable } from "./INilAccessControlUpgradeable.sol";
 
-interface INilRollup is INilAccessControl {
+interface INilRollup is INilAccessControlUpgradeable {
   /*//////////////////////////////////////////////////////////////////////////
                                        EVENTS
     //////////////////////////////////////////////////////////////////////////*/

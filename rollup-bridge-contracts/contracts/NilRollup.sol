@@ -5,15 +5,15 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { INilRollup } from "./interfaces/INilRollup.sol";
-import { NilAccessControl } from "./NilAccessControl.sol";
+import { NilAccessControlUpgradeable } from "./NilAccessControlUpgradeable.sol";
 import { NilRoleConstants } from "./libraries/NilRoleConstants.sol";
 import { INilVerifier } from "./interfaces/INilVerifier.sol";
 import { IL1BridgeMessenger } from "./bridge/l1/interfaces/IL1BridgeMessenger.sol";
 
 /// @title NilRollup
 /// @notice Manages rollup batches, state updates, and access control for the Nil protocol.
-/// @notice See the documentation in {INilAccessControl}.
-contract NilRollup is OwnableUpgradeable, PausableUpgradeable, NilAccessControl, INilRollup {
+/// @notice See the documentation in {INilAccessControlUpgradeable}.
+contract NilRollup is OwnableUpgradeable, PausableUpgradeable, NilAccessControlUpgradeable, INilRollup {
   /*//////////////////////////////////////////////////////////////////////////
                              NILROLLUP-ERRORS   
     //////////////////////////////////////////////////////////////////////////*/

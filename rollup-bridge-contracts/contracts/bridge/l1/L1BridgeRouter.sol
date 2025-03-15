@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import { NilAccessControl } from "../../NilAccessControl.sol";
+import { NilAccessControlUpgradeable } from "../../NilAccessControlUpgradeable.sol";
 import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
 import { ERC20 } from "solmate/tokens/ERC20.sol";
 import { SafeTransferLib } from "solmate/utils/SafeTransferLib.sol";
@@ -20,7 +20,7 @@ import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 contract L1BridgeRouter is
     OwnableUpgradeable,
     PausableUpgradeable,
-    NilAccessControl,
+    NilAccessControlUpgradeable,
     ReentrancyGuardUpgradeable,
     IL1BridgeRouter
 {

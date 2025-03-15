@@ -9,12 +9,12 @@ import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgr
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
-import { NilAccessControl } from "../../NilAccessControl.sol";
+import { NilAccessControlUpgradeable } from "../../NilAccessControlUpgradeable.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
 import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { INilRollup } from "../../interfaces/INilRollup.sol";
-import { NilAccessControl } from "../../NilAccessControl.sol";
+import { NilAccessControlUpgradeable } from "../../NilAccessControlUpgradeable.sol";
 import { Queue } from "../libraries/Queue.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
 import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
@@ -22,7 +22,7 @@ import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
 contract L1BridgeMessenger is
   OwnableUpgradeable,
   PausableUpgradeable,
-  NilAccessControl,
+  NilAccessControlUpgradeable,
   ReentrancyGuardUpgradeable,
   IL1BridgeMessenger
 {

@@ -5,6 +5,95 @@ import { INilAccessControlUpgradeable } from "./INilAccessControlUpgradeable.sol
 
 interface INilRollup is INilAccessControlUpgradeable {
   /*//////////////////////////////////////////////////////////////////////////
+                             NILROLLUP-ERRORS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+  /// @dev Invalid owner address.
+  error ErrorInvalidOwner();
+
+  /// @dev Invalid address.
+  error ErrorInvalidAddress();
+
+  /// @dev Invalid default admin address.
+  error ErrorInvalidDefaultAdmin();
+
+  /// @dev Invalid chain ID.
+  error ErrorInvalidChainID();
+
+  /// @dev Invalid NilVerifier address.
+  error ErrorInvalidNilVerifier();
+
+  /// @dev Error thrown when setVerifierAddress is called with idential address as in nilVerifier
+  error ErrorNilVerifierAddressNotChanged();
+
+  /// @dev New state root is invalid.
+  error ErrorInvalidNewStateRoot();
+
+  /// @dev BatchIndex is invalid.
+  error ErrorInvalidBatchIndex();
+
+  /// @dev Old state root is invalid.
+  error ErrorInvalidOldStateRoot();
+
+  /// @dev Error when commitBatch is called on batchIndex which is already committed
+  error ErrorBatchAlreadyCommitted(string batchIndex);
+
+  /// @dev Error when commitBatch is called on batchIndex which is already finalized
+  error ErrorBatchAlreadyFinalized(string batchIndex);
+
+  /// @dev Error when the versionHash for a blob at blobIndex in invalid
+  error ErrorInvalidVersionedHash(string batchIndex, uint256 blobIndex);
+
+  /// @dev Call of kzg evaluation precompile failed for unknown reason.
+  error ErrorCallEvaluationPrecompileFailed();
+
+  /// @dev Output from evaluation precompile doesn't match expected result.
+  error ErrorEvaluationPrecompileOutputWrong();
+
+  /// @dev The current state root doesn't match the submitted old root.
+  error ErrorOldStateRootMismatch();
+
+  /// @dev The dataProof size doesn't match with the blob count of the committed batch
+  error ErrorIncorrectDataProofSize();
+
+  /// @dev New state root was already finalized.
+  error ErrorNewStateRootAlreadyFinalized(string batchIndex, bytes32 newStateRoot);
+
+  /// @dev Data proof array is invalid.
+  error ErrorEmptyDataProofs();
+
+  /// @dev Data proof array size mismatch with the blobCount
+  error ErrorDataProofsAndBlobCountMismatch(uint256 dataProofCount, uint256 committedBlobCount);
+
+  /// @dev Data proof entry is invalid.
+  error ErrorInvalidDataProofItem(uint256 proofIndex);
+
+  /// @dev publicInput for validityProof verification is invalid
+  error ErrorInvalidPublicInputForProof();
+
+  /// @dev Validity proof is invalid.
+  error ErrorInvalidValidityProof();
+
+  /// @dev Batch is not committed
+  error ErrorBatchNotCommitted(string batchIndex);
+
+  /// @dev Thrown when call precompile failed.
+  error ErrorCallPointEvaluationPrecompileFailed();
+
+  /// @dev Thrown when the precompile output is incorrect.
+  error ErrorUnexpectedPointEvaluationPrecompileOutput();
+
+  error Unauthorized(address caller);
+
+  error ErrorInvalidL2ToL1Root();
+
+  error ErrorDuplicateL2ToL1Root();
+
+  error ErrorL1MessageHashMismatch(bytes32 computedL1MessageHash, bytes32 expectedL1MessageHash);
+
+  error ErrorInvalidPublicDataInfo();
+
+  /*//////////////////////////////////////////////////////////////////////////
                                        EVENTS
     //////////////////////////////////////////////////////////////////////////*/
 

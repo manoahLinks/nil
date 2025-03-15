@@ -204,7 +204,7 @@ contract NilRollupTest is BaseTest {
     vm.startPrank(_proposer);
 
     // Expect a revert due to the invalid (empty) batch index
-    vm.expectRevert(NilRollup.ErrorInvalidBatchIndex.selector);
+    vm.expectRevert(INilRollup.ErrorInvalidBatchIndex.selector);
 
     // Attempt to commit the batch with the invalid batch index
     rollup.commitBatch("", 1);
@@ -237,7 +237,7 @@ contract NilRollupTest is BaseTest {
     vm.startPrank(_proposer);
 
     // Expect a revert due to the invalid versioned hash
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorInvalidVersionedHash.selector, batchIndex, 0));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorInvalidVersionedHash.selector, batchIndex, 0));
 
     // Attempt to commit the batch with the invalid versioned hash
     rollup.commitBatch(batchIndex, blobCount);
@@ -281,7 +281,7 @@ contract NilRollupTest is BaseTest {
     assertEq(lastCommittedBatchIndex, batchIndex);
 
     // Expect a revert due to the batch already being committed
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorBatchAlreadyCommitted.selector, "BATCH_1"));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorBatchAlreadyCommitted.selector, "BATCH_1"));
 
     // Attempt to commit the same batch again
     rollup.commitBatch(batchIndex, blobCount);
@@ -341,7 +341,7 @@ contract NilRollupTest is BaseTest {
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
 
     // Expect a revert due to the batch already being finalized
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorBatchAlreadyFinalized.selector, "BATCH_1"));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorBatchAlreadyFinalized.selector, "BATCH_1"));
     rollup.commitBatch(batchIndex, blobCount);
 
     // Stop the prank
@@ -390,7 +390,7 @@ contract NilRollupTest is BaseTest {
       memory validityProof = hex"4c746babf097541f290a0b3bd300fa5e7874cecac18404287093b343f86eec75292693c83af3e79058a8f6a555ac92492e8b24cfdcb9b74148c0fc10917430308020c2fcb81a761c74b62042e6331d4f158702e087a32c56479e97ce611770f162606d64f90eb197b8475565ee0a37128a532ea99af9fb72673e37139eed42f60d79c671097d0b566638cc8861fd7cb66ccbecb436c53877e2e74f7db03280a7";
 
     // Expect a revert due to the invalid old state root
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorInvalidOldStateRoot.selector));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorInvalidOldStateRoot.selector));
 
     // Attempt to update the state with the first batch's details
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfoMock);
@@ -452,7 +452,7 @@ contract NilRollupTest is BaseTest {
     });
 
     // Expect a revert due to the old state root mismatch
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorOldStateRootMismatch.selector));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorOldStateRootMismatch.selector));
 
     // Attempt to update the state with the first batch's details
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
@@ -503,7 +503,7 @@ contract NilRollupTest is BaseTest {
       memory validityProof = hex"4c746babf097541f290a0b3bd300fa5e7874cecac18404287093b343f86eec75292693c83af3e79058a8f6a555ac92492e8b24cfdcb9b74148c0fc10917430308020c2fcb81a761c74b62042e6331d4f158702e087a32c56479e97ce611770f162606d64f90eb197b8475565ee0a37128a532ea99af9fb72673e37139eed42f60d79c671097d0b566638cc8861fd7cb66ccbecb436c53877e2e74f7db03280a7";
 
     // Expect a revert due to the invalid new state root
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorInvalidNewStateRoot.selector));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorInvalidNewStateRoot.selector));
 
     // Attempt to update the state with the first batch's details
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfoMock);
@@ -550,7 +550,7 @@ contract NilRollupTest is BaseTest {
       memory validityProof = hex"4c746babf097541f290a0b3bd300fa5e7874cecac18404287093b343f86eec75292693c83af3e79058a8f6a555ac92492e8b24cfdcb9b74148c0fc10917430308020c2fcb81a761c74b62042e6331d4f158702e087a32c56479e97ce611770f162606d64f90eb197b8475565ee0a37128a532ea99af9fb72673e37139eed42f60d79c671097d0b566638cc8861fd7cb66ccbecb436c53877e2e74f7db03280a7";
 
     // Expect a revert due to the invalid data proof
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorEmptyDataProofs.selector));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorEmptyDataProofs.selector));
 
     // Attempt to update the state with the first batch's details
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfoMock);
@@ -612,7 +612,7 @@ contract NilRollupTest is BaseTest {
 
     // Expect a revert due to the mismatch
     vm.expectRevert(
-      abi.encodeWithSelector(NilRollup.ErrorDataProofsAndBlobCountMismatch.selector, dataProofs.length, blobCount)
+      abi.encodeWithSelector(INilRollup.ErrorDataProofsAndBlobCountMismatch.selector, dataProofs.length, blobCount)
     );
 
     // Attempt to update the state with the first batch's details
@@ -670,7 +670,7 @@ contract NilRollupTest is BaseTest {
     });
 
     // Expect a revert due to the batch not being committed
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorBatchNotCommitted.selector, batchIndex));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorBatchNotCommitted.selector, batchIndex));
 
     // Attempt to update the state with the first batch's details
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
@@ -722,7 +722,7 @@ contract NilRollupTest is BaseTest {
       l1MessageHash: ZERO_STATE_ROOT
     });
     // Expect a revert due to the invalid data proof
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorInvalidDataProofItem.selector, 0));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorInvalidDataProofItem.selector, 0));
 
     // Attempt to update the state with the first batch's details
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
@@ -772,7 +772,7 @@ contract NilRollupTest is BaseTest {
     bytes memory validityProof = hex"";
 
     // Expect a revert due to the invalid validity proof
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorInvalidValidityProof.selector));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorInvalidValidityProof.selector));
 
     // Attempt to update the state with the first batch's details
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfoMock);
@@ -840,7 +840,7 @@ contract NilRollupTest is BaseTest {
     });
 
     // Expect a revert due to the batch already being finalized
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorBatchAlreadyFinalized.selector, batchIndex));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorBatchAlreadyFinalized.selector, batchIndex));
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
 
     // Stop the prank
@@ -905,7 +905,7 @@ contract NilRollupTest is BaseTest {
     });
 
     // Expect a revert due to invalid public input proof
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorInvalidPublicInputForProof.selector));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorInvalidPublicInputForProof.selector));
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
 
     // Stop the prank
@@ -939,7 +939,7 @@ contract NilRollupTest is BaseTest {
       l1MessageHash: ZERO_STATE_ROOT
     });
 
-    vm.expectRevert(abi.encodeWithSelector(NilRollup.ErrorCallPointEvaluationPrecompileFailed.selector));
+    vm.expectRevert(abi.encodeWithSelector(INilRollup.ErrorCallPointEvaluationPrecompileFailed.selector));
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
 
     vm.stopPrank();
@@ -1025,7 +1025,7 @@ contract NilRollupTest is BaseTest {
 
     // Expect a revert due to the new state root already being finalized
     vm.expectRevert(
-      abi.encodeWithSelector(NilRollup.ErrorNewStateRootAlreadyFinalized.selector, batchIndex, newStateRoot)
+      abi.encodeWithSelector(INilRollup.ErrorNewStateRootAlreadyFinalized.selector, batchIndex, newStateRoot)
     );
     rollup.updateState(batchIndex, oldStateRoot, newStateRoot, dataProofs, validityProof, publicDataInfo);
 

@@ -17,9 +17,9 @@ npx hardhat compile
 # Install Forge dependencies
 if command_exists forge; then
     echo "Installing Forge dependencies..."
-    forge install foundry-rs/forge-std --no-commit
-    forge install transmissions11/solmate --no-commit
-    forge install dapphub/ds-test --no-commit
+    forge install foundry-rs/forge-std
+    forge install transmissions11/solmate
+    forge install dapphub/ds-test
 
     echo "Running Forge clean and compile..."
     forge clean

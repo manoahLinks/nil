@@ -3,6 +3,18 @@ pragma solidity 0.8.28;
 
 interface IL2EnshrinedTokenBridge {
   /*//////////////////////////////////////////////////////////////////////////
+                             ERRORS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+  error ErrorZeroAddress();
+  error ErrorInvalidRouter();
+  error ErrorInvalidCounterParty();
+  error ErrorInvalidMessenger();
+  error ErrorCallerIsNotMessenger();
+  error ErrorInvalidL1TokenAddress();
+  error ErrorL1TokenAddressMismatch();
+
+  /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
     //////////////////////////////////////////////////////////////////////////*/
 
@@ -32,10 +44,6 @@ interface IL2EnshrinedTokenBridge {
   /// @param l2Token The address of l2 token.
   function getL1ERC20Address(address l2Token) external view returns (address);
 
-  /// @notice Return the corresponding l2 token address given l1 token address.
-  /// @param l1Token The address of l1 token.
-  function getL2TokenAddress(address l1Token) external view returns (address);
-
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATION FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
@@ -60,4 +68,11 @@ interface IL2EnshrinedTokenBridge {
     uint256 depositAmount,
     bytes calldata targetCallData
   ) external payable;
+
+  /**
+   * @notice Pauses or unpauses the contract.
+   * @dev This function allows the owner to pause or unpause the contract.
+   * @param _status The pause status to update.
+   */
+  function setPause(bool _status) external;
 }

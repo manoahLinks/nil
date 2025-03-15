@@ -11,6 +11,16 @@ interface IL2BridgeMessenger is IBridgeMessenger {
                              ERRORS
     //////////////////////////////////////////////////////////////////////////*/
 
+  error ErrorBridgeNotAuthorised();
+
+  /// @notice Thrown when a bridge interface is invalid.
+  error ErrorInvalidBridgeInterface();
+
+  /// @notice Thrown when a bridge is already authorized.
+  error ErrorBridgeAlreadyAuthorized();
+
+  error ErrorCallerIsNotAdmin();
+
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS
     //////////////////////////////////////////////////////////////////////////*/
@@ -25,16 +35,57 @@ interface IL2BridgeMessenger is IBridgeMessenger {
     ETH
   }
 
+  /*//////////////////////////////////////////////////////////////////////////
+                         PUBLIC CONSTANT FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
   /// @notice Get the list of authorized bridges
   /// @return The list of authorized bridge addresses.
   function getAuthorizedBridges() external view returns (address[] memory);
 
-  /*//////////////////////////////////////////////////////////////////////////
-                           PUBLIC MUTATING FUNCTIONS
-    //////////////////////////////////////////////////////////////////////////*/
+  function computeMessageHash(
+    address _messageSender,
+    address _messageTarget,
+    uint256 _value,
+    uint256 _messageNonce,
+    bytes memory _message
+  ) external pure returns (bytes32);
 
   /*//////////////////////////////////////////////////////////////////////////
-                           RESTRICTED FUNCTIONS
+                         PUBLIC MUTATION FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
+  /// @notice receive realyedMessage originated from L1BridgeMessenger via Relayer
+  /// @dev only authorized smart-account on nil-shard can relayMessage to Bridge on NilShard
+  /// @param messageSender The address of the sender of the message.
+  /// @param messageTarget The address of the recipient of the message.
+  /// @param value The msg.value passed to the message call.
+  /// @param messageNonce The nonce of the message to avoid replay attack.
+  /// @param message The content of the message.
+  function relayMessage(
+    address messageSender,
+    address messageTarget,
+    uint256 value,
+    uint256 messageNonce,
+    bytes calldata message
+  ) external;
+
+  /// @notice Send cross chain message Nil to L1.
+  /// @param target The address of account who receive the message.
+  /// @param value The amount of ether passed when call target contract.
+  /// @param message The content of the message.
+  /// @param gasLimit Gas limit required to complete the message relay on corresponding chain.
+  /// @param refundAddress The address of account who will receive the refunded fee.
+  function sendMessage(
+    address target,
+    uint256 value,
+    bytes calldata message,
+    uint256 gasLimit,
+    address refundAddress
+  ) external payable;
+
+  /*//////////////////////////////////////////////////////////////////////////
+                         OWNER RESTRICTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @notice Authorize a bridge addresses
@@ -48,4 +99,11 @@ interface IL2BridgeMessenger is IBridgeMessenger {
   /// @notice Revoke authorization of a bridge address
   /// @param bridge The address of the bridge to revoke.
   function revokeBridgeAuthorization(address bridge) external;
+
+  /**
+   * @notice Pauses or unpauses the contract.
+   * @dev This function allows the owner to pause or unpause the contract.
+   * @param _status The pause status to update.
+   */
+  function setPause(bool _status) external;
 }

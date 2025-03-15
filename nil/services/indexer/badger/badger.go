@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/NilFoundation/nil/nil/common/logging"
 	"github.com/NilFoundation/nil/nil/services/indexer/driver"
 	types2 "github.com/NilFoundation/nil/nil/services/indexer/types"
 
@@ -128,6 +129,9 @@ func (b *BadgerDriver) indexBlockTransactions(tx *badger.Txn, block *driver.Bloc
 			BlockId:   block.Block.Id,
 			Status:    getTransactionStatus(receipt.decoded),
 		}
+
+		logger := logging.NewLogger("indexer-badger")
+		logger.Info().Msgf("indexing block transaction %s, from %s to %s", txn.Hash(), txn.From, txn.To)
 
 		fromAction := baseAction
 		fromAction.Type = types2.SendEth

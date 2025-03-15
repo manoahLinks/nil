@@ -19,7 +19,7 @@ interface IL2BridgeMessenger is IBridgeMessenger {
   /// @notice Thrown when a bridge is already authorized.
   error ErrorBridgeAlreadyAuthorized();
 
-  error ErrorCallerIsNotAdmin();
+  error ErrorInvalidCounterpartBridgeMessenger();
 
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS

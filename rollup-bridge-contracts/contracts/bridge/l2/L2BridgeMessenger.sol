@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -12,14 +12,17 @@ import { IL2BridgeMessenger } from "./interfaces/IL2BridgeMessenger.sol";
 import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
 import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
 import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
+import { NilAccessControl } from "../../NilAccessControl.sol";
+import { AddressChecker } from "../../libraries/AddressChecker.sol";
 
 /// @title L2BridgeMessenger
 /// @notice The `L2BridgeMessenger` contract can:
 /// 1. send messages from nil-chain to layer 1
 /// 2. receive relayed messages from L1 via relayer
 /// 3. entrypoint for all messages relayed from layer-1 to nil-chain via relayer
-contract L2BridgeMessenger is IL2BridgeMessenger, ReentrancyGuard, AccessControl, Ownable, Pausable {
+contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2BridgeMessenger {
   using EnumerableSet for EnumerableSet.AddressSet;
+  using AddressChecker for address;
 
   /*//////////////////////////////////////////////////////////////////////////
                                   STATE VARIABLES
@@ -53,6 +56,10 @@ contract L2BridgeMessenger is IL2BridgeMessenger, ReentrancyGuard, AccessControl
     address _counterpartBridgeMessenger,
     bytes32 _genesisL1ReceiveMessageHash
   ) Ownable(_owner) {
+    if (_counterpartBridgeMessenger == address(0) || !_counterpartBridgeMessenger.isContract()) {
+      revert ErrorInvalidCounterpartBridgeMessenger();
+    }
+
     counterpartBridgeMessenger = _counterpartBridgeMessenger;
     l1ReceiveMessageHash = _genesisL1ReceiveMessageHash;
     _grantRole(NilRoleConstants.OWNER_ROLE, _owner);
@@ -73,20 +80,13 @@ contract L2BridgeMessenger is IL2BridgeMessenger, ReentrancyGuard, AccessControl
     _;
   }
 
-  modifier onlyAdmin() {
-    if (!(hasRole(DEFAULT_ADMIN_ROLE, msg.sender))) {
-      revert ErrorCallerIsNotAdmin();
-    }
-    _;
-  }
-
   /// @inheritdoc IL2BridgeMessenger
   function getAuthorizedBridges() external view returns (address[] memory) {
     return authorizedBridges.values();
   }
 
   /// @inheritdoc IERC165
-  function supportsInterface(bytes4 interfaceId) public view override(AccessControl, IERC165) returns (bool) {
+  function supportsInterface(bytes4 interfaceId) public view override(AccessControlEnumerable, IERC165) returns (bool) {
     return interfaceId == type(IL2BridgeMessenger).interfaceId || super.supportsInterface(interfaceId);
   }
 
@@ -128,6 +128,7 @@ contract L2BridgeMessenger is IL2BridgeMessenger, ReentrancyGuard, AccessControl
     uint256 _messageNonce,
     bytes memory _message
   ) public pure override returns (bytes32) {
+    // TODO - convert keccak256 to precompile call for realkeccak256 in nil-shard
     return keccak256(abi.encode(_messageSender, _messageTarget, _value, _messageNonce, _message));
   }
 

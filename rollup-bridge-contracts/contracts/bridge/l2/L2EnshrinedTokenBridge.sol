@@ -5,9 +5,11 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IL2EnshrinedTokenBridge } from "./interfaces/IL2EnshrinedTokenBridge.sol";
+import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
+import { NilAccessControl } from "../../NilAccessControl.sol";
 import { AddressChecker } from "../../libraries/AddressChecker.sol";
 
-contract L2EnshrinedTokenBridge is IL2EnshrinedTokenBridge, ReentrancyGuard, Ownable, Pausable {
+contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2EnshrinedTokenBridge {
   using AddressChecker for address;
 
   /*************
@@ -37,15 +39,15 @@ contract L2EnshrinedTokenBridge is IL2EnshrinedTokenBridge, ReentrancyGuard, Own
   /// @param _router The address of `L2BridgeRouter` contract in Nil-Chain.
   /// @param _messenger The address of `L2BridgeMessenger` contract in  Nil-Chain.
   constructor(address _owner, address _counterpart, address _router, address _messenger) Ownable(_owner) {
-    if (_router == address(0) || !_router.isContract()) {
+    if (!_router.isContract()) {
       revert ErrorInvalidRouter();
     }
 
-    if (_counterpart == address(0) || !_counterpart.isContract()) {
+    if (!_counterpart.isContract()) {
       revert ErrorInvalidCounterParty();
     }
 
-    if (_messenger == address(0) || !_messenger.isContract()) {
+    if (!_messenger.isContract()) {
       revert ErrorInvalidMessenger();
     }
 
@@ -87,7 +89,7 @@ contract L2EnshrinedTokenBridge is IL2EnshrinedTokenBridge, ReentrancyGuard, Own
     uint256 depositAmount,
     bytes calldata targetCallData
   ) external payable override onlyMessenger nonReentrant {
-    if (l1Token == address(0) || l1Token.isContract()) {
+    if (l1Token.isContract()) {
       revert ErrorInvalidL1TokenAddress();
     }
 
@@ -124,5 +126,12 @@ contract L2EnshrinedTokenBridge is IL2EnshrinedTokenBridge, ReentrancyGuard, Own
     } else {
       _unpause();
     }
+  }
+
+  /// @inheritdoc IL2EnshrinedTokenBridge
+  function transferOwnershipRole(address newOwner) external override onlyOwner {
+    _revokeRole(NilRoleConstants.OWNER_ROLE, owner());
+    super.transferOwnership(newOwner);
+    _grantRole(NilRoleConstants.OWNER_ROLE, newOwner);
   }
 }

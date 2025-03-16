@@ -139,11 +139,13 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
     bool isExecutionSuccessful = _executeMessage(messageSender, messageTarget, value, message, _l1MessageHash);
 
     if (!isExecutionSuccessful) {
+      // add messaheHash as leaf to the merkleTree represented by l2Tol1Root
       failedMessageHashStore.add(_l1MessageHash);
 
-      // add messaheHash as leaf to the merkleTree represented by l2Tol1Root
+      // re-generate the merkle-tree
       bytes32 merkleRoot = NilMerkleTree.computeMerkleRoot(failedMessageHashStore.values());
 
+      // merkleRoot must change from the existing root in messenger-contract storage
       if (l2Tol1Root == merkleRoot || merkleRoot == bytes32(0)) {
         revert ErrorInvalidMerkleRoot();
       }

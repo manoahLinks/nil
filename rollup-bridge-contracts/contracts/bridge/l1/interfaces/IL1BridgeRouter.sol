@@ -22,7 +22,7 @@ interface IL1BridgeRouter {
 
   error ErrorInvalidL1ERC20BridgeAddress();
 
-  error ErrorInvalidDepositType();
+  error ErrorInvalidMessageType();
 
   error ErrorEmptyDeposit();
 

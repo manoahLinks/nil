@@ -15,6 +15,7 @@ import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { L1BaseBridge } from "./L1BaseBridge.sol";
 
 /// @title L1ERC20Bridge
@@ -161,8 +162,8 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       revert UnAuthorizedCaller();
     }
 
-    if (depositMessage.depositType != IL1BridgeMessenger.DepositType.ERC20) {
-      revert InvalidDepositType();
+    if (depositMessage.messageType != NilConstants.MessageType.DEPOSIT_ERC20) {
+      revert InvalidMessageType();
     }
 
     // L1BridgeMessenger to verify if the deposit can be cancelled
@@ -183,8 +184,8 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
     // Decode the message to extract the token address and the original sender (_from)
     ERC20DepositMessage memory erc20DepositMessage = decodeERC20DepositMessage(depositMessage.message);
 
-    if (depositMessage.depositType != IL1BridgeMessenger.DepositType.ERC20) {
-      revert InvalidDepositType();
+    if (depositMessage.messageType != NilConstants.MessageType.DEPOSIT_ERC20) {
+      revert InvalidMessageType();
     }
 
     // L1BridgeMessenger to verify if the deposit can be claimed
@@ -341,7 +342,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
 
     // Send message to L1BridgeMessenger.
     IL1BridgeMessenger(messenger).sendMessage{ value: msg.value }(
-      IL1BridgeMessenger.DepositType.ERC20,
+      NilConstants.MessageType.DEPOSIT_ETH,
       counterpartyBridge,
       0,
       _message,

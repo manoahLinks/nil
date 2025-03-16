@@ -11,8 +11,8 @@ interface IL1Bridge is IBridge {
   /// @dev Thrown when the caller is not authorized.
   error UnAuthorizedCaller();
 
-  /// @dev Thrown when the deposit type is invalid.
-  error InvalidDepositType();
+  /// @dev Thrown when the message type is invalid.
+  error InvalidMessageType();
 
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS

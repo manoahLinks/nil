@@ -13,6 +13,7 @@ import { IL1Bridge } from "./interfaces/IL1Bridge.sol";
 import { IBridge } from "../interfaces/IBridge.sol";
 import { IL1BridgeMessenger } from "./interfaces/IL1BridgeMessenger.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { L1BaseBridge } from "./L1BaseBridge.sol";
 
 /// @title L1ETHBridge
@@ -131,8 +132,8 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       revert UnAuthorizedCaller();
     }
 
-    if (depositMessage.depositType != IL1BridgeMessenger.DepositType.ETH) {
-      revert InvalidDepositType();
+    if (depositMessage.messageType != NilConstants.MessageType.DEPOSIT_ETH) {
+      revert InvalidMessageType();
     }
 
     // L1BridgeMessenger to verify if the deposit can be cancelled
@@ -160,8 +161,8 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       (address, address, address, address, uint256, bytes)
     );
 
-    if (depositMessage.depositType != IL1BridgeMessenger.DepositType.ETH) {
-      revert InvalidDepositType();
+    if (depositMessage.messageType != NilConstants.MessageType.DEPOSIT_ETH) {
+      revert InvalidMessageType();
     }
 
     // L1BridgeMessenger to verify if the deposit can be claimed
@@ -240,7 +241,7 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
 
     // Send message to L1BridgeMessenger.
     IL1BridgeMessenger(messenger).sendMessage{ value: msg.value }(
-      IL1BridgeMessenger.DepositType.ETH,
+      NilConstants.MessageType.DEPOSIT_ETH,
       counterpartyBridge,
       _depositAmount,
       _message,

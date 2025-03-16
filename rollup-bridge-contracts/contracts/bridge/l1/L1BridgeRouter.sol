@@ -286,30 +286,30 @@ contract L1BridgeRouter is
     /// @inheritdoc IL1BridgeRouter
     function cancelDeposit(bytes32 messageHash) external payable {
         // Get the deposit message from the messenger
-        IL1BridgeMessenger.DepositType depositType = l1BridgeMessenger.getDepositType(messageHash);
+        NilConstants.MessageType messageType = l1BridgeMessenger.getMessageType(messageHash);
 
         // Route the cancellation request based on the deposit type
-        if (depositType == IL1BridgeMessenger.DepositType.ERC20) {
+        if (messageType == NilConstants.MessageType.DEPOSIT_ERC20) {
             IL1ERC20Bridge(l1ERC20Bridge).cancelDeposit(messageHash);
-        } else if (depositType == IL1BridgeMessenger.DepositType.ETH) {
+        } else if (messageType == NilConstants.MessageType.DEPOSIT_ETH) {
             IL1ETHBridge(l1ERC20Bridge).cancelDeposit(messageHash);
         } else {
-            revert ErrorInvalidDepositType();
+            revert ErrorInvalidMessageType();
         }
     }
 
     /// @inheritdoc IL1BridgeRouter
     function claimFailedDeposit(bytes32 messageHash, bytes32[] memory claimProof) external override {
         // Get the deposit message from the messenger
-        IL1BridgeMessenger.DepositType depositType = l1BridgeMessenger.getDepositType(messageHash);
+        NilConstants.MessageType messageType = l1BridgeMessenger.getMessageType(messageHash);
 
         // Route the cancellation request based on the deposit type
-        if (depositType == IL1BridgeMessenger.DepositType.ERC20) {
+        if (messageType == NilConstants.MessageType.DEPOSIT_ERC20) {
             IL1ERC20Bridge(l1ERC20Bridge).claimFailedDeposit(messageHash, claimProof);
-        } else if (depositType == IL1BridgeMessenger.DepositType.ETH) {
+        } else if (messageType == NilConstants.MessageType.DEPOSIT_ETH) {
             IL1ETHBridge(l1ERC20Bridge).claimFailedDeposit(messageHash, claimProof);
         } else {
-            revert ErrorInvalidDepositType();
+            revert ErrorInvalidMessageType();
         }
     }
 

@@ -48,7 +48,7 @@ contract L1BridgeMessenger is
     //////////////////////////////////////////////////////////////////////////*/
 
   struct SendMessageParams {
-    DepositType depositType;
+    NilConstants.MessageType messageType;
     address messageTarget;
     uint256 value;
     bytes message;
@@ -189,8 +189,8 @@ contract L1BridgeMessenger is
   }
 
   /// @inheritdoc IL1BridgeMessenger
-  function getDepositType(bytes32 msgHash) public view returns (DepositType depositType) {
-    return depositMessages[msgHash].depositType;
+  function getMessageType(bytes32 msgHash) public view returns (NilConstants.MessageType messageType) {
+    return depositMessages[msgHash].messageType;
   }
 
   /// @inheritdoc IL1BridgeMessenger
@@ -276,7 +276,7 @@ contract L1BridgeMessenger is
 
   /// @inheritdoc IL1BridgeMessenger
   function sendMessage(
-    DepositType depositType,
+    NilConstants.MessageType messageType,
     address messageTarget,
     uint256 value,
     bytes memory message,
@@ -285,7 +285,7 @@ contract L1BridgeMessenger is
   ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
     _sendMessage(
       SendMessageParams({
-        depositType: depositType,
+        messageType: messageType,
         messageTarget: messageTarget,
         value: value,
         message: message,
@@ -298,7 +298,7 @@ contract L1BridgeMessenger is
 
   /// @inheritdoc IL1BridgeMessenger
   function sendMessage(
-    DepositType depositType,
+    NilConstants.MessageType messageType,
     address messageTarget,
     uint256 value,
     bytes calldata message,
@@ -308,7 +308,7 @@ contract L1BridgeMessenger is
   ) external payable override whenNotPaused onlyAuthorizedL1Bridge {
     _sendMessage(
       SendMessageParams({
-        depositType: depositType,
+        messageType: messageType,
         messageTarget: messageTarget,
         value: value,
         message: message,
@@ -424,7 +424,7 @@ contract L1BridgeMessenger is
       depositMessage.nonce,
       params.message,
       messageHash,
-      params.depositType,
+      params.messageType,
       block.timestamp,
       depositMessage.expiryTime,
       params.l2FeeRefundAddress,
@@ -443,7 +443,7 @@ contract L1BridgeMessenger is
         isCancelled: false,
         isClaimed: false,
         l1DepositRefundAddress: params.l1DepositRefundAddress,
-        depositType: params.depositType,
+        messageType: params.messageType,
         message: params.message,
         feeCreditData: params.feeCreditData
       });

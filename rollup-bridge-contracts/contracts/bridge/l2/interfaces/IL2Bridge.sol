@@ -5,7 +5,7 @@ import { IBridge } from "../../interfaces/IBridge.sol";
 
 interface IL2Bridge is IBridge {
   error UnAuthorizedCaller();
-  error InvalidDepositType();
+  error InvalidMessageType();
   error ErrorInvalidRouter();
   error ErrorInvalidCounterParty();
   error ErrorInvalidMessenger();

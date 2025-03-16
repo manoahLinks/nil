@@ -6,7 +6,7 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { INilRollup } from "./interfaces/INilRollup.sol";
 import { NilAccessControlUpgradeable } from "./NilAccessControlUpgradeable.sol";
-import { NilRoleConstants } from "./libraries/NilRoleConstants.sol";
+import { NilConstants } from "./common/libraries/NilConstants.sol";
 import { INilVerifier } from "./interfaces/INilVerifier.sol";
 import { IL1BridgeMessenger } from "./bridge/l1/interfaces/IL1BridgeMessenger.sol";
 
@@ -115,40 +115,40 @@ contract NilRollup is OwnableUpgradeable, PausableUpgradeable, NilAccessControlU
 
     // Set role admins
     // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
-    _setRoleAdmin(NilRoleConstants.OWNER_ROLE, NilRoleConstants.OWNER_ROLE);
+    _setRoleAdmin(NilConstants.OWNER_ROLE, NilConstants.OWNER_ROLE);
 
     // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
     // role.
-    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilRoleConstants.OWNER_ROLE);
+    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilConstants.OWNER_ROLE);
 
     // The PROPOSER_ROLE_ADMIN are set to be managed by the DEFAULT_ADMIN_ROLE.
     // This allows the default admin to manage the committers and state updaters.
-    _setRoleAdmin(NilRoleConstants.PROPOSER_ROLE_ADMIN, DEFAULT_ADMIN_ROLE);
+    _setRoleAdmin(NilConstants.PROPOSER_ROLE_ADMIN, DEFAULT_ADMIN_ROLE);
 
     // The PROPOSER_ROLE are set to be managed by their respective admin roles.
     // This allows the proposers to be managed by the roles designated for their administration.
-    _setRoleAdmin(NilRoleConstants.PROPOSER_ROLE, NilRoleConstants.PROPOSER_ROLE_ADMIN);
+    _setRoleAdmin(NilConstants.PROPOSER_ROLE, NilConstants.PROPOSER_ROLE_ADMIN);
 
     // Grant roles to defaultAdmin and owner
     // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
     // highest level of control.
     // The PROPOSER_ROLE_ADMIN is granted to both the default admin and the owner to allow them to manage proposers.
     // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
-    _grantRole(NilRoleConstants.OWNER_ROLE, _owner);
+    _grantRole(NilConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-    _grantRole(NilRoleConstants.PROPOSER_ROLE_ADMIN, _defaultAdmin);
-    _grantRole(NilRoleConstants.PROPOSER_ROLE_ADMIN, _owner);
+    _grantRole(NilConstants.PROPOSER_ROLE_ADMIN, _defaultAdmin);
+    _grantRole(NilConstants.PROPOSER_ROLE_ADMIN, _owner);
 
     // Grant proposer to defaultAdmin and owner
     // The PROPOSER_ROLE is granted to the default admin and the owner.
     // This ensures that both the default admin and the owner have the necessary permissions to perform
     // committer and state updater functions if needed. This redundancy provides a fallback mechanism
-    _grantRole(NilRoleConstants.PROPOSER_ROLE, _owner);
-    _grantRole(NilRoleConstants.PROPOSER_ROLE, _defaultAdmin);
+    _grantRole(NilConstants.PROPOSER_ROLE, _owner);
+    _grantRole(NilConstants.PROPOSER_ROLE, _defaultAdmin);
 
     // Grant PROPOSER_ROLE to proposerAddress
     if (_proposer != address(0)) {
-      _grantRole(NilRoleConstants.PROPOSER_ROLE, _proposer);
+      _grantRole(NilConstants.PROPOSER_ROLE, _proposer);
     }
 
     // Initialize the first batch with a dummy string and GENESIS_STATE_ROOT
@@ -461,9 +461,9 @@ contract NilRollup is OwnableUpgradeable, PausableUpgradeable, NilAccessControlU
 
   /// @inheritdoc INilRollup
   function transferOwnershipRole(address newOwner) external override onlyOwner {
-    _revokeRole(NilRoleConstants.OWNER_ROLE, owner());
+    _revokeRole(NilConstants.OWNER_ROLE, owner());
     super.transferOwnership(newOwner);
-    _grantRole(NilRoleConstants.OWNER_ROLE, newOwner);
+    _grantRole(NilConstants.OWNER_ROLE, newOwner);
   }
 
   /**

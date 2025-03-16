@@ -10,13 +10,13 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IL2BridgeMessenger } from "./interfaces/IL2BridgeMessenger.sol";
 import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
-import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 import { NilMerkleTree } from "./libraries/NilMerkleTree.sol";
-import { NilConstants } from "../../libraries/NilConstants.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { ErrorInvalidMessageType } from "../../common/NilErrorConstants.sol";
-import { AddressChecker } from "../../libraries/AddressChecker.sol";
+import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
 
 /// @title L2BridgeMessenger
 /// @notice The `L2BridgeMessenger` contract can:
@@ -70,7 +70,7 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
 
     counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
     l1ReceiveMessageHash = _genesisL1ReceiveMessageHash;
-    _grantRole(NilRoleConstants.OWNER_ROLE, _owner);
+    _grantRole(NilConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
   }
 
@@ -230,8 +230,8 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
 
   /// @inheritdoc IBridgeMessenger
   function transferOwnershipRole(address newOwner) external override onlyOwner {
-    _revokeRole(NilRoleConstants.OWNER_ROLE, owner());
+    _revokeRole(NilConstants.OWNER_ROLE, owner());
     super.transferOwnership(newOwner);
-    _grantRole(NilRoleConstants.OWNER_ROLE, newOwner);
+    _grantRole(NilConstants.OWNER_ROLE, newOwner);
   }
 }

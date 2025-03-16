@@ -6,9 +6,9 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
-import { AddressChecker } from "../../libraries/AddressChecker.sol";
+import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
 import { IL2ETHBridgeVault } from "./interfaces/IL2ETHBridgeVault.sol";
 
 contract L2ETHBridgeVault is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridgeVault {
@@ -29,7 +29,7 @@ contract L2ETHBridgeVault is ReentrancyGuard, NilAccessControl, Pausable, IL2ETH
       revert ErrorInvalidEthBridge();
     }
     l2EthBridge = _l2EthBridge;
-    _grantRole(NilRoleConstants.OWNER_ROLE, _owner);
+    _grantRole(NilConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
   }
 

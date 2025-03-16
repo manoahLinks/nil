@@ -6,9 +6,9 @@ import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IL2EnshrinedTokenBridge } from "./interfaces/IL2EnshrinedTokenBridge.sol";
 import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
-import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
-import { AddressChecker } from "../../libraries/AddressChecker.sol";
+import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
 
 contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2EnshrinedTokenBridge {
   using AddressChecker for address;
@@ -146,8 +146,8 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
 
   /// @inheritdoc IL2EnshrinedTokenBridge
   function transferOwnershipRole(address newOwner) external override onlyOwner {
-    _revokeRole(NilRoleConstants.OWNER_ROLE, owner());
+    _revokeRole(NilConstants.OWNER_ROLE, owner());
     super.transferOwnership(newOwner);
-    _grantRole(NilRoleConstants.OWNER_ROLE, newOwner);
+    _grantRole(NilConstants.OWNER_ROLE, newOwner);
   }
 }

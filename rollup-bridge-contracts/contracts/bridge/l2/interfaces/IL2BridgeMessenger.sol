@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import { IBridgeMessenger } from "../../interfaces/IBridgeMessenger.sol";
-import { NilConstants } from "../../../libraries/NilConstants.sol";
+import { NilConstants } from "../../../common/libraries/NilConstants.sol";
 
 /// @title IL2BridgeMessenger
 /// @notice Interface for the L2BridgeMessenger contract which handles cross-chain messaging between L1 and L2.

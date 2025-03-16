@@ -7,7 +7,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { NilAccessControlUpgradeable } from "../../NilAccessControlUpgradeable.sol";
-import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { INilGasPriceOracle } from "./interfaces/INilGasPriceOracle.sol";
 
 // solhint-disable reason-string
@@ -81,30 +81,30 @@ contract NilGasPriceOracle is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
     // Set role admins
     // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
-    _setRoleAdmin(NilRoleConstants.OWNER_ROLE, NilRoleConstants.OWNER_ROLE);
+    _setRoleAdmin(NilConstants.OWNER_ROLE, NilConstants.OWNER_ROLE);
 
     // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
     // role.
-    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilRoleConstants.OWNER_ROLE);
+    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilConstants.OWNER_ROLE);
 
     // Grant roles to defaultAdmin and owner
     // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
     // highest level of control.
-    _grantRole(NilRoleConstants.OWNER_ROLE, _owner);
+    _grantRole(NilConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
 
-    _grantRole(NilRoleConstants.GAS_PRICE_SETTER_ROLE_ADMIN, _defaultAdmin);
-    _grantRole(NilRoleConstants.GAS_PRICE_SETTER_ROLE_ADMIN, _owner);
+    _grantRole(NilConstants.GAS_PRICE_SETTER_ROLE_ADMIN, _defaultAdmin);
+    _grantRole(NilConstants.GAS_PRICE_SETTER_ROLE_ADMIN, _owner);
 
     // Grant proposer to defaultAdmin and owner
     // The GAS_PRICE_SETTER_ROLE is granted to the default admin and the owner.
     // This ensures that both the default admin and the owner have the necessary permissions to perform
     // set GasPrice parameters if needed. This redundancy provides a fallback mechanism
-    _grantRole(NilRoleConstants.GAS_PRICE_SETTER_ROLE, _owner);
-    _grantRole(NilRoleConstants.GAS_PRICE_SETTER_ROLE, _defaultAdmin);
+    _grantRole(NilConstants.GAS_PRICE_SETTER_ROLE, _owner);
+    _grantRole(NilConstants.GAS_PRICE_SETTER_ROLE, _defaultAdmin);
 
     // grant GasPriceSetter role to gasPriceSetter address
-    _grantRole(NilRoleConstants.GAS_PRICE_SETTER_ROLE, _gasPriceSetter);
+    _grantRole(NilConstants.GAS_PRICE_SETTER_ROLE, _gasPriceSetter);
 
     maxFeePerGas = _maxFeePerGas;
     maxPriorityFeePerGas = _maxPriorityFeePerGas;

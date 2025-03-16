@@ -7,10 +7,10 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
-import { AddressChecker } from "../../libraries/AddressChecker.sol";
+import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
 import { IL2ETHBridge } from "./interfaces/IL2ETHBridge.sol";
 import { IL2ETHBridgeVault } from "./interfaces/IL2ETHBridgeVault.sol";
 
@@ -66,7 +66,7 @@ contract L2ETHBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridg
     messenger = _messenger;
     l2ETHBridgeVault = IL2ETHBridgeVault(_l2EthBridgeVault);
 
-    _grantRole(NilRoleConstants.OWNER_ROLE, _owner);
+    _grantRole(NilConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
   }
 
@@ -108,8 +108,8 @@ contract L2ETHBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridg
 
   /// @inheritdoc IL2Bridge
   function transferOwnershipRole(address newOwner) external override onlyOwner {
-    _revokeRole(NilRoleConstants.OWNER_ROLE, owner());
+    _revokeRole(NilConstants.OWNER_ROLE, owner());
     super.transferOwnership(newOwner);
-    _grantRole(NilRoleConstants.OWNER_ROLE, newOwner);
+    _grantRole(NilConstants.OWNER_ROLE, newOwner);
   }
 }

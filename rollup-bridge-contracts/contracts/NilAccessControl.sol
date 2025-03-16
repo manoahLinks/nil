@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
-import { NilRoleConstants } from "./libraries/NilRoleConstants.sol";
+import { NilConstants } from "./common/libraries/NilConstants.sol";
 import { INilAccessControl } from "./interfaces/INilAccessControl.sol";
 
 /// @title NilAccessControl
@@ -73,7 +73,7 @@ abstract contract NilAccessControl is Ownable, AccessControlEnumerable, INilAcce
 
   /// @inheritdoc INilAccessControl
   function getOwner() public view override returns (address) {
-    address[] memory owners = getRoleMembers(NilRoleConstants.OWNER_ROLE);
+    address[] memory owners = getRoleMembers(NilConstants.OWNER_ROLE);
 
     if (owners.length == 0) {
       return address(0);

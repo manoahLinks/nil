@@ -15,6 +15,4 @@ library NilConstants {
     DEPOSIT_ERC20,
     DEPOSIT_ETH
   }
-
-  error ErrorInvalidMessageType();
 }

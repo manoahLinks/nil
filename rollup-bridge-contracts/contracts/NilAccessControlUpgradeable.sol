@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { NilRoleConstants } from "./libraries/NilRoleConstants.sol";
+import { NilConstants } from "./common/libraries/NilConstants.sol";
 import { INilAccessControlUpgradeable } from "./interfaces/INilAccessControlUpgradeable.sol";
 
 /// @title NilAccessControlUpgradeable
@@ -28,7 +28,7 @@ abstract contract NilAccessControlUpgradeable is
   }
 
   modifier onlyProposer() {
-    if (!hasRole(NilRoleConstants.PROPOSER_ROLE, msg.sender)) {
+    if (!hasRole(NilConstants.PROPOSER_ROLE, msg.sender)) {
       revert ErrorCallerIsNotProposer();
     }
     _;
@@ -82,12 +82,12 @@ abstract contract NilAccessControlUpgradeable is
 
   /// @inheritdoc INilAccessControlUpgradeable
   function grantProposerAdminRole(address account) external override {
-    grantRole(NilRoleConstants.PROPOSER_ROLE_ADMIN, account);
+    grantRole(NilConstants.PROPOSER_ROLE_ADMIN, account);
   }
 
   /// @inheritdoc INilAccessControlUpgradeable
   function revokeProposerAdminRole(address account) external override {
-    revokeRole(NilRoleConstants.PROPOSER_ROLE_ADMIN, account);
+    revokeRole(NilConstants.PROPOSER_ROLE_ADMIN, account);
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -96,12 +96,12 @@ abstract contract NilAccessControlUpgradeable is
 
   /// @inheritdoc INilAccessControlUpgradeable
   function grantProposerAccess(address account) external override {
-    grantRole(NilRoleConstants.PROPOSER_ROLE, account);
+    grantRole(NilConstants.PROPOSER_ROLE, account);
   }
 
   /// @inheritdoc INilAccessControlUpgradeable
   function revokeProposerAccess(address account) external override {
-    revokeRole(NilRoleConstants.PROPOSER_ROLE, account);
+    revokeRole(NilConstants.PROPOSER_ROLE, account);
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -110,7 +110,7 @@ abstract contract NilAccessControlUpgradeable is
 
   /// @inheritdoc INilAccessControlUpgradeable
   function getAllProposers() external view override returns (address[] memory) {
-    return getRoleMembers(NilRoleConstants.PROPOSER_ROLE);
+    return getRoleMembers(NilConstants.PROPOSER_ROLE);
   }
 
   /// @inheritdoc INilAccessControlUpgradeable
@@ -120,7 +120,7 @@ abstract contract NilAccessControlUpgradeable is
 
   /// @inheritdoc INilAccessControlUpgradeable
   function getOwner() public view override returns (address) {
-    address[] memory owners = getRoleMembers(NilRoleConstants.OWNER_ROLE);
+    address[] memory owners = getRoleMembers(NilConstants.OWNER_ROLE);
 
     if (owners.length == 0) {
       return address(0);
@@ -136,7 +136,7 @@ abstract contract NilAccessControlUpgradeable is
 
   /// @inheritdoc INilAccessControlUpgradeable
   function isAProposer(address proposerArg) external view override returns (bool) {
-    return hasRole(NilRoleConstants.PROPOSER_ROLE, proposerArg);
+    return hasRole(NilConstants.PROPOSER_ROLE, proposerArg);
   }
 
   /// @inheritdoc INilAccessControlUpgradeable

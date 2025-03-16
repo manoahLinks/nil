@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-interface IL2EnshrinedTokenBridge {
+import { IL2Bridge } from "./IL2Bridge.sol";
+
+interface IL2EnshrinedTokenBridge is IL2Bridge {
   /*//////////////////////////////////////////////////////////////////////////
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  error ErrorZeroAddress();
-  error ErrorInvalidRouter();
-  error ErrorInvalidCounterParty();
-  error ErrorInvalidMessenger();
-  error ErrorCallerIsNotMessenger();
   error ErrorInvalidL1TokenAddress();
   error ErrorL1TokenAddressMismatch();
 

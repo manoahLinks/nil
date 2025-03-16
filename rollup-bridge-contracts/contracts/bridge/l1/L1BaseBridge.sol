@@ -158,6 +158,11 @@ abstract contract L1BaseBridge is
   }
 
   /// @inheritdoc IL1Bridge
+  function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyOwner {
+    counterpartyBridge = counterpartyBridgeAddress;
+  }
+
+  /// @inheritdoc IL1Bridge
   function setNilGasPriceOracle(address _nilGasPriceOracle) external override onlyAdmin {
     nilGasPriceOracle = _nilGasPriceOracle;
   }

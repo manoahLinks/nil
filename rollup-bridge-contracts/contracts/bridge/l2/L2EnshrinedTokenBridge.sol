@@ -5,6 +5,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IL2EnshrinedTokenBridge } from "./interfaces/IL2EnshrinedTokenBridge.sol";
+import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
 import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
 import { AddressChecker } from "../../libraries/AddressChecker.sol";
@@ -17,13 +18,13 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
    *************/
 
   /// @notice address of the counterparty Bridge (L1ERC20Bridge)
-  address public counterpart;
+  address public override counterpartyBridge;
 
   /// @notice address of the L2BridgeRouter
-  address public router;
+  address public override router;
 
   /// @notice address of the L2BridgeMessenger
-  address public messenger;
+  address public override messenger;
 
   /// @notice Mapping from enshrined-token-address to layer-1 ERC20-TokenAddress.
   // solhint-disable-next-line var-name-mixedcase
@@ -35,15 +36,15 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
 
   /// @notice Constructor for `L2EnshrinedTokenBridge` implementation contract.
   ///
-  /// @param _counterpart The address of `L1ERC20Bridge` contract in L1.
+  /// @param _counterpartyBridge The address of `L1ERC20Bridge` contract in L1.
   /// @param _router The address of `L2BridgeRouter` contract in Nil-Chain.
   /// @param _messenger The address of `L2BridgeMessenger` contract in  Nil-Chain.
-  constructor(address _owner, address _counterpart, address _router, address _messenger) Ownable(_owner) {
+  constructor(address _owner, address _counterpartyBridge, address _router, address _messenger) Ownable(_owner) {
     if (!_router.isContract()) {
       revert ErrorInvalidRouter();
     }
 
-    if (!_counterpart.isContract()) {
+    if (!_counterpartyBridge.isContract()) {
       revert ErrorInvalidCounterParty();
     }
 
@@ -51,7 +52,7 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
       revert ErrorInvalidMessenger();
     }
 
-    counterpart = _counterpart;
+    counterpartyBridge = _counterpartyBridge;
     router = _router;
     messenger = _messenger;
   }
@@ -119,8 +120,23 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
                          RESTRICTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
+  /// @inheritdoc IL2Bridge
+  function setRouter(address routerAddress) external override onlyOwner {
+    router = routerAddress;
+  }
+
+  /// @inheritdoc IL2Bridge
+  function setMessenger(address messengerAddress) external override onlyOwner {
+    messenger = messengerAddress;
+  }
+
+  /// @inheritdoc IL2Bridge
+  function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyOwner {
+    counterpartyBridge = counterpartyBridgeAddress;
+  }
+
   /// @inheritdoc IL2EnshrinedTokenBridge
-  function setPause(bool _status) external onlyOwner {
+  function setPause(bool _status) external override onlyOwner {
     if (_status) {
       _pause();
     } else {

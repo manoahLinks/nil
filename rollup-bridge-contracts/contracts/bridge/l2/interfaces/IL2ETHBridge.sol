@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-interface IL2ETHBridge {
+import { IL2Bridge } from "./IL2Bridge.sol";
+
+interface IL2ETHBridge is IL2Bridge {
   /*//////////////////////////////////////////////////////////////////////////
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
   error ErrorInvalidCounterpartyBridge();
-
-  error ErrorInvalidMessenger();
 
   error ErrorInvalidEthBridgeVault();
 

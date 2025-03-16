@@ -48,6 +48,8 @@ interface IL1Bridge is IBridge {
    */
   function setMessenger(address _messenger) external;
 
+  function setCounterpartyBridge(address counterpartyBridgeAddress) external;
+
   /**
    * @notice Sets the NilGasPriceOracle address.
    * @param _nilGasPriceOracle The address of the NilGasPriceOracle.

@@ -85,8 +85,8 @@ contract L1BridgeMessenger is
   /// @notice address of the NilRollup contracrt on L1
   address private l1NilRollup;
 
-  /// @notice The address of counterpart BridgeMessenger contract in L1/NilChain.
-  address public counterpartMessenger;
+  /// @notice The address of counterparty BridgeMessenger contract in L1/NilChain.
+  address public counterpartyBridgeMessenger;
 
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
@@ -109,7 +109,7 @@ contract L1BridgeMessenger is
     address _defaultAdmin,
     address _l1NilRollup,
     uint256 _maxProcessingTime,
-    address _counterpartMessenger
+    address _counterpartyBridgeMessenger
   ) public initializer {
     // Validate input parameters
     if (_owner == address(0)) {
@@ -161,7 +161,7 @@ contract L1BridgeMessenger is
 
     maxProcessingTime = _maxProcessingTime;
     depositNonce = 0;
-    counterpartMessenger = _counterpartMessenger;
+    counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
     l1NilRollup = _l1NilRollup;
   }
 

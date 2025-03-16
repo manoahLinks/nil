@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import { IBridgeMessenger } from "../../interfaces/IBridgeMessenger.sol";
+import { NilConstants } from "../../../libraries/NilConstants.sol";
 
 /// @title IL2BridgeMessenger
 /// @notice Interface for the L2BridgeMessenger contract which handles cross-chain messaging between L1 and L2.
@@ -21,9 +22,17 @@ interface IL2BridgeMessenger is IBridgeMessenger {
 
   error ErrorInvalidCounterpartBridgeMessenger();
 
+  error ErrorDuplicateMessageRelayed(bytes32 messageHash);
+
+  error ErrorInvalidMerkleRoot();
+
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS
     //////////////////////////////////////////////////////////////////////////*/
+
+  event MessageRelayFailed(bytes32 indexed messageHash);
+
+  event MessageRelaySuccessful(bytes32 indexed messageHash);
 
   /*//////////////////////////////////////////////////////////////////////////
                              MESSAGE STRUCTS   
@@ -65,6 +74,7 @@ interface IL2BridgeMessenger is IBridgeMessenger {
   function relayMessage(
     address messageSender,
     address messageTarget,
+    NilConstants.MessageType messageType,
     uint256 value,
     uint256 messageNonce,
     bytes calldata message

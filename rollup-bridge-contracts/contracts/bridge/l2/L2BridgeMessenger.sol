@@ -13,6 +13,9 @@ import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
 import { NilRoleConstants } from "../../libraries/NilRoleConstants.sol";
 import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
 import { NilAccessControl } from "../../NilAccessControl.sol";
+import { NilMerkleTree } from "./libraries/NilMerkleTree.sol";
+import { NilConstants } from "../../libraries/NilConstants.sol";
+import { ErrorInvalidMessageType } from "../../common/NilErrorConstants.sol";
 import { AddressChecker } from "../../libraries/AddressChecker.sol";
 
 /// @title L2BridgeMessenger
@@ -22,6 +25,7 @@ import { AddressChecker } from "../../libraries/AddressChecker.sol";
 /// 3. entrypoint for all messages relayed from layer-1 to nil-chain via relayer
 contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2BridgeMessenger {
   using EnumerableSet for EnumerableSet.AddressSet;
+  using EnumerableSet for EnumerableSet.Bytes32Set;
   using AddressChecker for address;
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -29,22 +33,26 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @notice address of the bridgeMessenger from counterpart (L1) chain
-  address public counterpartBridgeMessenger;
+  address public counterpartyBridgeMessenger;
 
   /// @notice Mapping from L2 message hash to the timestamp when the message is sent.
   mapping(bytes32 => uint256) public l2MessageSentTimestamp;
 
-  mapping(bytes32 => bool) public l1MessageExecutionState;
-
-  /// @notice Mapping from L1 message hash to a boolean value indicating if the message has been successfully executed.
-  mapping(bytes32 => bool) public l1MessageTracker;
-
   /// @notice  Holds the addresses of authorized bridges that can interact to send messages.
   EnumerableSet.AddressSet private authorizedBridges;
+
+  /// @notice EnumerableSet for messageHash of the message relayed by relayer on behalf of L1BridgeMessenger
+  EnumerableSet.Bytes32Set private relayedMessageHashStore;
+
+  /// @notice EnumerableSet for messageHash of relayed-messages which failed execution in Nil-Shard
+  EnumerableSet.Bytes32Set private failedMessageHashStore;
 
   /// @notice the aggregated hash for all message-hash values received by the l2BridgeMessenger
   /// @dev initialize with the genesis state Hash during the contract initialisation
   bytes32 public l1ReceiveMessageHash;
+
+  /// @notice merkleRoot of the merkleTree with messageHash of the relayed messages with failedExecution and withdrawalMessages sent from messenger.
+  bytes32 public l2Tol1Root;
 
   /*//////////////////////////////////////////////////////////////////////////
                                     CONSTRUCTOR
@@ -53,14 +61,14 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
   constructor(
     address _owner,
     address _admin,
-    address _counterpartBridgeMessenger,
+    address _counterpartyBridgeMessenger,
     bytes32 _genesisL1ReceiveMessageHash
   ) Ownable(_owner) {
-    if (_counterpartBridgeMessenger == address(0) || !_counterpartBridgeMessenger.isContract()) {
+    if (!_counterpartyBridgeMessenger.isContract()) {
       revert ErrorInvalidCounterpartBridgeMessenger();
     }
 
-    counterpartBridgeMessenger = _counterpartBridgeMessenger;
+    counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
     l1ReceiveMessageHash = _genesisL1ReceiveMessageHash;
     _grantRole(NilRoleConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -81,8 +89,12 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
   }
 
   /// @inheritdoc IL2BridgeMessenger
-  function getAuthorizedBridges() external view returns (address[] memory) {
+  function getAuthorizedBridges() public view returns (address[] memory) {
     return authorizedBridges.values();
+  }
+
+  function isAuthorisedBridge(address bridgeAddress) public view returns (bool) {
+    return authorizedBridges.contains(bridgeAddress);
   }
 
   /// @inheritdoc IERC165
@@ -96,28 +108,50 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
 
   /// @inheritdoc IL2BridgeMessenger
   function sendMessage(
-    address _to,
-    uint256 _value,
-    bytes calldata _message,
-    uint256 _gasLimit,
-    address
-  ) external payable override whenNotPaused {
-    _sendMessage(_to, _value, _message, _gasLimit);
-  }
+    address messageTarget,
+    uint256 value,
+    bytes memory message,
+    uint256 gasLimit,
+    address refundRecipient
+  ) public payable override whenNotPaused {}
 
   /// @inheritdoc IL2BridgeMessenger
   function relayMessage(
     address messageSender,
     address messageTarget,
+    NilConstants.MessageType messageType,
     uint256 value,
     uint256 messagNonce,
     bytes memory message
   ) external override whenNotPaused {
+    if (messageType != NilConstants.MessageType.DEPOSIT_ERC20 && messageType != NilConstants.MessageType.DEPOSIT_ETH) {
+      revert ErrorInvalidMessageType();
+    }
+
     bytes32 _l1MessageHash = computeMessageHash(messageSender, messageTarget, value, messagNonce, message);
 
-    require(!l1MessageExecutionState[_l1MessageHash], "Message was already successfully executed");
+    if (relayedMessageHashStore.contains(_l1MessageHash)) {
+      revert ErrorDuplicateMessageRelayed(_l1MessageHash);
+    }
 
-    _executeMessage(messageSender, messageTarget, value, message, _l1MessageHash);
+    relayedMessageHashStore.add(_l1MessageHash);
+
+    bool isExecutionSuccessful = _executeMessage(messageSender, messageTarget, value, message, _l1MessageHash);
+
+    if (!isExecutionSuccessful) {
+      failedMessageHashStore.add(_l1MessageHash);
+
+      // add messaheHash as leaf to the merkleTree represented by l2Tol1Root
+      bytes32 merkleRoot = NilMerkleTree.computeMerkleRoot(failedMessageHashStore.values());
+
+      if (l2Tol1Root == merkleRoot || merkleRoot == bytes32(0)) {
+        revert ErrorInvalidMerkleRoot();
+      }
+
+      emit MessageRelayFailed(_l1MessageHash);
+    } else {
+      emit MessageRelaySuccessful(_l1MessageHash);
+    }
   }
 
   /// @inheritdoc IL2BridgeMessenger
@@ -142,14 +176,14 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
     uint256 _value,
     bytes memory _message,
     bytes32 _messageHash
-  ) internal {}
-
-  /// @dev Internal function to send cross domain message.
-  /// @param _to The address of account who receive the message.
-  /// @param _value The amount of ether passed when call target contract.
-  /// @param _message The content of the message.
-  /// @param _gasLimit Optional gas limit to complete the message relay on corresponding chain.
-  function _sendMessage(address _to, uint256 _value, bytes memory _message, uint256 _gasLimit) internal nonReentrant {}
+  ) internal returns (bool) {
+    // @note check `_messageTarget` address to avoid attack in the future when we add more gateways.
+    if (!isAuthorisedBridge(_messageTarget)) {
+      revert ErrorBridgeNotAuthorised();
+    }
+    (bool isSuccessful, ) = (_messageTarget).call{ value: _value }(_message);
+    return isSuccessful;
+  }
 
   /*//////////////////////////////////////////////////////////////////////////
                          RESTRICTED FUNCTIONS

@@ -22,9 +22,11 @@ contract L2ETHBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridg
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
 
-  address public counterpartBridge;
+  address public override counterpartyBridge;
 
-  address public messenger;
+  address public override messenger;
+
+  address public override router;
 
   IL2ETHBridgeVault public l2ETHBridgeVault;
 
@@ -38,11 +40,12 @@ contract L2ETHBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridg
   constructor(
     address _owner,
     address _admin,
-    address _counterpartBridge,
+    address _counterpartyBridge,
+    address _router,
     address _messenger,
     address _l2EthBridgeVault
   ) Ownable(_owner) {
-    if (!_counterpartBridge.isContract()) {
+    if (!_counterpartyBridge.isContract()) {
       revert ErrorInvalidCounterpartyBridge();
     }
 
@@ -50,11 +53,16 @@ contract L2ETHBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridg
       revert ErrorInvalidMessenger();
     }
 
+    if (!_router.isContract()) {
+      revert ErrorInvalidRouter();
+    }
+
     if (_l2EthBridgeVault.isContract()) {
       revert ErrorInvalidEthBridgeVault();
     }
 
-    counterpartBridge = _counterpartBridge;
+    counterpartyBridge = _counterpartyBridge;
+    router = _router;
     messenger = _messenger;
     l2ETHBridgeVault = IL2ETHBridgeVault(_l2EthBridgeVault);
 
@@ -67,6 +75,41 @@ contract L2ETHBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridg
     address to,
     address feeRefundRecipient,
     uint256 amount,
-    bytes calldata data
-  ) external payable {}
+    bytes memory
+  ) public payable {}
+
+  /*//////////////////////////////////////////////////////////////////////////
+                         RESTRICTED FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
+  /// @inheritdoc IL2Bridge
+  function setRouter(address _router) external override onlyOwner {
+    router = _router;
+  }
+
+  /// @inheritdoc IL2Bridge
+  function setMessenger(address _messenger) external override onlyOwner {
+    messenger = _messenger;
+  }
+
+  /// @inheritdoc IL2Bridge
+  function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyOwner {
+    counterpartyBridge = counterpartyBridgeAddress;
+  }
+
+  /// @inheritdoc IL2Bridge
+  function setPause(bool _status) external override onlyOwner {
+    if (_status) {
+      _pause();
+    } else {
+      _unpause();
+    }
+  }
+
+  /// @inheritdoc IL2Bridge
+  function transferOwnershipRole(address newOwner) external override onlyOwner {
+    _revokeRole(NilRoleConstants.OWNER_ROLE, owner());
+    super.transferOwnership(newOwner);
+    _grantRole(NilRoleConstants.OWNER_ROLE, newOwner);
+  }
 }

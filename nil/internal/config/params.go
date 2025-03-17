@@ -42,7 +42,7 @@ func InitParams(accessor ConfigAccessor) {
 	for _, p := range ParamsList {
 		data, err := p.MarshalSSZ()
 		check.PanicIfErr(err)
-		err = accessor.SetParamData(p.Name(), data)
+		err = accessor.setParamData(p.Name(), data)
 		check.PanicIfErr(err)
 	}
 }

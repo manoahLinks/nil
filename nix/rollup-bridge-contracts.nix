@@ -33,6 +33,8 @@ stdenv.mkDerivation rec {
   };
 
   buildPhase = ''
+    export NODE_ENV=production
+
     echo "Installing soljson"
     (cd create-nil-hardhat-project; bash install_soljson.sh ${soljson26})
     export BIOME_BINARY=${biome}/bin/biome
@@ -43,6 +45,16 @@ stdenv.mkDerivation rec {
 
     echo "start compiling"
     npx hardhat clean && npx hardhat compile
+
+    echo "Running npm dedupe to reduce node_modules size"
+    npm dedupe
+
+    echo "Pruning development dependencies"
+    npm prune --production
+
+    # Remove unnecessary files from node_modules
+    find ./node_modules -type f \( -name "*.md" -o -name "*.ts" -o -name "*.map" -o -name "*.test.*" -o -name "*.spec.*" \) -delete
+    find ./node_modules -type d -name "test" -o -name "tests" | xargs rm -rf
   '';
 
   installPhase = ''

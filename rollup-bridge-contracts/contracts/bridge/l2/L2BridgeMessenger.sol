@@ -136,9 +136,13 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
 
     relayedMessageHashStore.add(_l1MessageHash);
 
-    l1ReceiveMessageHash = keccak256(abi.encode(_l1MessageHash, l1ReceiveMessageHash));
+    if (l1ReceiveMessageHash == bytes32(0)) {
+      l1ReceiveMessageHash = _l1MessageHash;
+    } else {
+      l1ReceiveMessageHash = keccak256(abi.encode(_l1MessageHash, l1ReceiveMessageHash));
+    }
 
-    bool isExecutionSuccessful = _executeMessage(messageSender, messageTarget, value, message, _l1MessageHash);
+    bool isExecutionSuccessful = _executeMessage(messageSender, messageTarget, value, message);
 
     if (!isExecutionSuccessful) {
       // add messaheHash as leaf to the merkleTree represented by l2Tol1Root
@@ -178,8 +182,7 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
     address _messageSender,
     address _messageTarget,
     uint256 _value,
-    bytes memory _message,
-    bytes32 _messageHash
+    bytes memory _message
   ) internal returns (bool) {
     // @note check `_messageTarget` address to avoid attack in the future when we add more gateways.
     if (!isAuthorisedBridge(_messageTarget)) {

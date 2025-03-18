@@ -136,6 +136,8 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
 
     relayedMessageHashStore.add(_l1MessageHash);
 
+    l1ReceiveMessageHash = keccak256(abi.encode(_l1MessageHash, l1ReceiveMessageHash));
+
     bool isExecutionSuccessful = _executeMessage(messageSender, messageTarget, value, message, _l1MessageHash);
 
     if (!isExecutionSuccessful) {

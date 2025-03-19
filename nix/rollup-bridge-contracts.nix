@@ -54,19 +54,15 @@ stdenv.mkDerivation rec {
       --maxpeers 0 --mine --networkid 1337 \
       --dev --allow-insecure-unlock --rpc.allow-unprotected-txs --dev.gaslimit 200000000 &
 
+    mv ../package-lock.json .
+    rm ../package.json
+    rm -rf ../node_modules
+    ls -l -a ../
+    
+    npm ci
     ts-node ./scripts/wallet/fund-wallet.ts
 
     geth_pid=$!
-
-    echo "Waiting for go-ethereum to start..."
-    for i in {1..10}; do
-      if curl --silent --fail http://localhost:8545 > /dev/null; then
-        echo "go-ethereum is up!"
-        break
-      fi
-      echo "Still waiting..."
-      sleep 1
-    done
 
     echo "Deploying contracts..."
     npx hardhat deploy --network geth --tags NilContracts

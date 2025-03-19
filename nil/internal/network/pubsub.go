@@ -10,6 +10,7 @@ import (
 	"github.com/NilFoundation/nil/nil/internal/telemetry"
 	"github.com/NilFoundation/nil/nil/internal/telemetry/telattr"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
 )
 
 const subscriptionChannelSize = 100
@@ -49,7 +50,7 @@ type Subscription struct {
 }
 
 // newPubSub creates a new PubSub instance. It must be closed after use.
-func newPubSub(ctx context.Context, h Host, conf *Config, logger logging.Logger) (*PubSub, error) {
+func newPubSub(ctx context.Context, h host.Host, conf *Config, logger logging.Logger) (*PubSub, error) {
 	impl, err := pubsub.NewGossipSub(ctx, h)
 	if err != nil {
 		return nil, err

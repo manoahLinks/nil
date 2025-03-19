@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/NilFoundation/nil/nil/common/check"
 	"github.com/NilFoundation/nil/nil/common/logging"
 	cm "github.com/NilFoundation/nil/nil/internal/network/connection_manager"
 	"github.com/NilFoundation/nil/nil/internal/network/internal"
 	"github.com/libp2p/go-libp2p"
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"go.uber.org/fx"
 )
-
-type Host = host.Host
 
 var defaultGracePeriod = connmgr.WithGracePeriod(time.Minute)
 
@@ -61,7 +61,7 @@ func getCommonOptions(ctx context.Context, conf *Config) ([]libp2p.Option, loggi
 }
 
 // newHost creates a new libp2p host. It must be closed after use.
-func newHost(ctx context.Context, conf *Config) (Host, logging.Logger, error) {
+func newHost(ctx context.Context, conf *Config) (*basichost.BasicHost, logging.Logger, error) {
 	addr := conf.IPV4Address
 	if addr == "" {
 		addr = "0.0.0.0"
@@ -104,15 +104,19 @@ func newHost(ctx context.Context, conf *Config) (Host, logging.Logger, error) {
 		options = append(options, libp2p.ForceReachabilityPrivate())
 	}
 
+	var bh *basichost.BasicHost
+	options = append(options, libp2p.WithFxOption(fx.Invoke(func(bho *basichost.BasicHost) { bh = bho })))
+
 	host, err := libp2p.New(options...)
 	if err != nil {
 		return nil, logging.Nop(), err
 	}
-	return host, logger, nil
+	check.PanicIfNot(host != nil && bh != nil)
+	return bh, logger, nil
 }
 
 // newClient creates a new libp2p host that doesn't listen to any port. It must be closed after use.
-func newClient(ctx context.Context, conf *Config) (Host, logging.Logger, error) {
+func newClient(ctx context.Context, conf *Config) (*basichost.BasicHost, logging.Logger, error) {
 	var privateKey libp2pcrypto.PrivKey
 	if conf != nil && conf.PrivateKey != nil {
 		privateKey = conf.PrivateKey
@@ -130,9 +134,14 @@ func newClient(ctx context.Context, conf *Config) (Host, logging.Logger, error) 
 		return nil, logging.Nop(), err
 	}
 	options = append(options, libp2p.NoListenAddrs)
+
+	var bh *basichost.BasicHost
+	options = append(options, libp2p.WithFxOption(fx.Invoke(func(bho *basichost.BasicHost) { bh = bho })))
+
 	host, err := libp2p.New(options...)
 	if err != nil {
 		return nil, logging.Nop(), err
 	}
-	return host, logger, nil
+	check.PanicIfNot(host != nil && bh != nil)
+	return bh, logger, nil
 }

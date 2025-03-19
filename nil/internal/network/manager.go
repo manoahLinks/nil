@@ -13,13 +13,14 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 )
 
 type Manager struct {
 	ctx    context.Context
 	prefix string
 
-	host   Host
+	host   *basichost.BasicHost
 	pubSub *PubSub
 	dht    *DHT
 
@@ -32,7 +33,7 @@ func ConnectToPeers(ctx context.Context, peers AddrInfoSlice, m Manager, logger 
 	connectToPeers(ctx, peers, m.host, logger)
 }
 
-func connectToPeers(ctx context.Context, peers AddrInfoSlice, h Host, logger logging.Logger) {
+func connectToPeers(ctx context.Context, peers AddrInfoSlice, h host.Host, logger logging.Logger) {
 	for _, peerInfo := range peers {
 		if h.ID() == peerInfo.ID {
 			// Skip connecting to self.
@@ -47,14 +48,14 @@ func connectToPeers(ctx context.Context, peers AddrInfoSlice, h Host, logger log
 	}
 }
 
-func connectToDhtBootstrapPeers(ctx context.Context, conf *Config, h Host, logger logging.Logger) {
+func connectToDhtBootstrapPeers(ctx context.Context, conf *Config, h host.Host, logger logging.Logger) {
 	connectToPeers(ctx, conf.DHTBootstrapPeers, h, logger)
 }
 
 func newManagerFromHost(
 	ctx context.Context,
 	conf *Config,
-	h host.Host,
+	h *basichost.BasicHost,
 	database db.DB,
 	logger logging.Logger,
 ) (*Manager, error) {

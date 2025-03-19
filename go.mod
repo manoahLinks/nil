@@ -61,6 +61,7 @@ require (
 	github.com/shopspring/decimal v1.4.0
 	github.com/spf13/viper v1.20.0
 	go.dedis.ch/kyber/v3 v3.1.0
+	go.uber.org/fx v1.23.0
 	golang.org/x/term v0.30.0
 	golang.org/x/text v0.23.0
 )
@@ -231,7 +232,6 @@ require (
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.uber.org/dig v1.18.1 // indirect
-	go.uber.org/fx v1.23.0 // indirect
 	go.uber.org/mock v0.5.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect

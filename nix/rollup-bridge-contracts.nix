@@ -1,6 +1,5 @@
 { lib
 , stdenv
-, biome
 , callPackage
 , npmHooks
 , nodejs
@@ -15,9 +14,7 @@ stdenv.mkDerivation rec {
   src = lib.sourceByRegex ./.. [
     "package.json"
     "package-lock.json"
-    "^niljs(/.*)?$"
     "^rollup-bridge-contracts(/.*)?$"
-    "biome.json"
     "^create-nil-hardhat-project(/.*)?$"
   ];
 
@@ -38,10 +35,8 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     echo "Installing soljson"
     (cd create-nil-hardhat-project; bash install_soljson.sh ${soljson26})
-    export BIOME_BINARY=${biome}/bin/biome
 
     cd rollup-bridge-contracts
-    pwd
     cp .env.example .env
 
     echo "start compiling"

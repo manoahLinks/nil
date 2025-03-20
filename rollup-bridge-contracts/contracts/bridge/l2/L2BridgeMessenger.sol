@@ -70,7 +70,15 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
 
     counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
     l1ReceiveMessageHash = _genesisL1ReceiveMessageHash;
+
+    // Set role admins
+    // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
+    _setRoleAdmin(NilConstants.OWNER_ROLE, NilConstants.OWNER_ROLE);
     _grantRole(NilConstants.OWNER_ROLE, _owner);
+
+    // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
+    // role.
+    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilConstants.OWNER_ROLE);
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
   }
 
@@ -116,6 +124,7 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
   ) public payable override whenNotPaused {}
 
   /// @inheritdoc IL2BridgeMessenger
+  // TODO - only relayer-pubKey check
   function relayMessage(
     address messageSender,
     address messageTarget,

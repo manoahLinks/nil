@@ -66,8 +66,23 @@ contract L2ETHBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridg
     messenger = _messenger;
     l2ETHBridgeVault = IL2ETHBridgeVault(_l2EthBridgeVault);
 
+    // Set role admins
+    // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
+    _setRoleAdmin(NilConstants.OWNER_ROLE, NilConstants.OWNER_ROLE);
     _grantRole(NilConstants.OWNER_ROLE, _owner);
+
+    // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
+    // role.
+    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilConstants.OWNER_ROLE);
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+  }
+
+  modifier onlyMessenger() {
+    // check caller is l2-bridge-messenger
+    if (msg.sender != messenger) {
+      revert ErrorCallerIsNotMessenger();
+    }
+    _;
   }
 
   function finalizeETHDeposit(
@@ -76,7 +91,7 @@ contract L2ETHBridge is ReentrancyGuard, NilAccessControl, Pausable, IL2ETHBridg
     address feeRefundRecipient,
     uint256 amount,
     bytes memory
-  ) public payable {}
+  ) public payable onlyMessenger {}
 
   /*//////////////////////////////////////////////////////////////////////////
                          RESTRICTED FUNCTIONS

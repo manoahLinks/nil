@@ -8,12 +8,23 @@ interface IL2EnshrinedTokenBridge is IL2Bridge {
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
 
+  /// @notice Thrown when the L1 token address is invalid
   error ErrorInvalidL1TokenAddress();
+
+  /// @notice Thrown when the token address is invalid
+  error ErrorInvalidTokenAddress();
+
+  /// @notice Thrown when the L1 token address does not match the expected address
   error ErrorL1TokenAddressMismatch();
 
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
     //////////////////////////////////////////////////////////////////////////*/
+
+  /// @notice Emitted when the token mapping is updated
+  /// @param l2EnshrinedTokenAddress The address of the enshrined token on L2
+  /// @param l1TokenAddress The address of the corresponding token on L1
+  event TokenMappingUpdated(address indexed l2EnshrinedTokenAddress, address indexed l1TokenAddress);
 
   /// @notice Emitted when ERC20 token is deposited from L1 to L2 and transfer to recipient.
   /// @param l1Token The address of the token in L1.
@@ -65,6 +76,11 @@ interface IL2EnshrinedTokenBridge is IL2Bridge {
     uint256 depositAmount,
     bytes calldata targetCallData
   ) external payable;
+
+  /// @notice Sets the token mapping between L2 enshrined token and L1 token
+  /// @param l2EnshrinedTokenAddress The address of the enshrined token on L2
+  /// @param l1TokenAddress The address of the corresponding token on L1
+  function setTokenMapping(address l2EnshrinedTokenAddress, address l1TokenAddress) external;
 
   /**
    * @notice Pauses or unpauses the contract.

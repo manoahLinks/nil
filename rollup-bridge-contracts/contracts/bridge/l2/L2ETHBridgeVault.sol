@@ -29,7 +29,15 @@ contract L2ETHBridgeVault is ReentrancyGuard, NilAccessControl, Pausable, IL2ETH
       revert ErrorInvalidEthBridge();
     }
     l2EthBridge = _l2EthBridge;
+
+    // Set role admins
+    // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
+    _setRoleAdmin(NilConstants.OWNER_ROLE, NilConstants.OWNER_ROLE);
     _grantRole(NilConstants.OWNER_ROLE, _owner);
+
+    // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
+    // role.
+    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilConstants.OWNER_ROLE);
     _grantRole(DEFAULT_ADMIN_ROLE, _admin);
   }
 

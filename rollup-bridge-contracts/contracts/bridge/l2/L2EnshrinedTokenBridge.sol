@@ -37,9 +37,17 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
   /// @notice Constructor for `L2EnshrinedTokenBridge` implementation contract.
   ///
   /// @param _counterpartyBridge The address of `L1ERC20Bridge` contract in L1.
+  /// @param _admin The admin address
   /// @param _router The address of `L2BridgeRouter` contract in Nil-Chain.
   /// @param _messenger The address of `L2BridgeMessenger` contract in  Nil-Chain.
-  constructor(address _owner, address _counterpartyBridge, address _router, address _messenger) Ownable(_owner) {
+  constructor(
+    address _owner,
+    address _admin,
+    address _relayer,
+    address _counterpartyBridge,
+    address _router,
+    address _messenger
+  ) Ownable(_owner) {
     if (!_router.isContract()) {
       revert ErrorInvalidRouter();
     }
@@ -55,6 +63,23 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
     counterpartyBridge = _counterpartyBridge;
     router = _router;
     messenger = _messenger;
+
+    // Set role admins
+    // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
+    _setRoleAdmin(NilConstants.OWNER_ROLE, NilConstants.OWNER_ROLE);
+    _grantRole(NilConstants.OWNER_ROLE, _owner);
+
+    // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
+    // role.
+    _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilConstants.OWNER_ROLE);
+    _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+
+    _grantRole(NilConstants.RELAYER_ROLE_ADMIN, _admin);
+    _grantRole(NilConstants.RELAYER_ROLE_ADMIN, _owner);
+
+    _grantRole(NilConstants.RELAYER_ROLE, _owner);
+    _grantRole(NilConstants.RELAYER_ROLE, _admin);
+    _grantRole(NilConstants.RELAYER_ROLE, _relayer);
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -105,6 +130,8 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
 
     // TODO - Mint EnshrinedToken Amount to recipient
 
+    // TODO - assert that the balance increase on the recipient is equal to the depositAmount
+
     emit FinalizeDepositERC20(
       l1Token,
       l2Token,
@@ -133,6 +160,19 @@ contract L2EnshrinedTokenBridge is ReentrancyGuard, NilAccessControl, Pausable, 
   /// @inheritdoc IL2Bridge
   function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyOwner {
     counterpartyBridge = counterpartyBridgeAddress;
+  }
+
+  function setTokenMapping(address l2EnshrinedTokenAddress, address l1TokenAddress) external override onlyOwner {
+    if (l2EnshrinedTokenAddress == address(0) || l1TokenAddress == address(0)) {
+      revert ErrorInvalidTokenAddress();
+    }
+
+    // TODO - check if the tokenAddresses are not EOA and a valid contract
+    // TODO - check if the l2EnshrinedTokenAddress implement ERC-165 or any common interface
+
+    tokenMapping[l2EnshrinedTokenAddress] = l1TokenAddress;
+
+    emit TokenMappingUpdated(l2EnshrinedTokenAddress, l1TokenAddress);
   }
 
   /// @inheritdoc IL2EnshrinedTokenBridge

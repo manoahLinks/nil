@@ -12,6 +12,15 @@ interface IL2BridgeMessenger is IBridgeMessenger {
                              ERRORS
     //////////////////////////////////////////////////////////////////////////*/
 
+  /// @dev Invalid owner address.
+  error ErrorInvalidOwner();
+
+  /// @dev Invalid default admin address.
+  error ErrorInvalidDefaultAdmin();
+
+  /// @dev Invalid address.
+  error ErrorInvalidAddress();
+
   error ErrorBridgeNotAuthorised();
 
   /// @notice Thrown when a bridge interface is invalid.

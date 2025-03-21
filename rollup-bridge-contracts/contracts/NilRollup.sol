@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { INilRollup } from "./interfaces/INilRollup.sol";
 import { NilAccessControlUpgradeable } from "./NilAccessControlUpgradeable.sol";
 import { NilConstants } from "./common/libraries/NilConstants.sol";
+import { INilRollup } from "./interfaces/INilRollup.sol";
 import { INilVerifier } from "./interfaces/INilVerifier.sol";
 import { IL1BridgeMessenger } from "./bridge/l1/interfaces/IL1BridgeMessenger.sol";
 

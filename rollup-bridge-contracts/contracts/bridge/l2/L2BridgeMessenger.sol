@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { NilAccessControlUpgradeable } from "../../NilAccessControlUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IL2BridgeMessenger } from "./interfaces/IL2BridgeMessenger.sol";
 import { IBridgeMessenger } from "../interfaces/IBridgeMessenger.sol";
-import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
-import { NilAccessControl } from "../../NilAccessControl.sol";
 import { NilMerkleTree } from "./libraries/NilMerkleTree.sol";
-import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { ErrorInvalidMessageType } from "../../common/NilErrorConstants.sol";
 import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
 
@@ -23,7 +23,7 @@ import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
 /// 1. send messages from nil-chain to layer 1
 /// 2. receive relayed messages from L1 via relayer
 /// 3. entrypoint for all messages relayed from layer-1 to nil-chain via relayer
-contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2BridgeMessenger {
+contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccessControlUpgradeable, IL2BridgeMessenger {
   using EnumerableSet for EnumerableSet.AddressSet;
   using EnumerableSet for EnumerableSet.Bytes32Set;
   using AddressChecker for address;
@@ -54,32 +54,67 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
   /// @notice merkleRoot of the merkleTree with messageHash of the relayed messages with failedExecution and withdrawalMessages sent from messenger.
   bytes32 public l2Tol1Root;
 
+  /// @dev The storage slots for future usage.
+  uint256[50] private __gap;
+
   /*//////////////////////////////////////////////////////////////////////////
                                     CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////*/
 
-  constructor(
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
+  /*//////////////////////////////////////////////////////////////////////////
+                                    INITIALIZER
+    //////////////////////////////////////////////////////////////////////////*/
+
+  function initialize(
     address _owner,
-    address _admin,
+    address _defaultAdmin,
     address _counterpartyBridgeMessenger,
     bytes32 _genesisL1ReceiveMessageHash
-  ) Ownable(_owner) {
+  ) public initializer {
+    // Validate input parameters
+    if (_owner == address(0)) {
+      revert ErrorInvalidOwner();
+    }
+
+    if (_defaultAdmin == address(0)) {
+      revert ErrorInvalidDefaultAdmin();
+    }
+
     if (!_counterpartyBridgeMessenger.isContract()) {
       revert ErrorInvalidCounterpartBridgeMessenger();
     }
 
-    counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
-    l1ReceiveMessageHash = _genesisL1ReceiveMessageHash;
+    // Initialize the Ownable contract with the owner address
+    OwnableUpgradeable.__Ownable_init(_owner);
+
+    // Initialize the Pausable contract
+    PausableUpgradeable.__Pausable_init();
+
+    // Initialize the AccessControlEnumerable contract
+    __AccessControlEnumerable_init();
 
     // Set role admins
     // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
     _setRoleAdmin(NilConstants.OWNER_ROLE, NilConstants.OWNER_ROLE);
-    _grantRole(NilConstants.OWNER_ROLE, _owner);
 
     // The DEFAULT_ADMIN_ROLE is set as its own admin to ensure that only the current default admin can manage this
     // role.
     _setRoleAdmin(DEFAULT_ADMIN_ROLE, NilConstants.OWNER_ROLE);
-    _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+
+    // Grant roles to defaultAdmin and owner
+    // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
+    // highest level of control.
+    // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
+    _grantRole(NilConstants.OWNER_ROLE, _owner);
+    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+
+    counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
+    l1ReceiveMessageHash = _genesisL1ReceiveMessageHash;
   }
 
   // make sure only owner can send ether to messenger to avoid possible user fund loss.
@@ -106,7 +141,9 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
   }
 
   /// @inheritdoc IERC165
-  function supportsInterface(bytes4 interfaceId) public view override(AccessControlEnumerable, IERC165) returns (bool) {
+  function supportsInterface(
+    bytes4 interfaceId
+  ) public view override(AccessControlEnumerableUpgradeable, IERC165) returns (bool) {
     return interfaceId == type(IL2BridgeMessenger).interfaceId || super.supportsInterface(interfaceId);
   }
 
@@ -206,15 +243,6 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IL2BridgeMessenger
-  function setPause(bool _status) external onlyAdmin {
-    if (_status) {
-      _pause();
-    } else {
-      _unpause();
-    }
-  }
-
-  /// @inheritdoc IL2BridgeMessenger
   function authorizeBridges(address[] calldata bridges) external onlyAdmin {
     for (uint256 i = 0; i < bridges.length; i++) {
       _authorizeBridge(bridges[i]);
@@ -242,6 +270,15 @@ contract L2BridgeMessenger is ReentrancyGuard, NilAccessControl, Pausable, IL2Br
       revert ErrorBridgeNotAuthorised();
     }
     authorizedBridges.remove(bridge);
+  }
+
+  /// @inheritdoc IL2BridgeMessenger
+  function setPause(bool _status) external onlyAdmin {
+    if (_status) {
+      _pause();
+    } else {
+      _unpause();
+    }
   }
 
   /// @inheritdoc IBridgeMessenger

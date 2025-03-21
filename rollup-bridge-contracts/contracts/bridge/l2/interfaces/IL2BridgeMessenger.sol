@@ -9,33 +9,6 @@ import { NilConstants } from "../../../common/libraries/NilConstants.sol";
 /// @dev This interface defines the functions and events for finalizing deposit messages, sending messages to L1, and initiating withdrawals
 interface IL2BridgeMessenger is IBridgeMessenger {
   /*//////////////////////////////////////////////////////////////////////////
-                             ERRORS
-    //////////////////////////////////////////////////////////////////////////*/
-
-  /// @dev Invalid owner address.
-  error ErrorInvalidOwner();
-
-  /// @dev Invalid default admin address.
-  error ErrorInvalidDefaultAdmin();
-
-  /// @dev Invalid address.
-  error ErrorInvalidAddress();
-
-  error ErrorBridgeNotAuthorised();
-
-  /// @notice Thrown when a bridge interface is invalid.
-  error ErrorInvalidBridgeInterface();
-
-  /// @notice Thrown when a bridge is already authorized.
-  error ErrorBridgeAlreadyAuthorized();
-
-  error ErrorInvalidCounterpartBridgeMessenger();
-
-  error ErrorDuplicateMessageRelayed(bytes32 messageHash);
-
-  error ErrorInvalidMerkleRoot();
-
-  /*//////////////////////////////////////////////////////////////////////////
                              EVENTS
     //////////////////////////////////////////////////////////////////////////*/
 

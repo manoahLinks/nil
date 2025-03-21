@@ -24,17 +24,8 @@ abstract contract L1BaseBridge is
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @dev Invalid owner address.
-  error ErrorInvalidOwner();
-
-  /// @dev Invalid default admin address.
-  error ErrorInvalidDefaultAdmin();
-
   /// @dev Invalid counterparty bridge address.
   error ErrorInvalidCounterpartyBridge();
-
-  /// @dev Invalid messenger address.
-  error ErrorInvalidMessenger();
 
   /// @dev Invalid nil gas price oracle address.
   error ErrorInvalidNilGasPriceOracle();

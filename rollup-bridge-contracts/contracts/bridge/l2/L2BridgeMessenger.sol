@@ -7,6 +7,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { NilAccessControlUpgradeable } from "../../NilAccessControlUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
@@ -54,6 +55,9 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
   /// @notice merkleRoot of the merkleTree with messageHash of the relayed messages with failedExecution and withdrawalMessages sent from messenger.
   bytes32 public l2Tol1Root;
 
+  /// @notice address of the relayer nil-smart-account which is authorized to relay messages from L1BridgeMessenger
+  address public relayer;
+
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
 
@@ -73,6 +77,7 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
   function initialize(
     address _owner,
     address _defaultAdmin,
+    address _relayer,
     address _counterpartyBridgeMessenger,
     bytes32 _genesisL1ReceiveMessageHash
   ) public initializer {
@@ -87,6 +92,11 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
     if (!_counterpartyBridgeMessenger.isContract()) {
       revert ErrorInvalidCounterpartBridgeMessenger();
+    }
+
+    // TODO - validate if _relayer is a Nil-Smart-Account
+    if (_relayer == address(0)) {
+      revert ErrorInvalidAddress();
     }
 
     // Initialize the Ownable contract with the owner address
@@ -113,6 +123,13 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
     _grantRole(NilConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
 
+    _grantRole(NilConstants.RELAYER_ROLE_ADMIN, _defaultAdmin);
+    _grantRole(NilConstants.RELAYER_ROLE_ADMIN, _owner);
+    _grantRole(NilConstants.RELAYER_ROLE, _owner);
+    _grantRole(NilConstants.RELAYER_ROLE, _defaultAdmin);
+    _grantRole(NilConstants.RELAYER_ROLE, _relayer);
+
+    relayer = _relayer;
     counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
     l1ReceiveMessageHash = _genesisL1ReceiveMessageHash;
   }
@@ -138,13 +155,6 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
   function isAuthorisedBridge(address bridgeAddress) public view returns (bool) {
     return authorizedBridges.contains(bridgeAddress);
-  }
-
-  /// @inheritdoc IERC165
-  function supportsInterface(
-    bytes4 interfaceId
-  ) public view override(AccessControlEnumerableUpgradeable, IERC165) returns (bool) {
-    return interfaceId == type(IL2BridgeMessenger).interfaceId || super.supportsInterface(interfaceId);
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -286,5 +296,12 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
     _revokeRole(NilConstants.OWNER_ROLE, owner());
     super.transferOwnership(newOwner);
     _grantRole(NilConstants.OWNER_ROLE, newOwner);
+  }
+
+  /// @inheritdoc IERC165
+  function supportsInterface(
+    bytes4 interfaceId
+  ) public view override(AccessControlEnumerableUpgradeable, IERC165) returns (bool) {
+    return interfaceId == type(IL2BridgeMessenger).interfaceId || super.supportsInterface(interfaceId);
   }
 }

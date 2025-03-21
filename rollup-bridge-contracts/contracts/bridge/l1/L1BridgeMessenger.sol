@@ -33,12 +33,6 @@ contract L1BridgeMessenger is
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @dev Invalid owner address.
-  error ErrorInvalidOwner();
-
-  /// @dev Invalid default admin address.
-  error ErrorInvalidDefaultAdmin();
-
   error NotEnoughMessagesInQueue();
 
   error ErrorInvalidClaimProof();

@@ -8,6 +8,18 @@ interface IBridge {
 
   /// @dev Thrown when the given address is `address(0)`.
   error ErrorZeroAddress();
+  error UnAuthorizedCaller();
+  error InvalidMessageType();
+  error ErrorInvalidRouter();
+  error ErrorInvalidCounterParty();
+  error ErrorInvalidMessenger();
+  error ErrorCallerIsNotMessenger();
+
+  /// @dev Invalid owner address.
+  error ErrorInvalidOwner();
+
+  /// @dev Invalid default admin address.
+  error ErrorInvalidDefaultAdmin();
 
   /*//////////////////////////////////////////////////////////////////////////
                              ENUM

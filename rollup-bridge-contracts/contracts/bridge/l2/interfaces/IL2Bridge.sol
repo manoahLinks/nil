@@ -4,13 +4,6 @@ pragma solidity 0.8.28;
 import { IBridge } from "../../interfaces/IBridge.sol";
 
 interface IL2Bridge is IBridge {
-  error UnAuthorizedCaller();
-  error InvalidMessageType();
-  error ErrorInvalidRouter();
-  error ErrorInvalidCounterParty();
-  error ErrorInvalidMessenger();
-  error ErrorCallerIsNotMessenger();
-
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATION FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/

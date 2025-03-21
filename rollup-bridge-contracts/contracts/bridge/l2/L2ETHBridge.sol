@@ -12,8 +12,11 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
 import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
+import { IL1ETHBridge } from "../l1/interfaces/IL1ETHBridge.sol";
 import { IL2ETHBridge } from "./interfaces/IL2ETHBridge.sol";
 import { IL2ETHBridgeVault } from "./interfaces/IL2ETHBridgeVault.sol";
+import { IL2BridgeMessenger } from "./interfaces/IL2BridgeMessenger.sol";
+import { IL2BridgeRouter } from "./interfaces/IL2BridgeRouter.sol";
 
 contract L2ETHBridge is
   OwnableUpgradeable,
@@ -73,19 +76,26 @@ contract L2ETHBridge is
       revert ErrorInvalidDefaultAdmin();
     }
 
-    if (!_counterpartyBridge.isContract()) {
+    //check if _counterpartyBridge implements IL1ETHBridge interface
+    if (
+      !_counterpartyBridge.isContract() ||
+      !IERC165(_counterpartyBridge).supportsInterface(type(IL1ETHBridge).interfaceId)
+    ) {
       revert ErrorInvalidCounterpartyBridge();
     }
 
-    if (!_messenger.isContract()) {
+    if (!_messenger.isContract() || !IERC165(_messenger).supportsInterface(type(IL2BridgeMessenger).interfaceId)) {
       revert ErrorInvalidMessenger();
     }
 
-    if (!_router.isContract()) {
+    if (!_router.isContract() || !IERC165(_router).supportsInterface(type(IL2BridgeRouter).interfaceId)) {
       revert ErrorInvalidRouter();
     }
 
-    if (_l2EthBridgeVault.isContract()) {
+    if (
+      !_l2EthBridgeVault.isContract() ||
+      !IERC165(_l2EthBridgeVault).supportsInterface(type(IL2ETHBridgeVault).interfaceId)
+    ) {
       revert ErrorInvalidEthBridgeVault();
     }
 
@@ -150,17 +160,23 @@ contract L2ETHBridge is
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IL2Bridge
-  function setRouter(address _router) external override onlyOwner {
-    router = _router;
+  function setRouter(address routerAddress) external override onlyOwner {
+    // TODO - check if the routerAddress implements IL2BridgeRouter interface via IERC165-supportsInterface function
+
+    router = routerAddress;
   }
 
   /// @inheritdoc IL2Bridge
-  function setMessenger(address _messenger) external override onlyOwner {
-    messenger = _messenger;
+  function setMessenger(address messengerAddress) external override onlyOwner {
+    // TODO - check if the messengerAddress implements IL2BridgeMessenger interface via IERC165-supportsInterface function
+
+    messenger = messengerAddress;
   }
 
   /// @inheritdoc IL2Bridge
   function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyOwner {
+    // TODO - check if the counterpartyBridgeAddress implements IL1ETHBridge interface via IERC165-supportsInterface function
+
     counterpartyBridge = counterpartyBridgeAddress;
   }
 

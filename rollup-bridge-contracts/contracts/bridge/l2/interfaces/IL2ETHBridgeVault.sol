@@ -19,6 +19,8 @@ interface IL2ETHBridgeVault is IERC165 {
   /// @dev Invalid address.
   error ErrorInvalidAddress();
 
+  error ErrorETHTransferFailed();
+
   /// @notice Transfers ETH to a recipient, only callable by the L2ETHBridge contract
   /// @param recipient The address of the recipient
   /// @param amount The amount of ETH to transfer

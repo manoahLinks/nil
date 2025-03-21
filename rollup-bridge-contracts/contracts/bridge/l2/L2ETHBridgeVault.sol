@@ -11,6 +11,7 @@ import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
 import { IL2ETHBridgeVault } from "./interfaces/IL2ETHBridgeVault.sol";
+import { IL2ETHBridge } from "./interfaces/IL2ETHBridge.sol";
 
 contract L2ETHBridgeVault is
   OwnableUpgradeable,
@@ -53,7 +54,8 @@ contract L2ETHBridgeVault is
       revert ErrorInvalidDefaultAdmin();
     }
 
-    if (!_l2EthBridge.isContract()) {
+    //check if _l2EthBridge implements IL2Bridge interface
+    if (!_l2EthBridge.isContract() || !IERC165(_l2EthBridge).supportsInterface(type(IL2ETHBridge).interfaceId)) {
       revert ErrorInvalidEthBridge();
     }
 
@@ -121,10 +123,10 @@ contract L2ETHBridgeVault is
     uint256 initialBalance = address(this).balance;
 
     (bool success, ) = recipient.call{ value: amount }("");
-    require(success, "ETH transfer failed");
 
-    uint256 finalBalance = address(this).balance;
-    assert(finalBalance == initialBalance - amount);
+    if (!success || initialBalance - address(this).balance != amount) {
+      revert ErrorETHTransferFailed();
+    }
   }
 
   /// @inheritdoc IERC165

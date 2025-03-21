@@ -52,6 +52,8 @@ contract NilRollup is OwnableUpgradeable, PausableUpgradeable, NilAccessControlU
   /// @dev mapping of batchIndex to BatchInformation
   mapping(string => BatchInfo) public batchInfoRecords;
 
+  bytes32 public l1MessageHash;
+
   IL1BridgeMessenger public l1BridgeMessenger;
 
   /// @dev The storage slots for future usage.
@@ -371,10 +373,22 @@ contract NilRollup is OwnableUpgradeable, PausableUpgradeable, NilAccessControlU
       // pull first n messages from the messageQueue via l1BridgeMessenger
       bytes32[] memory depositMessageHashes = l1BridgeMessenger.popMessages(depositMessageCount);
 
-      bytes32 l1MessageHash = depositMessageHashes[0];
-
-      for (uint256 j = 1; j < depositMessageHashes.length; j++) {
-        l1MessageHash = keccak256(abi.encode(depositMessageHashes[j], l1MessageHash));
+      if (l1MessageHash == bytes32(0)) {
+        if (depositMessageCount == 1) {
+          l1MessageHash = depositMessageHashes[0];
+        } else {
+          bytes32 l1MessageHashLocal = depositMessageHashes[0];
+          for (uint256 messageHashIndex = 1; messageHashIndex < depositMessageCount; messageHashIndex++) {
+            l1MessageHashLocal = keccak256(abi.encode(l1MessageHashLocal, depositMessageHashes[messageHashIndex]));
+          }
+          l1MessageHash = l1MessageHashLocal;
+        }
+      } else {
+        bytes32 l1MessageHashLocal = l1MessageHash;
+        for (uint256 messageHashIndex = 0; messageHashIndex < depositMessageCount; messageHashIndex++) {
+          l1MessageHashLocal = keccak256(abi.encode(depositMessageHashes[messageHashIndex], l1MessageHashLocal));
+        }
+        l1MessageHash = l1MessageHashLocal;
       }
 
       // Check if the l1MessageHash in publicDataInput is the same as the l1MessageHash computed above

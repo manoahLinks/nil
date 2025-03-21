@@ -50,7 +50,7 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
   /// @notice the aggregated hash for all message-hash values received by the l2BridgeMessenger
   /// @dev initialize with the genesis state Hash during the contract initialisation
-  bytes32 public l1ReceiveMessageHash;
+  bytes32 public l1MessageHash;
 
   /// @notice merkleRoot of the merkleTree with messageHash of the relayed messages with failedExecution and withdrawalMessages sent from messenger.
   bytes32 public l2Tol1Root;
@@ -78,8 +78,7 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
     address _owner,
     address _defaultAdmin,
     address _relayer,
-    address _counterpartyBridgeMessenger,
-    bytes32 _genesisL1ReceiveMessageHash
+    address _counterpartyBridgeMessenger
   ) public initializer {
     // Validate input parameters
     if (_owner == address(0)) {
@@ -131,7 +130,6 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
     relayer = _relayer;
     counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
-    l1ReceiveMessageHash = _genesisL1ReceiveMessageHash;
   }
 
   // make sure only owner can send ether to messenger to avoid possible user fund loss.
@@ -192,16 +190,16 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
     relayedMessageHashStore.add(_l1MessageHash);
 
-    if (l1ReceiveMessageHash == bytes32(0)) {
-      l1ReceiveMessageHash = _l1MessageHash;
+    if (l1MessageHash == bytes32(0)) {
+      l1MessageHash = _l1MessageHash;
     } else {
-      l1ReceiveMessageHash = keccak256(abi.encode(_l1MessageHash, l1ReceiveMessageHash));
+      l1MessageHash = keccak256(abi.encode(_l1MessageHash, l1MessageHash));
     }
 
     bool isExecutionSuccessful = _executeMessage(messageSender, messageTarget, value, message);
 
     if (!isExecutionSuccessful) {
-      // add messaheHash as leaf to the merkleTree represented by l2Tol1Root
+      // add messageHash as leaf to the merkleTree represented by l2Tol1Root
       failedMessageHashStore.add(_l1MessageHash);
 
       // re-generate the merkle-tree

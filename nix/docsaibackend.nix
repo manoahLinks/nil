@@ -1,7 +1,7 @@
 { lib
 , stdenv
 , callPackage
-, npmHooks
+, pnpm_10
 , nodejs
 }:
 
@@ -10,18 +10,21 @@ stdenv.mkDerivation rec {
   pname = "docsaibackend";
   src = lib.sourceByRegex ./.. [
     "package.json"
-    "package-lock.json"
+    "pnpm-lock.yaml"
+    "pnpm-workspace.yaml"
+    ".npmrc"
     "^docs_ai_backend(/.*)?$"
   ];
 
-  npmDeps = (callPackage ./npmdeps.nix { });
+  pnpmDeps = (callPackage ./npmdeps.nix { });
 
   NODE_PATH = "$npmDeps";
 
   nativeBuildInputs = [
     nodejs
-    npmHooks.npmConfigHook
     nodejs.python
+    pnpm_10
+    pnpm_10.configureHook
   ];
 
   dontConfigure = true;
@@ -34,7 +37,7 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     patchShebangs docs_ai_backend/node_modules
 
-    (cd docs_ai_backend; npm run build)
+    (cd docs_ai_backend; pnpm run build)
   '';
 
   checkPhase = ''

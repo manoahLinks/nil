@@ -3,7 +3,7 @@
 , stdenv
 , biome
 , callPackage
-, npmHooks
+, pnpm_10
 , nil
 , enableTesting ? false
 }:
@@ -16,26 +16,25 @@ stdenv.mkDerivation rec {
   pname = "clijs";
   src = lib.sourceByRegex ./.. [
     "package.json"
-    "package-lock.json"
+    "pnpm-lock.yaml"
+    "pnpm-workspace.yaml"
+    ".npmrc"
     "^clijs(/.*)?$"
     "^niljs(/.*)?$"
     "^smart-contracts(/.*)?$"
     "biome.json"
   ];
 
-  npmDeps = (callPackage ./npmdeps.nix { });
-
-  NODE_PATH = "$npmDeps";
+  pnpmDeps = (callPackage ./npmdeps.nix { });
 
   nativeBuildInputs = [
     pkgs.pkgsStatic.nodejs_22
-    npmHooks.npmConfigHook
+    pnpm_10.configHook
+    pnpm_10
     biome
   ]
   ++ lib.optionals stdenv.buildPlatform.isDarwin [ sigtool ]
   ++ (if enableTesting then [ nil ] else [ ]);
-
-  dontConfigure = true;
 
   preUnpack = ''
     echo "Setting UV_USE_IO_URING=0 to work around the io_uring kernel bug"
@@ -50,13 +49,11 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     PATH="${pkgs.pkgsStatic.nodejs_22}/bin/:$PATH"
 
-    patchShebangs docs/node_modules
-    patchShebangs niljs/node_modules
-    (cd smart-contracts; npm run build)
-    (cd niljs; npm run build)
+    (cd smart-contracts; pnpm run build)
+    (cd niljs; pnpm run build)
 
     cd clijs
-    npm run bundle
+    pnpm run bundle
   '';
 
   doCheck = enableTesting;
@@ -74,7 +71,7 @@ stdenv.mkDerivation rec {
 
     nohup nild run --http-port 8529 --collator-tick-ms=100 > nild.log 2>&1 & echo $! > nild_pid &
 
-    npm run test:ci
+    pnpm run test:ci
 
     kill `cat nild_pid` && rm nild_pid
 

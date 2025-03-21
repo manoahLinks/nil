@@ -2,7 +2,7 @@
 , stdenv
 , biome
 , callPackage
-, npmHooks
+, pnpm_10
 , nodejs
 , nil
 , enableTesting ? false
@@ -13,7 +13,9 @@ stdenv.mkDerivation rec {
   pname = "uniswap";
   src = lib.sourceByRegex ./.. [
     "package.json"
-    "package-lock.json"
+    "pnpm-lock.yaml"
+    "pnpm-workspace.yaml"
+    ".npmrc"
     "^niljs(/.*)?$"
     "^smart-contracts(/.*)?$"
     "^create-nil-hardhat-project(/.*)?$"
@@ -32,11 +34,10 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [
     nodejs
-    npmHooks.npmConfigHook
+    pnpm_10.configHook
+    pnpm
     biome
   ] ++ (if enableTesting then [ nil ] else [ ]);
-
-  dontConfigure = true;
 
   preUnpack = ''
     echo "Setting UV_USE_IO_URING=0 to work around the io_uring kernel bug"
@@ -46,8 +47,8 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     patchShebangs node_modules
 
-    (cd smart-contracts; npm run build)
-    (cd niljs; npm run build)
+    (cd smart-contracts; pnpm run build)
+    (cd niljs; pnpm run build)
   '';
 
   doCheck = enableTesting;
@@ -68,8 +69,8 @@ stdenv.mkDerivation rec {
     export SMART_ACCOUNT_ADDR=`nil smart-account new -q`
 
     echo "Checking uniswap"
-    (cd uniswap; npm run lint)
-    (cd uniswap; npm run compile)
+    (cd uniswap; pnpm run lint)
+    (cd uniswap; pnpm run compile)
 
     echo "tests finished successfully"
   '';

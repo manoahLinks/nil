@@ -361,7 +361,7 @@ contract L1ERC20Bridge is L1BaseBridge, IL1ERC20Bridge {
       selector := mload(add(_message, 32))
     }
     if (selector != FINALIZE_ERC20_DEPOSIT_SELECTOR) {
-      revert ErrorInvalidFinalizeDepositFunctionSelector();
+      revert ErrorInvalidFinaliseDepositFunctionSelector();
     }
 
     // Extract the data part of the message

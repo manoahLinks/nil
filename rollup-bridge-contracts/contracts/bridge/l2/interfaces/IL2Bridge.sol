@@ -8,9 +8,9 @@ interface IL2Bridge is IBridge {
                              PUBLIC MUTATION FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  function setRouter(address _router) external;
+  function setRouter(address routerAddress) external;
 
-  function setMessenger(address _messenger) external;
+  function setMessenger(address messengerAddress) external;
 
   function setCounterpartyBridge(address counterpartyBridgeAddress) external;
 

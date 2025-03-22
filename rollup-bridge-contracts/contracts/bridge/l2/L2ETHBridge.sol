@@ -38,7 +38,7 @@ contract L2ETHBridge is
 
   address public override router;
 
-  IL2ETHBridgeVault public l2ETHBridgeVault;
+  IL2ETHBridgeVault public override l2ETHBridgeVault;
 
   /// @notice Mapping from Enshrined-Token-Address from nil-shard to ERC20-Token-Address from L1
   mapping(address => address) public tokenMapping;
@@ -60,47 +60,23 @@ contract L2ETHBridge is
     //////////////////////////////////////////////////////////////////////////*/
 
   function initialize(
-    address _owner,
-    address _defaultAdmin,
-    address _counterpartyBridge,
-    address _router,
-    address _messenger,
-    address _l2EthBridgeVault
+    address ownerAddress,
+    address adminAddress,
+    address routerAddress,
+    address messengerAddress,
+    address l2ETHBridgeVaultAddress
   ) public initializer {
     // Validate input parameters
-    if (_owner == address(0)) {
+    if (ownerAddress == address(0)) {
       revert ErrorInvalidOwner();
     }
 
-    if (_defaultAdmin == address(0)) {
+    if (adminAddress == address(0)) {
       revert ErrorInvalidDefaultAdmin();
     }
 
-    //check if _counterpartyBridge implements IL1ETHBridge interface
-    if (
-      !_counterpartyBridge.isContract() ||
-      !IERC165(_counterpartyBridge).supportsInterface(type(IL1ETHBridge).interfaceId)
-    ) {
-      revert ErrorInvalidCounterpartyBridge();
-    }
-
-    if (!_messenger.isContract() || !IERC165(_messenger).supportsInterface(type(IL2BridgeMessenger).interfaceId)) {
-      revert ErrorInvalidMessenger();
-    }
-
-    if (!_router.isContract() || !IERC165(_router).supportsInterface(type(IL2BridgeRouter).interfaceId)) {
-      revert ErrorInvalidRouter();
-    }
-
-    if (
-      !_l2EthBridgeVault.isContract() ||
-      !IERC165(_l2EthBridgeVault).supportsInterface(type(IL2ETHBridgeVault).interfaceId)
-    ) {
-      revert ErrorInvalidEthBridgeVault();
-    }
-
     // Initialize the Ownable contract with the owner address
-    OwnableUpgradeable.__Ownable_init(_owner);
+    OwnableUpgradeable.__Ownable_init(ownerAddress);
 
     // Initialize the Pausable contract
     PausableUpgradeable.__Pausable_init();
@@ -109,6 +85,10 @@ contract L2ETHBridge is
     __AccessControlEnumerable_init();
 
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+
+    _setRouter(routerAddress);
+    _setMessenger(messengerAddress);
+    _setL2ETHBridgeVault(l2ETHBridgeVaultAddress);
 
     // Set role admins
     // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
@@ -122,13 +102,8 @@ contract L2ETHBridge is
     // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
     // highest level of control.
     // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
-    _grantRole(NilConstants.OWNER_ROLE, _owner);
-    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-
-    counterpartyBridge = _counterpartyBridge;
-    router = _router;
-    messenger = _messenger;
-    l2ETHBridgeVault = IL2ETHBridgeVault(_l2EthBridgeVault);
+    _grantRole(NilConstants.OWNER_ROLE, ownerAddress);
+    _grantRole(DEFAULT_ADMIN_ROLE, adminAddress);
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -137,7 +112,7 @@ contract L2ETHBridge is
 
   modifier onlyMessenger() {
     // check caller is l2-bridge-messenger
-    if (msg.sender != messenger) {
+    if (msg.sender != address(messenger)) {
       revert ErrorCallerIsNotMessenger();
     }
     _;
@@ -147,37 +122,97 @@ contract L2ETHBridge is
                                     PUBLIC MUTATION FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-  function finalizeETHDeposit(
+  function finaliseETHDeposit(
     address from,
-    address to,
+    address payable to,
     address feeRefundRecipient,
-    uint256 amount,
-    bytes memory
-  ) public payable onlyMessenger {}
+    uint256 amount
+  ) public payable onlyMessenger {
+    // get recipient balance before ETH transfer
+    uint256 befBalance = feeRefundRecipient.balance;
+
+    // call sendEth on L2ETHBridgeVault
+    l2ETHBridgeVault.transferETH(to, amount);
+
+    // check for balance change of recipient
+    if (feeRefundRecipient.balance - befBalance != amount) {
+      revert ErrorIncompleteETHDeposit();
+    }
+
+    // emit FinalisedETHDepositEvent
+    emit FinaliseETHDeposit(from, to, amount);
+  }
 
   /*//////////////////////////////////////////////////////////////////////////
                          RESTRICTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IL2Bridge
-  function setRouter(address routerAddress) external override onlyOwner {
-    // TODO - check if the routerAddress implements IL2BridgeRouter interface via IERC165-supportsInterface function
+  function setRouter(address routerAddress) external override onlyAdmin {
+    _setRouter(routerAddress);
+  }
 
+  function _setRouter(address routerAddress) internal {
+    if (!routerAddress.isContract() || !IERC165(routerAddress).supportsInterface(type(IL2BridgeRouter).interfaceId)) {
+      revert ErrorInvalidRouter();
+    }
     router = routerAddress;
+
+    emit L2BridgeRouterSet(router, routerAddress);
   }
 
   /// @inheritdoc IL2Bridge
-  function setMessenger(address messengerAddress) external override onlyOwner {
-    // TODO - check if the messengerAddress implements IL2BridgeMessenger interface via IERC165-supportsInterface function
+  function setMessenger(address messengerAddress) external override onlyAdmin {
+    _setMessenger(messengerAddress);
+  }
+
+  function _setMessenger(address messengerAddress) internal {
+    if (
+      !messengerAddress.isContract() ||
+      !IERC165(messengerAddress).supportsInterface(type(IL2BridgeMessenger).interfaceId)
+    ) {
+      revert ErrorInvalidMessenger();
+    }
 
     messenger = messengerAddress;
+
+    emit L2BridgeMessengerSet(messenger, messengerAddress);
   }
 
   /// @inheritdoc IL2Bridge
-  function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyOwner {
-    // TODO - check if the counterpartyBridgeAddress implements IL1ETHBridge interface via IERC165-supportsInterface function
+  function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyAdmin {
+    _setCounterpartyBridge(counterpartyBridgeAddress);
+  }
 
+  function _setCounterpartyBridge(address counterpartyBridgeAddress) internal {
+    if (
+      counterpartyBridgeAddress != address(0) &&
+      (!counterpartyBridgeAddress.isContract() ||
+        !IERC165(counterpartyBridgeAddress).supportsInterface(type(IL1ETHBridge).interfaceId))
+    ) {
+      revert ErrorInvalidCounterpartyBridge();
+    }
     counterpartyBridge = counterpartyBridgeAddress;
+
+    emit CounterpartyBridgeSet(counterpartyBridge, counterpartyBridgeAddress);
+  }
+
+  /// @inheritdoc IL2ETHBridge
+  function setL2ETHBridgeVault(address l2ETHBridgeVaultAddress) external override onlyAdmin {
+    _setL2ETHBridgeVault(l2ETHBridgeVaultAddress);
+  }
+
+  function _setL2ETHBridgeVault(address l2ETHBridgeVaultAddress) internal {
+    if (
+      !l2ETHBridgeVaultAddress.isContract() ||
+      !IERC165(l2ETHBridgeVaultAddress).supportsInterface(type(IL2ETHBridgeVault).interfaceId)
+    ) {
+      revert ErrorInvalidEthBridgeVault();
+    }
+
+    l2ETHBridgeVault = IL2ETHBridgeVault(l2ETHBridgeVaultAddress);
+
+    emit L2ETHBridgeVaultSet(address(l2ETHBridgeVault), l2ETHBridgeVaultAddress);
   }
 
   /// @inheritdoc IL2Bridge

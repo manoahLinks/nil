@@ -20,7 +20,7 @@ interface IL1ETHBridge is IL1Bridge {
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @notice Thrown when the function selector for finalizing the deposit is invalid
-  error ErrorInvalidFinalizeDepositFunctionSelector();
+  error ErrorInvalidFinaliseDepositFunctionSelector();
 
   /// @notice Emitted upon deposit of ETH from layer-1 to nil-chain.
   /// @param depositor The address of sender in layer-1.

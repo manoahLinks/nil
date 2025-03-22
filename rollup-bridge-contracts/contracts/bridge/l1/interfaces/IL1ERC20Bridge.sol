@@ -35,7 +35,7 @@ interface IL1ERC20Bridge is IL1Bridge {
   error ErrorInvalidWethToken();
 
   /// @notice Thrown when the function selector for finalizing the deposit is invalid
-  error ErrorInvalidFinalizeDepositFunctionSelector();
+  error ErrorInvalidFinaliseDepositFunctionSelector();
 
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   

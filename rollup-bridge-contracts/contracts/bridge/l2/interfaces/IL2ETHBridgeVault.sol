@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface IL2ETHBridgeVault is IERC165 {
-  error ErrorInvalidEthBridge();
+  error ErrorInvalidL2ETHBridge();
   error ErrorCallerNotL2ETHBridge();
   error ErrorInvalidRecipientAddress();
   error ErrorInvalidTransferAmount();
@@ -20,6 +20,10 @@ interface IL2ETHBridgeVault is IERC165 {
   error ErrorInvalidAddress();
 
   error ErrorETHTransferFailed();
+
+  event L2ETHBridgeSet(address indexed l2ETHBridge, address indexed newL2ETHBridge);
+
+  function setL2ETHBridge(address l2EthBridgeAddress) external;
 
   /// @notice Transfers ETH to a recipient, only callable by the L2ETHBridge contract
   /// @param recipient The address of the recipient

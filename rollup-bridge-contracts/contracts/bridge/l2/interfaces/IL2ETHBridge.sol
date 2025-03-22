@@ -2,6 +2,10 @@
 pragma solidity 0.8.28;
 
 import { IL2Bridge } from "./IL2Bridge.sol";
+import { IL1ETHBridge } from "../../l1/interfaces/IL1ETHBridge.sol";
+import { IL2ETHBridgeVault } from "./IL2ETHBridgeVault.sol";
+import { IL2BridgeMessenger } from "./IL2BridgeMessenger.sol";
+import { IL2BridgeRouter } from "./IL2BridgeRouter.sol";
 
 interface IL2ETHBridge is IL2Bridge {
   /*//////////////////////////////////////////////////////////////////////////
@@ -13,21 +17,33 @@ interface IL2ETHBridge is IL2Bridge {
 
   error ErrorUnAuthorizedAccess();
 
+  error ErrorIncompleteETHDeposit();
+
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @notice Emitted when ETH is deposited from L1 to L2 and transfer to recipient.
-  /// @param l2Token The address of the ETH Token in L2.
+  /// @notice Emitted when ETH deposit is finalised on L2
   /// @param from The address of sender in L1.
   /// @param to The address of recipient in L2.
-  /// @param amount The amount of ETH withdrawn from L1 to L2.
-  /// @param data The optional calldata passed to recipient in L2.
-  event FinalizeDeposit(address indexed l2Token, address indexed from, address to, uint256 amount, bytes data);
+  /// @param amount The amount of ETH transferred to recipient
+  event FinaliseETHDeposit(address indexed from, address to, uint256 amount);
+
+  event CounterpartyBridgeSet(address indexed counterpartyBridge, address indexed newCounterpartyBridge);
+
+  event L2ETHBridgeVaultSet(address indexed l2ETHBridgeVault, address indexed newL2ETHBridgeVault);
+
+  event L2BridgeMessengerSet(address indexed messenger, address indexed newMessenger);
+
+  event L2BridgeRouterSet(address indexed router, address indexed newRouter);
 
   /*//////////////////////////////////////////////////////////////////////////
-                             PUBLIC CONSTANT FUNCTIONS   
+                             PUBLIC RESTRICTED FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
+
+  function l2ETHBridgeVault() external returns (IL2ETHBridgeVault);
+
+  function setL2ETHBridgeVault(address l2ETHBridgeVaultAddress) external;
 
   /*//////////////////////////////////////////////////////////////////////////
                             PUBLIC MUTATION FUNCTIONS      
@@ -39,12 +55,10 @@ interface IL2ETHBridge is IL2Bridge {
   /// @param to The address of recipient in L2 to receive the ETH-Token.
   /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
   /// @param amount The amount of the ETH to deposit.
-  /// @param data Optional data to forward to recipient's account.
-  function finalizeETHDeposit(
+  function finaliseETHDeposit(
     address from,
-    address to,
+    address payable to,
     address feeRefundRecipient,
-    uint256 amount,
-    bytes calldata data
+    uint256 amount
   ) external payable;
 }

@@ -20,7 +20,7 @@ import { L1BaseBridge } from "./L1BaseBridge.sol";
 /// @notice The `L1ETHBridge` contract for ETH bridging from L1.
 contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
   // Define the function selector for finalizeDepositETH as a constant
-  bytes4 public constant FINALIZE_DEPOSIT_ETH_SELECTOR = IL2ETHBridge.finalizeETHDeposit.selector;
+  bytes4 public constant FINALISE_DEPOSIT_ETH_SELECTOR = IL2ETHBridge.finaliseETHDeposit.selector;
 
   /*//////////////////////////////////////////////////////////////////////////
                              ERRORS   
@@ -235,8 +235,8 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
 
     // Generate message passed to L2ERC20Bridge
     bytes memory _message = abi.encodeCall(
-      IL2ETHBridge.finalizeETHDeposit,
-      (_depositorAddress, _l2DepositRecipient, _l2FeeRefundRecipient, _depositAmount, _data)
+      IL2ETHBridge.finaliseETHDeposit,
+      (_depositorAddress, payable(_l2DepositRecipient), _l2FeeRefundRecipient, _depositAmount)
     );
 
     // Send message to L1BridgeMessenger.
@@ -259,8 +259,8 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
     assembly {
       selector := mload(add(_message, 32))
     }
-    if (selector != FINALIZE_DEPOSIT_ETH_SELECTOR) {
-      revert ErrorInvalidFinalizeDepositFunctionSelector();
+    if (selector != FINALISE_DEPOSIT_ETH_SELECTOR) {
+      revert ErrorInvalidFinaliseDepositFunctionSelector();
     }
 
     // Extract the data part of the message

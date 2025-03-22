@@ -26,7 +26,7 @@ contract L2ETHBridgeVault is
                              STATE-VARIABLES   
     //////////////////////////////////////////////////////////////////////////*/
 
-  address public l2EthBridge;
+  IL2ETHBridge public l2ETHBridge;
 
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
@@ -44,7 +44,7 @@ contract L2ETHBridgeVault is
                                     INITIALIZER
     //////////////////////////////////////////////////////////////////////////*/
 
-  function initialize(address _owner, address _defaultAdmin, address _l2EthBridge) public initializer {
+  function initialize(address _owner, address _defaultAdmin) public initializer {
     // Validate input parameters
     if (_owner == address(0)) {
       revert ErrorInvalidOwner();
@@ -52,11 +52,6 @@ contract L2ETHBridgeVault is
 
     if (_defaultAdmin == address(0)) {
       revert ErrorInvalidDefaultAdmin();
-    }
-
-    //check if _l2EthBridge implements IL2Bridge interface
-    if (!_l2EthBridge.isContract() || !IERC165(_l2EthBridge).supportsInterface(type(IL2ETHBridge).interfaceId)) {
-      revert ErrorInvalidEthBridge();
     }
 
     // Initialize the Ownable contract with the owner address
@@ -84,17 +79,15 @@ contract L2ETHBridgeVault is
     // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
     _grantRole(NilConstants.OWNER_ROLE, _owner);
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-
-    l2EthBridge = _l2EthBridge;
   }
 
-  /// @notice Receive function to accept ETH, only callable by the l2EthBridge or Owner
+  /// @notice Receive function to accept ETH, only callable by the l2ETHBridge or Owner
   /// @dev owner of the contract must fund the Vault with ETH
   /// @dev L2EthBridgeVault will transfer ETH to the vault while processing ETH-withdrawal request from user (smart-account)
   /// @dev Either owner or L2EthBridgeVault are allowed to transfer ETH to the vault contract
   receive() external payable {
     if (
-      msg.sender != l2EthBridge ||
+      msg.sender != address(l2ETHBridge) ||
       hasRole(NilConstants.OWNER_ROLE, msg.sender) ||
       hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
     ) {
@@ -103,8 +96,21 @@ contract L2ETHBridgeVault is
   }
 
   /// @inheritdoc IL2ETHBridgeVault
+  function setL2ETHBridge(address l2ETHBridgeAddress) external override onlyAdmin {
+    if (
+      !l2ETHBridgeAddress.isContract() || !IERC165(l2ETHBridgeAddress).supportsInterface(type(IL2ETHBridge).interfaceId)
+    ) {
+      revert ErrorInvalidL2ETHBridge();
+    }
+
+    l2ETHBridge = IL2ETHBridge(l2ETHBridgeAddress);
+
+    emit L2ETHBridgeSet(address(l2ETHBridge), l2ETHBridgeAddress);
+  }
+
+  /// @inheritdoc IL2ETHBridgeVault
   function transferETH(address payable recipient, uint256 amount) external nonReentrant {
-    if (msg.sender != l2EthBridge) {
+    if (msg.sender != address(l2ETHBridge)) {
       revert ErrorCallerNotL2ETHBridge();
     }
 

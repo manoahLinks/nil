@@ -140,7 +140,7 @@ contract L2EnshrinedTokenBridge is
     address recipient,
     address feeRefundRecipient,
     uint256 depositAmount,
-    bytes calldata targetCallData
+    bytes calldata additionalData
   ) external payable override onlyMessenger nonReentrant {
     if (l1Token.isContract()) {
       revert ErrorInvalidL1TokenAddress();
@@ -166,7 +166,7 @@ contract L2EnshrinedTokenBridge is
       recipient,
       feeRefundRecipient,
       depositAmount,
-      targetCallData
+      additionalData
     );
   }
 

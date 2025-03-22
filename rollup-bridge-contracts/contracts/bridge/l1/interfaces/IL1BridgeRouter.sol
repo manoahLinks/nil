@@ -124,27 +124,6 @@ interface IL1BridgeRouter {
   ) external payable;
 
   /**
-   * @notice Deposits ERC20 tokens to the nil-chain for a specified recipient and calls a function on the recipient's
-   * contract.
-   * @param token The address of the ERC20 in L1 token to deposit.
-   * @param l2DepositRecipient The recipient address to receive the token in nil-chain.
-   * @param depositAmount The amount of tokens to deposit.
-   * @param depositAmount The recipient address to recieve the excess fee refund on nil-chain
-   * @param data Optional data to forward to the recipient's account.
-   * @param nilGasLimit The gas limit required to complete the deposit on nil-chain.
-   */
-  function depositERC20AndCall(
-    address token,
-    address l2DepositRecipient,
-    uint256 depositAmount,
-    address l2FeeRefundRecipient,
-    bytes memory data,
-    uint256 nilGasLimit,
-    uint256 userFeePerGas,
-    uint256 userMaxFeePerGas
-  ) external payable;
-
-  /**
    * @notice Initiates the ETH to the nil-chain. for a specified recipient.
    * @param l2DepositRecipient The recipient address to receive the token in nil-chain.
    * @param depositAmount The amount of ETH to deposit.
@@ -155,25 +134,6 @@ interface IL1BridgeRouter {
     address l2DepositRecipient,
     uint256 depositAmount,
     address l2FeeRefundRecipient,
-    uint256 nilGasLimit,
-    uint256 userFeePerGas,
-    uint256 userMaxFeePerGas
-  ) external payable;
-
-  /**
-   * @notice Deposits ETH to the nil-chain for a specified recipient and calls a function on the recipient's
-   * contract.
-   * @param l2DepositRecipient The recipient address to receive the ETH in nil-chain.
-   * @param depositAmount The amount of ETH to deposit.
-   * @param l2FeeRefundRecipient The recipient address for excess-fee refund on nil-chain
-   * @param data Optional data to forward to the recipient's account.
-   * @param nilGasLimit The gas limit required to complete the deposit on nil-chain.
-   */
-  function depositETHAndCall(
-    address l2DepositRecipient,
-    uint256 depositAmount,
-    address l2FeeRefundRecipient,
-    bytes memory data,
     uint256 nilGasLimit,
     uint256 userFeePerGas,
     uint256 userMaxFeePerGas

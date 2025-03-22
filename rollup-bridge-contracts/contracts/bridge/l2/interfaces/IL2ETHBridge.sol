@@ -44,14 +44,14 @@ interface IL2ETHBridge is IL2Bridge {
 
   /// @notice Complete an ETH-deposit from L1 to L2 and send fund to recipient's account in L2.
   /// @dev The function should only be called by L2ScrollMessenger.
-  /// @param from The address of account who deposits the ETH in L1.
-  /// @param to The address of recipient in L2 to receive the ETH-Token.
+  /// @param depositorAddress The address of account who deposits the ETH in L1.
+  /// @param depositRecipient The address of recipient in L2 to receive the ETH-Token.
   /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
-  /// @param amount The amount of the ETH to deposit.
+  /// @param depositAmount The amount of the ETH to deposit.
   function finaliseETHDeposit(
-    address from,
-    address payable to,
+    address depositorAddress,
+    address payable depositRecipient,
     address feeRefundRecipient,
-    uint256 amount
+    uint256 depositAmount
   ) external payable;
 }

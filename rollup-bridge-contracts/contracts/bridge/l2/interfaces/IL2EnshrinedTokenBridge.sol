@@ -57,7 +57,7 @@ interface IL2EnshrinedTokenBridge is IL2Bridge {
   /// @param recipient The address of recipient in L2 to receive the token.
   /// @param feeRefundRecipient The address of excess-fee refund recipient on L2.
   /// @param depositAmount The amount of the token to deposit.
-  /// @param targetCallData Optional data to forward to recipient's account.
+  /// @param additionalData Optional data to hold token-metadata
   function finalizeERC20Deposit(
     address l1Token,
     address l2Token,
@@ -65,7 +65,7 @@ interface IL2EnshrinedTokenBridge is IL2Bridge {
     address recipient,
     address feeRefundRecipient,
     uint256 depositAmount,
-    bytes calldata targetCallData
+    bytes calldata additionalData
   ) external payable;
 
   /// @notice Sets the token mapping between L2 enshrined token and L1 token

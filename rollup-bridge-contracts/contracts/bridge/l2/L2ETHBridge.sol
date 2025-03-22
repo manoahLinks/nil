@@ -123,8 +123,8 @@ contract L2ETHBridge is
     //////////////////////////////////////////////////////////////////////////*/
 
   function finaliseETHDeposit(
-    address from,
-    address payable to,
+    address depositorAddress,
+    address payable depositRecipient,
     address feeRefundRecipient,
     uint256 amount
   ) public payable onlyMessenger {
@@ -132,7 +132,7 @@ contract L2ETHBridge is
     uint256 befBalance = feeRefundRecipient.balance;
 
     // call sendEth on L2ETHBridgeVault
-    l2ETHBridgeVault.transferETH(to, amount);
+    l2ETHBridgeVault.transferETH(depositRecipient, amount);
 
     // check for balance change of recipient
     if (feeRefundRecipient.balance - befBalance != amount) {
@@ -140,7 +140,7 @@ contract L2ETHBridge is
     }
 
     // emit FinalisedETHDepositEvent
-    emit FinaliseETHDeposit(from, to, amount);
+    emit FinaliseETHDeposit(depositorAddress, depositRecipient, amount);
   }
 
   /*//////////////////////////////////////////////////////////////////////////

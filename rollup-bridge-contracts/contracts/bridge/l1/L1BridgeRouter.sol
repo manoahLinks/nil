@@ -175,17 +175,11 @@ contract L1BridgeRouter is
     //////////////////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IL1BridgeRouter
-    function depositERC20(address token, address l2DepositRecipient, uint256 depositAmount, address l2FeeRefundRecipient, uint256 nilGasLimit, uint256 userFeePerGas, uint256 userMaxPriorityFeePerGas) external payable override {
-        depositERC20AndCall(token, l2DepositRecipient, depositAmount, l2FeeRefundRecipient, new bytes(0), nilGasLimit, userFeePerGas, userMaxPriorityFeePerGas);
-    }
-
-    /// @inheritdoc IL1BridgeRouter
-    function depositERC20AndCall(
+    function depositERC20(
         address token,
         address l2DepositRecipient,
         uint256 depositAmount,
         address l2FeeRefundRecipient,
-        bytes memory data,
         uint256 nilGasLimit,
         uint256 userFeePerGas, // User-defined optional maxFeePerGas
         uint256 userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
@@ -218,11 +212,8 @@ contract L1BridgeRouter is
         // enter deposit context
         l1BridgeInContext = l1ERC20Bridge;
 
-        // encode msg.sender with _data
-        bytes memory routerData = abi.encode(_msgSender(), data);
-
-        IL1ERC20Bridge(l1ERC20Bridge).depositERC20AndCall{ value: msg.value }(
-            token, l2DepositRecipient, depositAmount, l2FeeRefundRecipient, routerData, nilGasLimit, userFeePerGas, userMaxPriorityFeePerGas
+        IL1ERC20Bridge(l1ERC20Bridge).depositERC20ViaRouter{ value: msg.value }(
+            token, l2DepositRecipient, depositAmount, l2FeeRefundRecipient, _msgSender(), nilGasLimit, userFeePerGas, userMaxPriorityFeePerGas
         );
 
         // leave deposit context
@@ -230,16 +221,10 @@ contract L1BridgeRouter is
     }
 
     /// @inheritdoc IL1BridgeRouter
-    function depositETH(address to, uint256 amount, address l2FeeRefundRecipient, uint256 gasLimit, uint256 userFeePerGas, uint256 userMaxFeePerGas) external payable override {
-        depositETHAndCall(to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit, userFeePerGas, userMaxFeePerGas);
-    }
-
-    /// @inheritdoc IL1BridgeRouter
-    function depositETHAndCall(
+    function depositETH(
         address l2DepositRecipient,
         uint256 depositAmount,
         address l2FeeRefundRecipient,
-        bytes memory data,
         uint256 nilGasLimit,
         uint256 userFeePerGas, // User-defined optional maxFeePerGas
         uint256 userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
@@ -272,11 +257,8 @@ contract L1BridgeRouter is
         // enter deposit context
         l1BridgeInContext = l1ETHBridge;
 
-        // encode msg.sender with _data
-        bytes memory routerData = abi.encode(_msgSender(), data);
-
-        IL1ETHBridge(l1ETHBridge).depositETHAndCall{ value: msg.value }(
-            l2DepositRecipient, depositAmount, l2FeeRefundRecipient, routerData, nilGasLimit, userFeePerGas, userMaxPriorityFeePerGas
+        IL1ETHBridge(l1ETHBridge).depositETHViaRouter{ value: msg.value }(
+            l2DepositRecipient, depositAmount, l2FeeRefundRecipient, _msgSender(), nilGasLimit, userFeePerGas, userMaxPriorityFeePerGas
         );
 
         // leave deposit context

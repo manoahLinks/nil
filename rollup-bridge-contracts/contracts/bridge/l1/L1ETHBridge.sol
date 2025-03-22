@@ -85,6 +85,17 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
   }
 
   /*//////////////////////////////////////////////////////////////////////////
+                             MODIFIERS
+    //////////////////////////////////////////////////////////////////////////*/
+
+  modifier onlyRouter() {
+    if (_msgSender() != router) {
+      revert ErrorOnlyRouter();
+    }
+    _;
+  }
+
+  /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATING FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/
 
@@ -97,20 +108,20 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
     uint256 userFeePerGas, // User-defined optional maxFeePerGas
     uint256 userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
   ) external payable override {
-    _deposit(to, amount, l2FeeRefundRecipient, new bytes(0), gasLimit, userFeePerGas, userMaxPriorityFeePerGas);
+    _deposit(to, amount, l2FeeRefundRecipient, _msgSender(), gasLimit, userFeePerGas, userMaxPriorityFeePerGas);
   }
 
   /// @inheritdoc IL1ETHBridge
-  function depositETHAndCall(
+  function depositETHViaRouter(
     address to,
     uint256 amount,
     address l2FeeRefundRecipient,
-    bytes memory data,
+    address depositorAddress,
     uint256 gasLimit,
     uint256 userFeePerGas, // User-defined optional maxFeePerGas
     uint256 userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
-  ) external payable override {
-    _deposit(to, amount, l2FeeRefundRecipient, data, gasLimit, userFeePerGas, userMaxPriorityFeePerGas);
+  ) public payable override onlyRouter {
+    _deposit(to, amount, l2FeeRefundRecipient, depositorAddress, gasLimit, userFeePerGas, userMaxPriorityFeePerGas);
   }
 
   /// @inheritdoc IL1Bridge
@@ -122,31 +133,33 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       messageHash
     );
 
-    // Decode the message to extract the token address and the original sender (_from)
-    (, , address depositorAddress, , uint256 depositAmount, ) = abi.decode(
-      depositMessage.message,
-      (address, address, address, address, uint256, bytes)
-    );
-
-    if (caller != router && caller != depositorAddress) {
-      revert UnAuthorizedCaller();
-    }
-
     if (depositMessage.messageType != NilConstants.MessageType.DEPOSIT_ETH) {
       revert InvalidMessageType();
+    }
+
+    ETHDecodedDepositMessage memory ethDecodedDepositMessage = decodeETHDepositMessage(depositMessage.message);
+
+    if (caller != router && caller != ethDecodedDepositMessage.depositorAddress) {
+      revert UnAuthorizedCaller();
     }
 
     // L1BridgeMessenger to verify if the deposit can be cancelled
     IL1BridgeMessenger(messenger).cancelDeposit(messageHash);
 
     // Refund the deposited ETH to the refundAddress
-    (bool success, ) = payable(depositMessage.l1DepositRefundAddress).call{ value: depositAmount }("");
+    (bool success, ) = payable(depositMessage.l1DepositRefundAddress).call{
+      value: ethDecodedDepositMessage.depositAmount
+    }("");
 
     if (!success) {
       revert ErrorEthRefundFailed(messageHash);
     }
 
-    emit DepositCancelled(messageHash, depositorAddress, depositAmount);
+    emit DepositCancelled(
+      messageHash,
+      ethDecodedDepositMessage.depositorAddress,
+      ethDecodedDepositMessage.depositAmount
+    );
   }
 
   /// @inheritdoc IL1Bridge
@@ -155,11 +168,7 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       messageHash
     );
 
-    // Decode the message to extract the depositAmount
-    (, , , , uint256 l1DepositAmount, ) = abi.decode(
-      depositMessage.message,
-      (address, address, address, address, uint256, bytes)
-    );
+    ETHDecodedDepositMessage memory ethDecodedDepositMessage = decodeETHDepositMessage(depositMessage.message);
 
     if (depositMessage.messageType != NilConstants.MessageType.DEPOSIT_ETH) {
       revert InvalidMessageType();
@@ -169,13 +178,20 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
     IL1BridgeMessenger(messenger).claimFailedDeposit(messageHash, claimProof);
 
     // Refund the deposited ETH to the refundAddress
-    (bool success, ) = payable(depositMessage.l1DepositRefundAddress).call{ value: l1DepositAmount }("");
+    (bool success, ) = payable(depositMessage.l1DepositRefundAddress).call{
+      value: ethDecodedDepositMessage.depositAmount
+    }("");
 
     if (!success) {
       revert ErrorEthRefundFailed(messageHash);
     }
 
-    emit DepositClaimed(messageHash, address(0), depositMessage.l1DepositRefundAddress, l1DepositAmount);
+    emit DepositClaimed(
+      messageHash,
+      address(0),
+      depositMessage.l1DepositRefundAddress,
+      ethDecodedDepositMessage.depositAmount
+    );
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -186,7 +202,7 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
   /// @param _l2DepositRecipient The recipient address on nil-chain.
   /// @param _depositAmount The amount of ETH to be deposited.
   /// @param _l2FeeRefundRecipient The address of recipient to receive the excess-fee refund on nil-chain
-  /// @param _data Optional data to forward to recipient's account.
+  /// @param _depositorAddress The address of depositor
   /// @param _nilGasLimit Gas limit required to complete the deposit on nil-chain.
   /// @param _userMaxFeePerGas The maximum Fee per gas unit that the user is willing to pay.
   /// @param _userMaxPriorityFeePerGas The maximum priority fee per gas unit that the user is willing to pay.
@@ -194,7 +210,7 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
     address _l2DepositRecipient,
     uint256 _depositAmount,
     address _l2FeeRefundRecipient,
-    bytes memory _data,
+    address _depositorAddress,
     uint256 _nilGasLimit,
     uint256 _userMaxFeePerGas, // User-defined optional maxFeePerGas
     uint256 _userMaxPriorityFeePerGas // User-defined optional maxPriorityFeePerGas
@@ -213,12 +229,6 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
 
     if (_nilGasLimit == 0) {
       revert ErrorInvalidL2GasLimit();
-    }
-
-    address _depositorAddress = _msgSender();
-
-    if (router == _msgSender()) {
-      (_depositorAddress, _data) = abi.decode(_data, (address, bytes));
     }
 
     INilGasPriceOracle.FeeCreditData memory feeCreditData = INilGasPriceOracle(nilGasPriceOracle).computeFeeCredit(
@@ -249,11 +259,13 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       feeCreditData
     );
 
-    emit DepositETH(_depositorAddress, _l2DepositRecipient, _depositAmount, _data);
+    emit DepositETH(_depositorAddress, _l2DepositRecipient, _depositAmount);
   }
 
   /// @inheritdoc IL1ETHBridge
-  function decodeETHDepositMessage(bytes memory _message) public pure override returns (ETHDepositMessage memory) {
+  function decodeETHDepositMessage(
+    bytes memory _message
+  ) public pure override returns (ETHDecodedDepositMessage memory) {
     // Validate that the first 4 bytes of the message match the function selector
     bytes4 selector;
     assembly {
@@ -273,21 +285,15 @@ contract L1ETHBridge is L1BaseBridge, IL1ETHBridge {
       mstore(add(messageData, 32), mload(add(_message, 36)))
     }
 
-    (
-      address depositorAddress,
-      address l2DepositRecipient,
-      address l2FeeRefundRecipient,
-      uint256 depositAmount,
-      bytes memory data
-    ) = abi.decode(messageData, (address, address, address, uint256, bytes));
+    (address depositorAddress, address l2DepositRecipient, address l2FeeRefundRecipient, uint256 depositAmount) = abi
+      .decode(messageData, (address, address, address, uint256));
 
     return
-      ETHDepositMessage({
+      ETHDecodedDepositMessage({
         depositorAddress: depositorAddress,
         l2DepositRecipient: l2DepositRecipient,
         l2FeeRefundRecipient: l2FeeRefundRecipient,
-        depositAmount: depositAmount,
-        recipientCallData: data
+        depositAmount: depositAmount
       });
   }
 }

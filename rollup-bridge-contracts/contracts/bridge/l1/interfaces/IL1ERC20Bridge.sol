@@ -37,6 +37,8 @@ interface IL1ERC20Bridge is IL1Bridge {
   /// @notice Thrown when the function selector for finalizing the deposit is invalid
   error ErrorInvalidFinaliseDepositFunctionSelector();
 
+  error ErrorOnlyRouter();
+
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
     //////////////////////////////////////////////////////////////////////////*/
@@ -85,7 +87,7 @@ interface IL1ERC20Bridge is IL1Bridge {
     /// @notice The amount of tokens to deposit
     uint256 depositAmount;
     /// @notice Additional data for the recipient
-    bytes recipientCallData;
+    bytes additionalData;
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -128,24 +130,14 @@ interface IL1ERC20Bridge is IL1Bridge {
     uint256 userMaxFeePerGas
   ) external payable;
 
-  /**
-   * @notice Deposits ERC20 tokens to the nil-chain for a specified recipient and calls a function on the recipient's
-   * contract.
-   * @param l1Token The address of the ERC20 in L1 token to deposit.
-   * @param l2Recipient The recipient address to receive the token in nil-chain.
-   * @param amount The amount of tokens to deposit.
-   * @param l2FeeRefundRecipient The recipient address to receive the refund of excess fee on nil-chain
-   * @param data Optional data to forward to the recipient's account.
-   * @param gasLimit The gas limit required to complete the deposit on nil-chain.
-   */
-  function depositERC20AndCall(
-    address l1Token,
-    address l2Recipient,
-    uint256 amount,
+  function depositERC20ViaRouter(
+    address token,
+    address l2DepositRecipient,
+    uint256 depositAmount,
     address l2FeeRefundRecipient,
-    bytes memory data,
-    uint256 gasLimit,
+    address depositorAddress,
+    uint256 l2GasLimit,
     uint256 userFeePerGas,
-    uint256 userMaxFeePerGas
+    uint256 userMaxPriorityFeePerGas
   ) external payable;
 }

@@ -60,7 +60,7 @@ stdenv.mkDerivation rec {
     # needed to work-around the openssl incompatibility
     # not sure why it happens, but it does the job
     export NODE_OPTIONS=--openssl-legacy-provider
-    npm run build
+    pnpm run build
   '';
 
   doCheck = enableTesting;
@@ -68,7 +68,7 @@ stdenv.mkDerivation rec {
   checkPhase = ''
     export BIOME_BINARY=${biome}/bin/biome
 
-    npm run lint
+    pnpm run lint
 
     echo "Runnig tests..."
     bash run_tests.sh

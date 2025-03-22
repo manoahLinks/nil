@@ -76,7 +76,6 @@
 
           niljs = (pkgs.callPackage ./nix/niljs.nix {
             nil = packages.nil;
-            solc = packages.solc;
             enableTesting = true;
           });
           clijs = (pkgs.callPackage ./nix/clijs.nix {

@@ -9,8 +9,11 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import { NilConstants } from "../../common/libraries/NilConstants.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { IL1ERC20Bridge } from "../l1/interfaces/IL1ERC20Bridge.sol";
 import { IL2EnshrinedTokenBridge } from "./interfaces/IL2EnshrinedTokenBridge.sol";
 import { IL2Bridge } from "./interfaces/IL2Bridge.sol";
+import { IL2BridgeMessenger } from "./interfaces/IL2BridgeMessenger.sol";
+import { IL2BridgeRouter } from "./interfaces/IL2BridgeRouter.sol";
 import { AddressChecker } from "../../common/libraries/AddressChecker.sol";
 
 contract L2EnshrinedTokenBridge is
@@ -56,47 +59,28 @@ contract L2EnshrinedTokenBridge is
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @notice initialize function for `L2EnshrinedTokenBridge` implementation contract.
-  /// @param _counterpartyBridge The address of `L1ERC20Bridge` contract in L1.
-  /// @param _defaultAdmin The admin address
-  /// @param _router The address of `L2BridgeRouter` contract in Nil-Chain.
-  /// @param _messenger The address of `L2BridgeMessenger` contract in  Nil-Chain.
+  /// @param ownerAddress The address of `L1ERC20Bridge` contract in L1.
+  /// @param adminAddress The admin address
+  /// @param routerAddress The address of `L2BridgeRouter` contract in Nil-Chain.
+  /// @param messengerAddress The address of `L2BridgeMessenger` contract in  Nil-Chain.
 
   function initialize(
-    address _owner,
-    address _defaultAdmin,
-    address _counterpartyBridge,
-    address _router,
-    address _messenger
+    address ownerAddress,
+    address adminAddress,
+    address routerAddress,
+    address messengerAddress
   ) public initializer {
     // Validate input parameters
-    if (_owner == address(0)) {
+    if (ownerAddress == address(0)) {
       revert ErrorInvalidOwner();
     }
 
-    if (_defaultAdmin == address(0)) {
+    if (adminAddress == address(0)) {
       revert ErrorInvalidDefaultAdmin();
     }
 
-    // TODO check on the supportsInterface validation for IL2BridgeRouter
-
-    if (!_router.isContract()) {
-      revert ErrorInvalidRouter();
-    }
-
-    // TODO check on the supportsInterface validation for IL1ERC20Bridge
-
-    if (!_counterpartyBridge.isContract()) {
-      revert ErrorInvalidCounterParty();
-    }
-
-    // TODO check on the supportsInterface validation for IL2BridgeMessenger
-
-    if (!_messenger.isContract()) {
-      revert ErrorInvalidMessenger();
-    }
-
     // Initialize the Ownable contract with the owner address
-    OwnableUpgradeable.__Ownable_init(_owner);
+    OwnableUpgradeable.__Ownable_init(ownerAddress);
 
     // Initialize the Pausable contract
     PausableUpgradeable.__Pausable_init();
@@ -105,6 +89,9 @@ contract L2EnshrinedTokenBridge is
     __AccessControlEnumerable_init();
 
     ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+
+    _setRouter(routerAddress);
+    _setMessenger(messengerAddress);
 
     // Set role admins
     // The OWNER_ROLE is set as its own admin to ensure that only the current owner can manage this role.
@@ -118,12 +105,8 @@ contract L2EnshrinedTokenBridge is
     // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
     // highest level of control.
     // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
-    _grantRole(NilConstants.OWNER_ROLE, _owner);
-    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-
-    counterpartyBridge = _counterpartyBridge;
-    router = _router;
-    messenger = _messenger;
+    _grantRole(NilConstants.OWNER_ROLE, ownerAddress);
+    _grantRole(DEFAULT_ADMIN_ROLE, adminAddress);
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -192,20 +175,56 @@ contract L2EnshrinedTokenBridge is
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IL2Bridge
-  function setRouter(address routerAddress) external override onlyOwner {
+  function setRouter(address routerAddress) external override onlyAdmin {
+    _setRouter(routerAddress);
+  }
+
+  function _setRouter(address routerAddress) internal {
+    if (!routerAddress.isContract() || !IERC165(routerAddress).supportsInterface(type(IL2BridgeRouter).interfaceId)) {
+      revert ErrorInvalidRouter();
+    }
     router = routerAddress;
+
+    emit L2BridgeRouterSet(router, routerAddress);
   }
 
   /// @inheritdoc IL2Bridge
-  function setMessenger(address messengerAddress) external override onlyOwner {
+  function setMessenger(address messengerAddress) external override onlyAdmin {
+    _setMessenger(messengerAddress);
+  }
+
+  function _setMessenger(address messengerAddress) internal {
+    if (
+      !messengerAddress.isContract() ||
+      !IERC165(messengerAddress).supportsInterface(type(IL2BridgeMessenger).interfaceId)
+    ) {
+      revert ErrorInvalidMessenger();
+    }
+
     messenger = messengerAddress;
+
+    emit L2BridgeMessengerSet(messenger, messengerAddress);
   }
 
   /// @inheritdoc IL2Bridge
-  function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyOwner {
-    counterpartyBridge = counterpartyBridgeAddress;
+  function setCounterpartyBridge(address counterpartyBridgeAddress) external override onlyAdmin {
+    _setCounterpartyBridge(counterpartyBridgeAddress);
   }
 
+  function _setCounterpartyBridge(address counterpartyBridgeAddress) internal {
+    if (
+      counterpartyBridgeAddress != address(0) &&
+      (!counterpartyBridgeAddress.isContract() ||
+        !IERC165(counterpartyBridgeAddress).supportsInterface(type(IL1ERC20Bridge).interfaceId))
+    ) {
+      revert ErrorInvalidCounterpartyBridge();
+    }
+    counterpartyBridge = counterpartyBridgeAddress;
+
+    emit CounterpartyBridgeSet(counterpartyBridge, counterpartyBridgeAddress);
+  }
+
+  /// @inheritdoc IL2EnshrinedTokenBridge
   function setTokenMapping(address l2EnshrinedTokenAddress, address l1TokenAddress) external override onlyOwner {
     if (l2EnshrinedTokenAddress == address(0) || l1TokenAddress == address(0)) {
       revert ErrorInvalidTokenAddress();

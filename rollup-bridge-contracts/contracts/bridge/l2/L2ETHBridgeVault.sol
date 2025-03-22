@@ -44,18 +44,18 @@ contract L2ETHBridgeVault is
                                     INITIALIZER
     //////////////////////////////////////////////////////////////////////////*/
 
-  function initialize(address _owner, address _defaultAdmin) public initializer {
+  function initialize(address ownerAddress, address adminAddress) public initializer {
     // Validate input parameters
-    if (_owner == address(0)) {
+    if (ownerAddress == address(0)) {
       revert ErrorInvalidOwner();
     }
 
-    if (_defaultAdmin == address(0)) {
+    if (adminAddress == address(0)) {
       revert ErrorInvalidDefaultAdmin();
     }
 
     // Initialize the Ownable contract with the owner address
-    OwnableUpgradeable.__Ownable_init(_owner);
+    OwnableUpgradeable.__Ownable_init(ownerAddress);
 
     // Initialize the Pausable contract
     PausableUpgradeable.__Pausable_init();
@@ -77,8 +77,8 @@ contract L2ETHBridgeVault is
     // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
     // highest level of control.
     // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
-    _grantRole(NilConstants.OWNER_ROLE, _owner);
-    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+    _grantRole(NilConstants.OWNER_ROLE, ownerAddress);
+    _grantRole(DEFAULT_ADMIN_ROLE, adminAddress);
   }
 
   /// @notice Receive function to accept ETH, only callable by the l2ETHBridge or Owner

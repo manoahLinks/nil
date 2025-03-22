@@ -30,11 +30,13 @@ interface IBridgeMessenger is IERC165 {
 
   error ErrorBridgeNotAuthorised();
 
+  error ErrorRelayerNotAuthorised();
+
   /// @notice Thrown when a bridge interface is invalid.
   error ErrorInvalidBridgeInterface();
 
   /// @notice Thrown when a bridge is already authorized.
-  error ErrorBridgeAlreadyAuthorized();
+  error ErrorBridgeAlreadyAuthorised();
 
   error ErrorInvalidCounterpartBridgeMessenger();
 

@@ -39,8 +39,8 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
   /// @notice Mapping from L2 message hash to the timestamp when the message is sent.
   mapping(bytes32 => uint256) public l2MessageSentTimestamp;
 
-  /// @notice  Holds the addresses of authorized bridges that can interact to send messages.
-  EnumerableSet.AddressSet private authorizedBridges;
+  /// @notice  Holds the addresses of authorised bridges that can interact to send messages.
+  EnumerableSet.AddressSet private authorisedBridges;
 
   /// @notice EnumerableSet for messageHash of the message relayed by relayer on behalf of L1BridgeMessenger
   EnumerableSet.Bytes32Set private relayedMessageHashStore;
@@ -54,9 +54,6 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
 
   /// @notice merkleRoot of the merkleTree with messageHash of the relayed messages with failedExecution and withdrawalMessages sent from messenger.
   bytes32 public l2Tol1Root;
-
-  /// @notice address of the relayer nil-smart-account which is authorized to relay messages from L1BridgeMessenger
-  address public relayer;
 
   /// @dev The storage slots for future usage.
   uint256[50] private __gap;
@@ -74,32 +71,18 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
                                     INITIALIZER
     //////////////////////////////////////////////////////////////////////////*/
 
-  function initialize(
-    address _owner,
-    address _defaultAdmin,
-    address _relayer,
-    address _counterpartyBridgeMessenger
-  ) public initializer {
+  function initialize(address ownerAddress, address adminAddress, address relayerAddress) public initializer {
     // Validate input parameters
-    if (_owner == address(0)) {
+    if (ownerAddress == address(0)) {
       revert ErrorInvalidOwner();
     }
 
-    if (_defaultAdmin == address(0)) {
+    if (adminAddress == address(0)) {
       revert ErrorInvalidDefaultAdmin();
     }
 
-    if (!_counterpartyBridgeMessenger.isContract()) {
-      revert ErrorInvalidCounterpartBridgeMessenger();
-    }
-
-    // TODO - validate if _relayer is a Nil-Smart-Account
-    if (_relayer == address(0)) {
-      revert ErrorInvalidAddress();
-    }
-
     // Initialize the Ownable contract with the owner address
-    OwnableUpgradeable.__Ownable_init(_owner);
+    OwnableUpgradeable.__Ownable_init(ownerAddress);
 
     // Initialize the Pausable contract
     PausableUpgradeable.__Pausable_init();
@@ -119,17 +102,17 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
     // The DEFAULT_ADMIN_ROLE is granted to both the default admin and the owner to ensure that both have the
     // highest level of control.
     // The OWNER_ROLE is granted to the owner to ensure they have the highest level of control over the contract.
-    _grantRole(NilConstants.OWNER_ROLE, _owner);
-    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+    _grantRole(NilConstants.OWNER_ROLE, ownerAddress);
+    _grantRole(DEFAULT_ADMIN_ROLE, adminAddress);
 
-    _grantRole(NilConstants.RELAYER_ROLE_ADMIN, _defaultAdmin);
-    _grantRole(NilConstants.RELAYER_ROLE_ADMIN, _owner);
-    _grantRole(NilConstants.RELAYER_ROLE, _owner);
-    _grantRole(NilConstants.RELAYER_ROLE, _defaultAdmin);
-    _grantRole(NilConstants.RELAYER_ROLE, _relayer);
+    _grantRole(NilConstants.RELAYER_ROLE_ADMIN, adminAddress);
+    _grantRole(NilConstants.RELAYER_ROLE_ADMIN, ownerAddress);
+    _grantRole(NilConstants.RELAYER_ROLE, ownerAddress);
+    _grantRole(NilConstants.RELAYER_ROLE, adminAddress);
 
-    relayer = _relayer;
-    counterpartyBridgeMessenger = _counterpartyBridgeMessenger;
+    if (relayerAddress.isContract()) {
+      _grantRole(NilConstants.RELAYER_ROLE, relayerAddress);
+    }
   }
 
   // make sure only owner can send ether to messenger to avoid possible user fund loss.
@@ -139,20 +122,40 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
                              MODIFIERS  
     //////////////////////////////////////////////////////////////////////////*/
 
-  modifier onlyAuthorizedL2Bridge() {
-    if (!authorizedBridges.contains(msg.sender)) {
+  modifier onlyauthorisedL2Bridge() {
+    if (!authorisedBridges.contains(msg.sender)) {
       revert ErrorBridgeNotAuthorised();
     }
     _;
   }
 
-  /// @inheritdoc IL2BridgeMessenger
-  function getAuthorizedBridges() public view returns (address[] memory) {
-    return authorizedBridges.values();
+  modifier onlyRelayer() {
+    if (!hasRole(NilConstants.RELAYER_ROLE, msg.sender)) {
+      revert ErrorRelayerNotAuthorised();
+    }
+    _;
   }
 
-  function isAuthorisedBridge(address bridgeAddress) public view returns (bool) {
-    return authorizedBridges.contains(bridgeAddress);
+  /// @inheritdoc IL2BridgeMessenger
+  function getAuthorisedBridges() public view override returns (address[] memory) {
+    return authorisedBridges.values();
+  }
+
+  /// @inheritdoc IL2BridgeMessenger
+  function isAuthorisedBridge(address bridgeAddress) public view override returns (bool) {
+    return authorisedBridges.contains(bridgeAddress);
+  }
+
+  /// @inheritdoc IL2BridgeMessenger
+  function isFullyInitialised() public view returns (bool) {
+    address[] memory relayers = getRoleMembers(NilConstants.RELAYER_ROLE);
+    address[] memory authorisedBridgeAddreses = getAuthorisedBridges();
+
+    if (!counterpartyBridgeMessenger.isContract() || relayers.length == 0 || authorisedBridgeAddreses.length == 0) {
+      return false;
+    }
+
+    return true;
   }
 
   /*//////////////////////////////////////////////////////////////////////////
@@ -169,7 +172,6 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
   ) public payable override whenNotPaused {}
 
   /// @inheritdoc IL2BridgeMessenger
-  // TODO - only relayer-pubKey check
   function relayMessage(
     address messageSender,
     address messageTarget,
@@ -177,7 +179,7 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
     uint256 value,
     uint256 messagNonce,
     bytes memory message
-  ) external override whenNotPaused {
+  ) external override onlyRelayer whenNotPaused {
     if (messageType != NilConstants.MessageType.DEPOSIT_ERC20 && messageType != NilConstants.MessageType.DEPOSIT_ETH) {
       revert ErrorInvalidMessageType();
     }
@@ -251,33 +253,47 @@ contract L2BridgeMessenger is OwnableUpgradeable, PausableUpgradeable, NilAccess
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IL2BridgeMessenger
-  function authorizeBridges(address[] calldata bridges) external onlyAdmin {
+  function setCounterpartyBridgeMessenger(address counterpartyBridgeMessengerAddress) external override onlyAdmin {
+    _setCounterpartyBridgeMessenger(counterpartyBridgeMessengerAddress);
+  }
+
+  function _setCounterpartyBridgeMessenger(address counterpartyBridgeMessengerAddress) internal {
+    if (!counterpartyBridgeMessengerAddress.isContract()) {
+      revert ErrorInvalidBridgeMessenger();
+    }
+    counterpartyBridgeMessenger = counterpartyBridgeMessengerAddress;
+
+    emit CounterpartyBridgeMessengerSet(counterpartyBridgeMessenger, counterpartyBridgeMessengerAddress);
+  }
+
+  /// @inheritdoc IL2BridgeMessenger
+  function authoriseBridges(address[] calldata bridges) external override onlyAdmin {
     for (uint256 i = 0; i < bridges.length; i++) {
-      _authorizeBridge(bridges[i]);
+      _authoriseBridge(bridges[i]);
     }
   }
 
   /// @inheritdoc IL2BridgeMessenger
-  function authorizeBridge(address bridge) external override onlyAdmin {
-    _authorizeBridge(bridge);
+  function authoriseBridge(address bridge) external override onlyAdmin {
+    _authoriseBridge(bridge);
   }
 
-  function _authorizeBridge(address bridge) internal {
+  function _authoriseBridge(address bridge) internal {
     if (!IERC165(bridge).supportsInterface(type(IL2Bridge).interfaceId)) {
       revert ErrorInvalidBridgeInterface();
     }
-    if (authorizedBridges.contains(bridge)) {
-      revert ErrorBridgeAlreadyAuthorized();
+    if (authorisedBridges.contains(bridge)) {
+      revert ErrorBridgeAlreadyAuthorised();
     }
-    authorizedBridges.add(bridge);
+    authorisedBridges.add(bridge);
   }
 
   /// @inheritdoc IL2BridgeMessenger
-  function revokeBridgeAuthorization(address bridge) external override onlyAdmin {
-    if (!authorizedBridges.contains(bridge)) {
+  function revokeBridgeAuthorisation(address bridge) external override onlyAdmin {
+    if (!authorisedBridges.contains(bridge)) {
       revert ErrorBridgeNotAuthorised();
     }
-    authorizedBridges.remove(bridge);
+    authorisedBridges.remove(bridge);
   }
 
   /// @inheritdoc IL2BridgeMessenger

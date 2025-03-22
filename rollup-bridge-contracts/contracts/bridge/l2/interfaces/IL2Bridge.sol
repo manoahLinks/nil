@@ -4,6 +4,27 @@ pragma solidity 0.8.28;
 import { IBridge } from "../../interfaces/IBridge.sol";
 
 interface IL2Bridge is IBridge {
+  error ErrorInvalidCounterpartyBridge();
+
+  /// @notice Thrown when the L1 token address is invalid
+  error ErrorInvalidL1TokenAddress();
+
+  /// @notice Thrown when the token address is invalid
+  error ErrorInvalidTokenAddress();
+
+  /// @notice Thrown when the L1 token address does not match the expected address
+  error ErrorL1TokenAddressMismatch();
+
+  /*//////////////////////////////////////////////////////////////////////////
+                             EVENTS   
+    //////////////////////////////////////////////////////////////////////////*/
+
+  event CounterpartyBridgeSet(address indexed counterpartyBridge, address indexed newCounterpartyBridge);
+
+  event L2BridgeMessengerSet(address indexed messenger, address indexed newMessenger);
+
+  event L2BridgeRouterSet(address indexed router, address indexed newRouter);
+
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC MUTATION FUNCTIONS   
     //////////////////////////////////////////////////////////////////////////*/

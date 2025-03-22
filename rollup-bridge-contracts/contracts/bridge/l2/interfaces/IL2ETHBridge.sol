@@ -11,7 +11,6 @@ interface IL2ETHBridge is IL2Bridge {
   /*//////////////////////////////////////////////////////////////////////////
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
-  error ErrorInvalidCounterpartyBridge();
 
   error ErrorInvalidEthBridgeVault();
 
@@ -29,13 +28,7 @@ interface IL2ETHBridge is IL2Bridge {
   /// @param amount The amount of ETH transferred to recipient
   event FinaliseETHDeposit(address indexed from, address to, uint256 amount);
 
-  event CounterpartyBridgeSet(address indexed counterpartyBridge, address indexed newCounterpartyBridge);
-
   event L2ETHBridgeVaultSet(address indexed l2ETHBridgeVault, address indexed newL2ETHBridgeVault);
-
-  event L2BridgeMessengerSet(address indexed messenger, address indexed newMessenger);
-
-  event L2BridgeRouterSet(address indexed router, address indexed newRouter);
 
   /*//////////////////////////////////////////////////////////////////////////
                              PUBLIC RESTRICTED FUNCTIONS   

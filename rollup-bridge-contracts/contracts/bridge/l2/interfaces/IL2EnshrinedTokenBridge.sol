@@ -8,15 +8,6 @@ interface IL2EnshrinedTokenBridge is IL2Bridge {
                              ERRORS   
     //////////////////////////////////////////////////////////////////////////*/
 
-  /// @notice Thrown when the L1 token address is invalid
-  error ErrorInvalidL1TokenAddress();
-
-  /// @notice Thrown when the token address is invalid
-  error ErrorInvalidTokenAddress();
-
-  /// @notice Thrown when the L1 token address does not match the expected address
-  error ErrorL1TokenAddressMismatch();
-
   /*//////////////////////////////////////////////////////////////////////////
                              EVENTS   
     //////////////////////////////////////////////////////////////////////////*/

@@ -9,6 +9,14 @@ import { NilConstants } from "../../../common/libraries/NilConstants.sol";
 /// @dev This interface defines the functions and events for finalizing deposit messages, sending messages to L1, and initiating withdrawals
 interface IL2BridgeMessenger is IBridgeMessenger {
   /*//////////////////////////////////////////////////////////////////////////
+                             ERRORS
+    //////////////////////////////////////////////////////////////////////////*/
+
+  error ErrorInvalidRelayer();
+
+  error ErrorInvalidBridgeMessenger();
+
+  /*//////////////////////////////////////////////////////////////////////////
                              EVENTS
     //////////////////////////////////////////////////////////////////////////*/
 
@@ -16,13 +24,26 @@ interface IL2BridgeMessenger is IBridgeMessenger {
 
   event MessageRelaySuccessful(bytes32 indexed messageHash);
 
+  event L2BridgeRouterSet(address indexed bridgeRouter, address indexed newBridgeRouter);
+
+  event RelayerSet(address indexed relayer, address indexed relayerAddress);
+
+  event CounterpartyBridgeMessengerSet(
+    address indexed counterpartyBridgeMessenger,
+    address indexed counterpartyBridgeMessengerAddress
+  );
+
   /*//////////////////////////////////////////////////////////////////////////
                          PUBLIC CONSTANT FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
   /// @notice Get the list of authorized bridges
   /// @return The list of authorized bridge addresses.
-  function getAuthorizedBridges() external view returns (address[] memory);
+  function getAuthorisedBridges() external view returns (address[] memory);
+
+  function isAuthorisedBridge(address bridgeAddress) external view returns (bool);
+
+  function isFullyInitialised() external view returns (bool);
 
   function computeMessageHash(
     address _messageSender,
@@ -70,17 +91,19 @@ interface IL2BridgeMessenger is IBridgeMessenger {
                          OWNER RESTRICTED FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
+  function setCounterpartyBridgeMessenger(address counterpartyBridgeMessengerAddress) external;
+
   /// @notice Authorize a bridge addresses
   /// @param bridges The array of addresses of the bridges to authorize.
-  function authorizeBridges(address[] memory bridges) external;
+  function authoriseBridges(address[] memory bridges) external;
 
   /// @notice Authorize a bridge address
   /// @param bridge The address of the bridge to authorize.
-  function authorizeBridge(address bridge) external;
+  function authoriseBridge(address bridge) external;
 
   /// @notice Revoke authorization of a bridge address
   /// @param bridge The address of the bridge to revoke.
-  function revokeBridgeAuthorization(address bridge) external;
+  function revokeBridgeAuthorisation(address bridge) external;
 
   /**
    * @notice Pauses or unpauses the contract.

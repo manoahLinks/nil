@@ -1,4 +1,4 @@
-{ lib, stdenv, biome, callPackage, npmHooks, nodejs, pnpm, nil
+{ lib, stdenv, biome, callPackage, npmHooks, nodejs, pnpm, nil, solc
 , enableTesting ? false }:
 
 stdenv.mkDerivation rec {
@@ -16,7 +16,7 @@ stdenv.mkDerivation rec {
 
   pnpmDeps = (callPackage ./npmdeps.nix { });
 
-  nativeBuildInputs = [ nodejs biome pnpm pnpm.configHook ]
+  nativeBuildInputs = [ nodejs biome pnpm pnpm.configHook solc ]
     ++ (if enableTesting then [ nil ] else [ ]);
 
   preUnpack = ''

@@ -1,29 +1,23 @@
-{ lib
-, stdenv
-, biome
-, callPackage
-, npmHooks
-, nodejs
-, pnpm
-, nil
-, enableTesting ? false
-, smartcontracts
-}:
+{ lib, stdenv, biome, callPackage, npmHooks, nodejs, pnpm, nil
+, enableTesting ? false }:
 
 stdenv.mkDerivation rec {
   name = "nil.js";
   pname = "niljs";
-  src = lib.sourceByRegex ./.. [ "package.json" ".npmrc" "pnpm-workspace.yaml" "pnpm-lock.yaml" "^niljs(/.*)?$" "^smart-contracts(/.*)?$" "biome.json" ];
+  src = lib.sourceByRegex ./.. [
+    "package.json"
+    ".npmrc"
+    "pnpm-workspace.yaml"
+    "pnpm-lock.yaml"
+    "^niljs(/.*)?$"
+    "^smart-contracts(/.*)?$"
+    "biome.json"
+  ];
 
   pnpmDeps = (callPackage ./npmdeps.nix { });
 
-
-  nativeBuildInputs = [
-    nodejs
-    biome
-    pnpm
-    pnpm.configHook
-  ] ++ (if enableTesting then [ nil ] else [ ]);
+  nativeBuildInputs = [ nodejs biome pnpm pnpm.configHook ]
+    ++ (if enableTesting then [ nil ] else [ ]);
 
   preUnpack = ''
     echo "Setting UV_USE_IO_URING=0 to work around the io_uring kernel bug"
@@ -31,6 +25,7 @@ stdenv.mkDerivation rec {
   '';
 
   buildPhase = ''
+    patchShebangs niljs/node_modules
     (cd smart-contracts; npm run build)
     cd niljs
     pnpm run build

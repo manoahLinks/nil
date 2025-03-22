@@ -21,5 +21,5 @@ in (pnpm.fetchDeps {
     ];
   };
   pname = "nil";
-  hash = "";
+  hash = "sha256-lJQoGydpF4ZxIetjLvjsMOv0Ezi2LRr68vwplDjavo4=";
 })

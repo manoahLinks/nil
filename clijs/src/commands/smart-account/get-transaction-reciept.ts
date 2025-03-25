@@ -2,7 +2,7 @@ import type { Hex } from "@nilfoundation/niljs";
 import { Args } from "@oclif/core";
 import { BaseCommand } from "../../base.js";
 
-export default class GetTransactionReceipt extends BaseCommand {
+export default class SmartAccountGetTransactionReceipt extends BaseCommand {
   static override summary = "Fetch a transaction receipt using its hash";
   static override description =
     "Retrieve the details of a transaction receipt from the blockchain using the transaction hash.";
@@ -20,7 +20,7 @@ export default class GetTransactionReceipt extends BaseCommand {
   ];
 
   public async run(): Promise<void> {
-    const { args } = await this.parse(GetTransactionReceipt);
+    const { args } = await this.parse(SmartAccountGetTransactionReceipt);
     const { smartAccount } = await this.setupSmartAccount();
 
     const hash = args.hash as Hex;

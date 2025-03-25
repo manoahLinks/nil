@@ -21,6 +21,7 @@ import SmartAccountSendToken from "./commands/smart-account/send-tokens";
 import SmartAccountSendTransaction from "./commands/smart-account/send-transaction.js";
 import SmartAccountSeqno from "./commands/smart-account/seqno";
 import SmartAccountTopup from "./commands/smart-account/top-up";
+import SmartAccountGetTransactionReceipt from "./commands/smart-account/get-transaction-reciept.js"
 
 export const COMMANDS: Record<string, Command.Class> = {
   abi: AbiCommand,
@@ -44,6 +45,7 @@ export const COMMANDS: Record<string, Command.Class> = {
   "smart-account:send-transaction": SmartAccountSendTransaction,
   "smart-account:seqno": SmartAccountSeqno,
   "smart-account:top-up": SmartAccountTopup,
+  "smart-account:get-transactin-reciept": SmartAccountGetTransactionReceipt
 };
 
 export async function run() {

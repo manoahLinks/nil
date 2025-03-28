@@ -51,7 +51,7 @@ func (s *SuiteEthReceipt) SetupSuite() {
 
 	blockRes := writeTestBlock(s.T(), tx, types.BaseShardId, types.BlockNumber(0), []*types.Transaction{s.transaction},
 		[]*types.Receipt{&s.receipt}, s.outTransactions)
-	err = execution.PostprocessBlock(tx, types.BaseShardId, blockRes)
+	err = execution.PostprocessBlock(tx, types.BaseShardId, blockRes, execution.ModeVerify)
 	s.Require().NoError(err)
 
 	err = tx.Commit()

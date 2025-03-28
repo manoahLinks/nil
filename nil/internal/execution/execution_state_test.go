@@ -160,7 +160,7 @@ func (s *SuiteExecutionState) TestDeployAndCall() {
 	s.Run("Execute", func() {
 		txn := NewExecutionTransaction(addrSmartAccount, addrSmartAccount, 1,
 			contracts.NewCounterAddCallData(s.T(), 47))
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.Require().False(res.Failed())
 
 		seqno, err := es.GetSeqno(addrSmartAccount)
@@ -174,16 +174,21 @@ func (s *SuiteExecutionState) TestDeployAndCall() {
 }
 
 func (s *SuiteExecutionState) TestExecStateMultipleBlocks() {
-	txn1 := types.NewEmptyTransaction()
-	txn1.Data = []byte{1}
-	txn1.Seqno = 1
-	txn2 := types.NewEmptyTransaction()
-	txn2.Data = []byte{2}
-	txn2.Seqno = 2
+	createTx := func(index int) *types.Transaction {
+		txn := types.NewEmptyTransaction()
+		txn.Data = []byte{byte(index)}
+		txn.Seqno = types.Seqno(index)
+		return txn
+	}
+
+	txn1 := createTx(1)
+	txn2 := createTx(2)
 	blockHash1 := GenerateBlockFromTransactionsWithoutExecution(s.T(), context.Background(),
 		types.BaseShardId, 0, common.EmptyHash, s.db, txn1, txn2)
+
+	txn3 := createTx(3)
 	blockHash2 := GenerateBlockFromTransactionsWithoutExecution(s.T(), context.Background(),
-		types.BaseShardId, 1, blockHash1, s.db, txn2)
+		types.BaseShardId, 1, blockHash1, s.db, txn3)
 
 	tx, err := s.db.CreateRoTx(s.ctx)
 	s.Require().NoError(err)
@@ -204,7 +209,7 @@ func (s *SuiteExecutionState) TestExecStateMultipleBlocks() {
 
 	check(blockHash1, 0, txn1)
 	check(blockHash1, 1, txn2)
-	check(blockHash2, 0, txn2)
+	check(blockHash2, 0, txn3)
 }
 
 func TestSuiteExecutionState(t *testing.T) {
@@ -412,7 +417,7 @@ func (s *SuiteExecutionState) TestTransactionStatus() {
 		txn.FeeCredit = toGasCredit(0)
 		txn.MaxFeePerGas = types.MaxFeePerGasDefault
 		txn.From = counterAddr
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.Equal(types.ErrorOutOfGas, res.Error.Code())
 		s.Require().ErrorAs(res.Error, &vmErrStub)
 	})
@@ -425,7 +430,7 @@ func (s *SuiteExecutionState) TestTransactionStatus() {
 		txn.FeeCredit = toGasCredit(1_000_000)
 		txn.MaxFeePerGas = types.MaxFeePerGasDefault
 		txn.From = counterAddr
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		fmt.Println(res.Error.Error())
 		s.Equal(types.ErrorExecutionReverted, res.Error.Code())
 		s.Require().ErrorAs(res.Error, &vmErrStub)
@@ -440,7 +445,7 @@ func (s *SuiteExecutionState) TestTransactionStatus() {
 		txn.FeeCredit = toGasCredit(100_000)
 		txn.MaxFeePerGas = types.MaxFeePerGasDefault
 		txn.From = faucetAddr
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.Equal(types.ErrorTransactionToMainShard, res.Error.Code())
 		s.Require().ErrorAs(res.Error, &vmErrStub)
 	})
@@ -505,7 +510,7 @@ func (s *SuiteExecutionState) TestPrecompiles() {
 			big.NewInt(0),
 			[]byte{})
 		s.Require().NoError(err)
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.False(res.Failed())
 	})
 
@@ -521,7 +526,7 @@ func (s *SuiteExecutionState) TestPrecompiles() {
 			[]byte{1, 2, 3, 4})
 		s.Require().NoError(err)
 
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.True(res.Failed())
 		s.Equal(types.ErrorTransactionToMainShard, res.Error.Code())
 	})
@@ -530,7 +535,7 @@ func (s *SuiteExecutionState) TestPrecompiles() {
 		txn.Data, err = abi.Pack("testAsyncCall", testAddr, types.EmptyAddress, types.EmptyAddress, big.NewInt(0),
 			uint8(types.ForwardKindNone), big.NewInt(1_000_000_000_000_000), []byte{1, 2, 3, 4})
 		s.Require().NoError(err)
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.True(res.Failed())
 		s.Equal(types.ErrorInsufficientBalance, res.Error.Code())
 	})
@@ -542,7 +547,7 @@ func (s *SuiteExecutionState) TestPrecompiles() {
 	s.Run("testSendRawTxn: invalid transaction", func() {
 		txn.Data, err = abi.Pack("testSendRawTxn", []byte{1, 2})
 		s.Require().NoError(err)
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.True(res.Failed())
 		s.Equal(types.ErrorInvalidTransactionInputUnmarshalFailed, res.Error.Code())
 	})
@@ -553,7 +558,7 @@ func (s *SuiteExecutionState) TestPrecompiles() {
 		s.Require().NoError(err)
 		txn.Data, err = abi.Pack("testSendRawTxn", data)
 		s.Require().NoError(err)
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.True(res.Failed())
 		s.Equal(types.ErrorTransactionToMainShard, res.Error.Code())
 		payload.To = testAddr
@@ -565,7 +570,7 @@ func (s *SuiteExecutionState) TestPrecompiles() {
 		s.Require().NoError(err)
 		txn.Data, err = abi.Pack("testSendRawTxn", data)
 		s.Require().NoError(err)
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.True(res.Failed())
 		s.Equal(types.ErrorInsufficientBalance, res.Error.Code())
 	})
@@ -578,7 +583,7 @@ func (s *SuiteExecutionState) TestPrecompiles() {
 		s.Require().NoError(err)
 		txn.Data, err = abi.Pack("testSendRawTxn", data)
 		s.Require().NoError(err)
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.True(res.Failed())
 		s.Equal(types.ErrorInsufficientBalance, res.Error.Code())
 	})
@@ -587,7 +592,7 @@ func (s *SuiteExecutionState) TestPrecompiles() {
 		txn.Data, err = abi.Pack("testTokenBalance", types.GenerateRandomAddress(0),
 			types.TokenId(types.HexToAddress("0x0a")))
 		s.Require().NoError(err)
-		res := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+		res := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 		s.True(res.Failed())
 		s.Equal(types.ErrorCrossShardTransaction, res.Error.Code())
 	})
@@ -635,7 +640,7 @@ func (s *SuiteExecutionState) TestPanic() {
 	txn := NewExecutionTransaction(types.MainSmartAccountAddress, types.MainSmartAccountAddress, 1,
 		contracts.NewSmartAccountSendCallData(s.T(), []byte(""), types.Gas(500_000), types.Value0, nil,
 			types.MainSmartAccountAddress, types.ExecutionTransactionKind))
-	execResult := es.HandleTransaction(s.ctx, txn, dummyPayer{})
+	execResult := es.AddAndHandleTransaction(s.ctx, txn, dummyPayer{})
 	s.False(execResult.Failed())
 
 	// Check panic is handled correctly

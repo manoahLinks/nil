@@ -2,6 +2,7 @@ package ibft
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"slices"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/NilFoundation/nil/nil/go-ibft/core"
 	"github.com/NilFoundation/nil/nil/go-ibft/messages"
 	protoIBFT "github.com/NilFoundation/nil/nil/go-ibft/messages/proto"
+	cerrors "github.com/NilFoundation/nil/nil/internal/collate/errors"
 	"github.com/NilFoundation/nil/nil/internal/config"
 	"github.com/NilFoundation/nil/nil/internal/crypto/bls"
 	"github.com/NilFoundation/nil/nil/internal/db"
@@ -31,7 +33,7 @@ type ConsensusParams struct {
 
 type validator interface {
 	BuildProposal(ctx context.Context) (*execution.ProposalSSZ, error)
-	VerifyProposal(ctx context.Context, proposal *execution.ProposalSSZ) (*types.Block, error)
+	IsValidProposal(ctx context.Context, proposal *execution.ProposalSSZ) error
 	InsertProposal(ctx context.Context, proposal *execution.ProposalSSZ, params *types.ConsensusParams) error
 	GetLastBlock(ctx context.Context) (*types.Block, common.Hash, error)
 }
@@ -180,7 +182,11 @@ func (i *backendIBFT) InsertProposal(proposal *protoIBFT.Proposal, committedSeal
 		ProposerIndex: proposerIndex,
 		Signature:     sig,
 	}); err != nil {
-		logger.Error().Err(err).Msg("Failed to insert proposal")
+		event := i.logger.Error()
+		if errors.Is(err, cerrors.ErrOldBlock) {
+			event = i.logger.Debug()
+		}
+		event.Err(err).Msg("Failed to insert proposal")
 	}
 }
 

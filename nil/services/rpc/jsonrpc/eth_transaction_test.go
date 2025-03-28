@@ -52,7 +52,7 @@ func (s *SuiteEthTransaction) SetupSuite() {
 		[]*types.Transaction{s.transaction},
 		[]*types.Receipt{&receipt},
 		[]*types.Transaction{})
-	err = execution.PostprocessBlock(tx, types.BaseShardId, blockRes)
+	err = execution.PostprocessBlock(tx, types.BaseShardId, blockRes, execution.ModeVerify)
 	s.Require().NoError(err)
 	s.lastBlockHash = blockRes.BlockHash
 

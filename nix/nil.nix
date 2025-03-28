@@ -38,6 +38,8 @@ buildGo124Module rec {
     esac
   '';
 
+  tags = [ "assert" ];
+
   src = lib.sourceByRegex ./.. [
     "Makefile"
     "go.mod"
@@ -49,7 +51,7 @@ buildGo124Module rec {
   ];
 
   # to obtain run `nix build` with vendorHash = "";
-  vendorHash = "sha256-X2oX/gpk5CjDHjtoZfN8F//aLpxTAsetdoCFTSkZ8cI=";
+  vendorHash = "sha256-N+UcUAVwgsxfk3FkRh3MiNVTz51T8oYH8MMrwqi28ow=";
 
   postInstall = ''
     mkdir -p $out/share/doc/nil
@@ -80,7 +82,7 @@ buildGo124Module rec {
   packageName = "github.com/NilFoundation/nil";
 
   doCheck = enableTesting;
-  checkFlags = [ "-tags assert,test" "-timeout 15m" ]
+  checkFlags = [ "-tags assert,test,goexperiment.synctest" "-timeout 15m" ]
     ++ (if enableRaceDetector then [ "-race" ] else [ ]);
 
   preCheck = ''

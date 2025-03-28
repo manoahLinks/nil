@@ -42,25 +42,11 @@ func NewHelper(ctx context.Context, endpoint string) (*Helper, error) {
 }
 
 func (h *Helper) WaitClusterReady(numShards int) error {
-	readyFlags := types.NewBitFlags[int64]()
-	if numShards > readyFlags.BitsNum() {
-		return fmt.Errorf("too many shards: %d", numShards)
-	}
-	if err := readyFlags.SetRange(0, uint(numShards)); err != nil {
-		return fmt.Errorf("failed to set range: %w", err)
-	}
-	err := common.WaitFor(h.ctx, time.Second*30, time.Second*2,
+	return common.WaitFor(h.ctx, time.Second*30, time.Second*2,
 		func(ctx context.Context) bool {
-			for shard := range numShards {
-				if readyFlags.GetBit(shard) {
-					if _, err := h.Client.GetBlock(ctx, types.ShardId(shard), "latest", false); err == nil {
-						readyFlags.ClearBit(shard)
-					}
-				}
-			}
-			return readyFlags.None()
+			list, err := h.Client.GetShardIdList(ctx)
+			return err == nil && len(list) == (numShards-1)
 		})
-	return err
 }
 
 func (h *Helper) DeployContract(name string, shardId types.ShardId) (*Contract, error) {
@@ -76,16 +62,28 @@ func (h *Helper) DeployContract(name string, shardId types.ShardId) (*Contract, 
 	addr := types.CreateAddress(shardId, payload)
 
 	topUpValue := types.GasToValue(10_000_000_000)
-	topUpValue = topUpValue.Mul(topUpValue)
-	if err := h.TopUp(addr, topUpValue); err != nil {
-		return nil, fmt.Errorf("failed to top up: %w", err)
+
+	topUpTries := 3
+	for ; topUpTries != 0; topUpTries-- {
+		topUpValue = topUpValue.Mul(topUpValue)
+		if err = h.TopUp(addr, topUpValue); err == nil {
+			break
+		} else {
+			h.logger.Warn().Err(err).Msgf("Failed to top up %s", addr.Hex())
+		}
 	}
+
+	if topUpTries == 0 {
+		return nil, fmt.Errorf("failed to top up %s: %w", addr.Hex(), err)
+	}
+
+	h.logger.Debug().Msgf("Top-up success: %s", addr.Hex())
 
 	tx, addr, err := h.Client.DeployExternal(h.ctx, shardId, payload, types.NewFeePackFromGas(100_000_000))
 	if err != nil {
-		return nil, fmt.Errorf("failed to deploy contract: %w", err)
+		return nil, fmt.Errorf("failed to deploy contract at %s: %w", addr, err)
 	}
-	receipt, err := common.WaitForValue[jsonrpc.RPCReceipt](h.ctx, time.Second*9, time.Millisecond*500,
+	receipt, err := common.WaitForValue(h.ctx, 30*time.Second, 500*time.Millisecond,
 		func(ctx context.Context) (*jsonrpc.RPCReceipt, error) {
 			return h.Client.GetInTransactionReceipt(ctx, tx)
 		})
@@ -93,12 +91,12 @@ func (h *Helper) DeployContract(name string, shardId types.ShardId) (*Contract, 
 		return nil, fmt.Errorf("failed to get receipt: %w", err)
 	}
 	if !receipt.Success {
-		return nil, fmt.Errorf("failed to deploy contract: %s", receipt.Status)
+		return nil, fmt.Errorf("failed to deploy contract at %s: %s", addr, receipt.Status)
 	}
 
 	balance, err := h.Client.GetBalance(h.ctx, addr, "latest")
 	if err != nil {
-		h.logger.Error().Err(err).Str("addr", addr.Hex()).Msgf("Failed to get balance")
+		h.logger.Error().Err(err).Stringer("addr", addr).Msg("Failed to get balance")
 	}
 
 	h.logger.Info().Msgf("Contract deployed at %x, balance: %s", addr, balance)
@@ -135,8 +133,8 @@ func (h *Helper) TopUp(addr types.Address, value types.Value) error {
 		return fmt.Errorf("failed to top up via faucet: %w", err)
 	} else {
 		if receipt, err := h.WaitTx(tx); err != nil {
-			return fmt.Errorf("failed to get receipt during top up: %w", err)
-		} else if !receipt.Success {
+			return fmt.Errorf("failed to get receipt %s during top up: %w", tx, err)
+		} else if !receipt.AllSuccess() {
 			return fmt.Errorf("failed to top up via faucet: %s", receipt.Status)
 		}
 	}
@@ -144,8 +142,15 @@ func (h *Helper) TopUp(addr types.Address, value types.Value) error {
 }
 
 func (h *Helper) WaitTx(tx common.Hash) (*jsonrpc.RPCReceipt, error) {
-	return common.WaitForValue[jsonrpc.RPCReceipt](h.ctx, time.Second*3, time.Millisecond*500,
+	return common.WaitForValue(h.ctx, 30*time.Second, 500*time.Millisecond,
 		func(ctx context.Context) (*jsonrpc.RPCReceipt, error) {
-			return h.Client.GetInTransactionReceipt(ctx, tx)
+			receipt, err := h.Client.GetInTransactionReceipt(ctx, tx)
+			if err != nil {
+				return nil, err
+			}
+			if !receipt.IsComplete() {
+				return nil, nil
+			}
+			return receipt, nil
 		})
 }

@@ -47,6 +47,7 @@ type Proposal struct {
 type ProposalSSZ struct {
 	PrevBlockId   types.BlockNumber
 	PrevBlockHash common.Hash
+	BlockHash     common.Hash
 
 	PatchLevel      uint32
 	RollbackCounter uint32

@@ -700,17 +700,20 @@ func (a *verifySignature) Run(input []byte) ([]byte, error) {
 	return common.EmptyHash[:], nil
 }
 
-func VerifySignatureArgs() abi.Arguments {
-	// arguments: bytes pubkey, uint256 hash, bytes signature
-	// returns: bool signatureValid
-	uint256Ty, _ := abi.NewType("uint256", "", nil)
-	bytesTy, _ := abi.NewType("bytes", "", nil)
-	args := abi.Arguments{
+// arguments: bytes pubkey, uint256 hash, bytes signature
+// returns: bool signatureValid
+var (
+	uint256Ty, _        = abi.NewType("uint256", "", nil)
+	bytesTy, _          = abi.NewType("bytes", "", nil)
+	verifySignatureArgs = abi.Arguments{
 		abi.Argument{Name: "pubkey", Type: bytesTy},
 		abi.Argument{Name: "hash", Type: uint256Ty},
 		abi.Argument{Name: "signature", Type: bytesTy},
 	}
-	return args
+)
+
+func VerifySignatureArgs() abi.Arguments {
+	return verifySignatureArgs
 }
 
 type checkIsInternal struct{}

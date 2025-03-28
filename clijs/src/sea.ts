@@ -25,7 +25,7 @@ import SystemCommand from "./commands/system";
 import ChainId from "./commands/system/chain-id";
 import GasPrice from "./commands/system/gas-price";
 import Shards from "./commands/system/shards";
-import SmartAccountGetTransactionReceipt from "./commands/smart-account/get-transaction-reciept.js"
+import SmartAccountGetTransactionReceipt from "./commands/smart-account/get-transaction-reciept.js";
 
 export const COMMANDS: Record<string, Command.Class> = {
   abi: AbiCommand,
@@ -43,6 +43,7 @@ export const COMMANDS: Record<string, Command.Class> = {
   "smart-account:call-readonly": SmartAccountCallReadOnly,
   "smart-account:deploy": SmartAccountDeploy,
   "smart-account:estimate-fee": SmartAccountEstimateFee,
+  "smart-account:get-transaction-reciept": SmartAccountGetTransactionReceipt,
   "smart-account:info": SmartAccountInfo,
   "smart-account:new": SmartAccountNew,
   "smart-account:send-tokens": SmartAccountSendToken,
@@ -54,7 +55,6 @@ export const COMMANDS: Record<string, Command.Class> = {
   "system:chain-id": ChainId,
   "system:gas-price": GasPrice,
   "system:shards": Shards,
-  "smart-account:get-transactin-reciept": SmartAccountGetTransactionReceipt
 };
 
 export async function run() {

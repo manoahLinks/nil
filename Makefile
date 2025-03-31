@@ -14,7 +14,7 @@ COMMANDS += nild nil nil_load_generator exporter cometa faucet journald_forwarde
 all: $(COMMANDS)
 
 .PHONY: generated
-generated: ssz pb compile-contracts generate_mocks synccommittee_types tracer_constants
+generated: ssz pb compile-contracts generate_mocks sync_committee_targets
 
 .PHONY: test
 test: generated
@@ -45,7 +45,7 @@ include nil/Makefile.inc
 ssz: ssz_sszx ssz_db ssz_mpt ssz_types ssz_config ssz_execution
 
 .PHONY: pb
-pb: pb_rawapi pb_ibft pb_synccommittee
+pb: pb_rawapi pb_ibft
 
 SOL_FILES := $(wildcard nil/contracts/solidity/tests/*.sol nil/contracts/solidity/*.sol)
 BIN_FILES := $(patsubst nil/contracts/solidity/%.sol, contracts/compiled/%.bin, $(SOL_FILES))
@@ -88,7 +88,3 @@ clean:
 	go clean -cache
 	rm -fr build/*
 	rm -fr contracts/compiled/*
-
-solc:
-	$(eval ARGS ?= --help)
-	@GOPRIVATE="$(GOPRIVATE)" $(GO) run $(GO_FLAGS) nil/tools/solc/bin/main.go $(ARGS)

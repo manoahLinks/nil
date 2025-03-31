@@ -297,6 +297,9 @@ func (s *Syncer) fetchBlocksRange(ctx context.Context) <-chan *types.BlockWithEx
 	if err != nil {
 		return nil
 	}
+	check.PanicIfNotf(
+		lastBlock != nil,
+		"No last block found. If the syncers were correctly initialized, this should be impossible.")
 
 	for _, p := range peers {
 		s.logger.Trace().Msgf("Requesting blocks from %d from peer %s", lastBlock.Id+1, p)

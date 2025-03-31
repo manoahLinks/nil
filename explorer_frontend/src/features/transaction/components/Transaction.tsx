@@ -53,11 +53,6 @@ export const Transaction = () => {
         flexDirection: "column",
         flexWrap: "nowrap",
         width: "100%",
-        position: "absolute",
-        left: "0",
-        right: "0",
-        paddingLeft: "48px",
-        paddingRight: "48px",
       })}
     >
       <HeadingXLarge className={css({ marginBottom: SPACE[32] })}>Transaction</HeadingXLarge>

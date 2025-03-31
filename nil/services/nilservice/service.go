@@ -257,10 +257,12 @@ type syncersResult struct {
 	funcs   []concurrent.FuncWithSource
 	syncers []*collate.Syncer
 	wgInit  sync.WaitGroup
+	result  error
 }
 
-func (s *syncersResult) Wait() {
+func (s *syncersResult) Wait() error {
 	s.wgInit.Wait()
+	return s.result
 }
 
 func createSyncers(
@@ -287,7 +289,9 @@ func createSyncers(
 		res.syncers = append(res.syncers, syncer)
 		res.funcs = append(res.funcs, concurrent.WithSource(
 			func(ctx context.Context) error {
-				res.Wait() // Wait for syncers initialization
+				if err := res.Wait(); err != nil { // Wait for syncers initialization
+					return err
+				}
 				if err := syncer.Run(ctx); err != nil {
 					logger.Error().
 						Err(err).
@@ -298,13 +302,15 @@ func createSyncers(
 				return nil
 			}))
 	}
-	res.funcs = append(res.funcs, concurrent.WithSource(func(ctx context.Context) error {
-		defer res.wgInit.Done()
-		if err := initSyncers(ctx, res.syncers, cfg.AllowDbDrop); err != nil {
+	res.funcs = append(res.funcs, concurrent.WithSource(func(ctx context.Context) (err error) {
+		defer func() {
+			res.result = err
+			res.wgInit.Done()
+		}()
+		if err = initSyncers(ctx, res.syncers, cfg.AllowDbDrop); err != nil {
 			logger.Error().Err(err).Msg("Failed to initialize syncers")
-			return err
 		}
-		return nil
+		return
 	}))
 	res.funcs = append(res.funcs, concurrent.WithSource(func(ctx context.Context) error {
 		for _, syncer := range res.syncers {
@@ -517,7 +523,9 @@ func CreateNode(
 	if (cfg.RPCPort != 0 || cfg.HttpUrl != "") && rawApi != nil {
 		funcs = append(funcs, concurrent.WithSource(func(ctx context.Context) error {
 			if syncersResult != nil {
-				syncersResult.Wait() // Wait for syncers initialization
+				if err := syncersResult.Wait(); err != nil { // Wait for syncers initialization
+					return err
+				}
 			}
 
 			var cl client.Client
@@ -682,7 +690,9 @@ func createShards(
 			collator := collate.NewScheduler(validators[i], database, consensus, networkManager)
 
 			funcs = append(funcs, concurrent.WithSource(func(ctx context.Context) error {
-				syncers.Wait() // Wait for syncers initialization
+				if err := syncers.Wait(); err != nil { // Wait for syncers initialization
+					return err
+				}
 				if err := consensus.Init(ctx); err != nil {
 					return err
 				}
